@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "cua-driver-win": {
+      "command": "C:\\Users\\YOU\\AppData\\Local\\Programs\\CuaDriverWin\\cua-driver-win.exe",
+      "args": ["mcp"]
+    }
+  }
+}

@@ -1,0 +1,43 @@
+using System.Text.Json.Nodes;
+using CuaDriver.Win.Input;
+using CuaDriver.Win.Tooling;
+using CuaDriver.Win.Uia;
+
+namespace CuaDriver.Win.Tools;
+
+public sealed class SetValueTool : IDriverTool
+{
+    public ToolDefinition Definition { get; } = new(
+        "set_value",
+        "Set a UIA ValuePattern or RangeValuePattern on an element_index.",
+        JsonArgs.Schema(
+            ("pid", JsonArgs.Prop("integer", "Target process id.")),
+            ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
+            ("element_index", JsonArgs.Prop("integer", "Element index from get_window_state.")),
+            ("value", JsonArgs.Prop("string", "String value, or numeric text for range controls."))),
+        Destructive: true,
+        Idempotent: true);
+
+    public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
+    {
+        var pid = JsonArgs.RequiredInt(args, "pid");
+        var windowId = JsonArgs.RequiredLong(args, "window_id");
+        var index = JsonArgs.RequiredInt(args, "element_index");
+        var value = JsonArgs.RequiredString(args, "value");
+
+        var element = context.State.UiaTree.GetCachedElement(pid, windowId, index);
+        ActionReceipt receipt;
+        if (double.TryParse(value, out var number))
+        {
+            receipt = UiAutomationActions.SetRangeValue(element, number);
+            if (!receipt.Ok)
+                receipt = UiAutomationActions.SetValue(element, value);
+        }
+        else
+        {
+            receipt = UiAutomationActions.SetValue(element, value);
+        }
+
+        return Task.FromResult(ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok));
+    }
+}

@@ -1,0 +1,194 @@
+using System.Runtime.InteropServices;
+using System.Text;
+
+namespace CuaDriver.Win.Win32;
+
+internal static class NativeMethods
+{
+    public delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern bool EnumChildWindows(IntPtr hWndParent, EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern int GetWindowTextLengthW(IntPtr hWnd);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern int GetWindowTextW(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern int GetClassNameW(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsIconic(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    [DllImport("user32.dll")]
+    public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out RECT pvAttribute, int cbAttribute);
+
+    [DllImport("user32.dll")]
+    public static extern bool GetCursorPos(out POINT lpPoint);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetCursorPos(int x, int y);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool PostMessageW(IntPtr hWnd, uint msg, UIntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr SendMessageW(IntPtr hWnd, uint msg, UIntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr WindowFromPoint(POINT point);
+
+    [DllImport("user32.dll")]
+    public static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
+
+    [DllImport("user32.dll")]
+    public static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsChild(IntPtr hWndParent, IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr ChildWindowFromPointEx(IntPtr hWndParent, POINT point, uint flags);
+
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetrics(int nIndex);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetDpiForWindow(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll")]
+    public static extern bool PrintWindow(IntPtr hwnd, IntPtr hdcBlt, uint nFlags);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    public const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
+    public const uint GA_ROOT = 2;
+
+    public const uint WM_MOUSEMOVE = 0x0200;
+    public const uint WM_LBUTTONDOWN = 0x0201;
+    public const uint WM_LBUTTONUP = 0x0202;
+    public const uint WM_RBUTTONDOWN = 0x0204;
+    public const uint WM_RBUTTONUP = 0x0205;
+    public const uint WM_MOUSEWHEEL = 0x020A;
+    public const uint WM_CONTEXTMENU = 0x007B;
+    public const uint WM_KEYDOWN = 0x0100;
+    public const uint WM_KEYUP = 0x0101;
+    public const uint WM_CHAR = 0x0102;
+    public const uint WM_SETTEXT = 0x000C;
+    public const uint BM_CLICK = 0x00F5;
+
+    public const uint CWP_SKIPINVISIBLE = 0x0001;
+    public const uint CWP_SKIPDISABLED = 0x0002;
+    public const uint CWP_SKIPTRANSPARENT = 0x0004;
+
+    public const int SM_CXSCREEN = 0;
+    public const int SM_CYSCREEN = 1;
+    public const int SM_XVIRTUALSCREEN = 76;
+    public const int SM_YVIRTUALSCREEN = 77;
+    public const int SM_CXVIRTUALSCREEN = 78;
+    public const int SM_CYVIRTUALSCREEN = 79;
+
+    public const uint PW_CLIENTONLY = 0x00000001;
+    public const uint PW_RENDERFULLCONTENT = 0x00000002;
+
+    public static string GetWindowText(IntPtr hwnd)
+    {
+        var len = Math.Max(1, GetWindowTextLengthW(hwnd));
+        var sb = new StringBuilder(len + 1);
+        GetWindowTextW(hwnd, sb, sb.Capacity);
+        return sb.ToString();
+    }
+
+    public static string GetClassName(IntPtr hwnd)
+    {
+        var sb = new StringBuilder(256);
+        GetClassNameW(hwnd, sb, sb.Capacity);
+        return sb.ToString();
+    }
+
+    public static RECT GetBestWindowRect(IntPtr hwnd)
+    {
+        if (DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, out var rect, Marshal.SizeOf<RECT>()) == 0 &&
+            rect.Width > 0 && rect.Height > 0)
+            return rect;
+
+        GetWindowRect(hwnd, out rect);
+        return rect;
+    }
+
+    public static IntPtr MakeLParam(int lo, int hi)
+    {
+        unchecked
+        {
+            return (IntPtr)((hi & 0xFFFF) << 16 | (lo & 0xFFFF));
+        }
+    }
+
+    public static UIntPtr MakeWParam(int lo, int hi)
+    {
+        unchecked
+        {
+            return (UIntPtr)((uint)((hi & 0xFFFF) << 16 | (lo & 0xFFFF)));
+        }
+    }
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct RECT
+{
+    public int Left;
+    public int Top;
+    public int Right;
+    public int Bottom;
+
+    public int Width => Right - Left;
+    public int Height => Bottom - Top;
+    public bool IsEmpty => Width <= 0 || Height <= 0;
+
+    public override string ToString() => $"({Left},{Top},{Right},{Bottom})";
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct POINT
+{
+    public int X;
+    public int Y;
+
+    public POINT(int x, int y)
+    {
+        X = x;
+        Y = y;
+    }
+
+    public override string ToString() => $"({X},{Y})";
+}
+
+public sealed record RectDto(int X, int Y, int Width, int Height)
+{
+    public static RectDto From(RECT r) => new(r.Left, r.Top, r.Width, r.Height);
+    public override string ToString() => $"x={X} y={Y} width={Width} height={Height}";
+}
