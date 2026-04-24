@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows.Automation;
 using CuaDriver.Win.Cursor;
+using CuaDriver.Win.Recording;
 
 namespace CuaDriver.Win;
 
@@ -82,6 +83,7 @@ public sealed class DriverState
     public ConcurrentDictionary<(int Pid, long WindowId), IntPtr> LastTargetHwnd { get; } = new();
     public ConcurrentDictionary<(int Pid, long WindowId), AutomationElement> LastUiaTextTarget { get; } = new();
     public AgentCursorOverlay AgentCursor { get; } = new();
+    public RecordingSession Recording { get; } = new();
     public DateTimeOffset StartedAt { get; } = DateTimeOffset.UtcNow;
 }
 

@@ -60,12 +60,46 @@ public sealed class SetAgentCursorMotionTool : IDriverTool
 
 public sealed class SetRecordingTool : IDriverTool
 {
-    public ToolDefinition Definition { get; } = new("set_recording", "Compatibility stub for trajectory recording.", JsonArgs.Schema(("enabled", JsonArgs.Prop("boolean", "Requested state."))), Destructive: true);
-    public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken) => Task.FromResult(ToolResult.Text("✅ recording stub acknowledged; implement renderer/recorder as needed."));
+    public ToolDefinition Definition { get; } = new(
+        "set_recording",
+        "Toggle trajectory recording. When enabled, subsequent action tools write turn-NNNNN folders with action.json, app_state.json, screenshot.png, and click.png when applicable.",
+        JsonArgs.Schema(
+            ("enabled", JsonArgs.Prop("boolean", "True to start recording subsequent action tool calls; false to stop.")),
+            ("output_dir", JsonArgs.Prop("string", "Directory where turn folders are written. Required when enabled=true.")),
+            ("video_experimental", JsonArgs.Prop("boolean", "Accepted for Mac compatibility; Windows currently records trajectory files only."))),
+        Destructive: true);
+
+    public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
+    {
+        if (!args.ContainsKey("enabled"))
+            return Task.FromResult(ToolResult.Error("Missing required boolean field enabled."));
+
+        var enabled = JsonArgs.OptionalBool(args, "enabled");
+        try
+        {
+            context.State.Recording.Configure(enabled, enabled ? JsonArgs.OptionalString(args, "output_dir") : null);
+            var state = context.State.Recording.CurrentState();
+            var text = state.Enabled
+                ? $"✅ Recording enabled -> {state.OutputDirectory}"
+                : "✅ Recording disabled.";
+            return Task.FromResult(ToolResult.Text(text));
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(ToolResult.Error($"Failed to configure recording: {ex.Message}"));
+        }
+    }
 }
 
 public sealed class GetRecordingStateTool : IDriverTool
 {
-    public ToolDefinition Definition { get; } = new("get_recording_state", "Compatibility stub for trajectory recording state.", JsonArgs.Schema(), ReadOnly: true);
-    public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken) => Task.FromResult(ToolResult.Text("✅ {\"enabled\":false}"));
+    public ToolDefinition Definition { get; } = new("get_recording_state", "Return the trajectory recorder state.", JsonArgs.Schema(), ReadOnly: true);
+    public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
+    {
+        var state = context.State.Recording.CurrentState();
+        var text = state.Enabled
+            ? $"✅ recording: enabled output_dir={state.OutputDirectory} next_turn={state.NextTurn}"
+            : "✅ recording: disabled";
+        return Task.FromResult(ToolResult.Text(text));
+    }
 }

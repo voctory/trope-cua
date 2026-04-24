@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
@@ -78,6 +79,18 @@ public sealed class ToolContext
 public sealed class ToolRegistry
 {
     private readonly Dictionary<string, IDriverTool> _tools;
+    private static readonly HashSet<string> ActionToolNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "click",
+        "right_click",
+        "double_click",
+        "scroll",
+        "type_text",
+        "type_text_chars",
+        "press_key",
+        "hotkey",
+        "set_value",
+    };
 
     public ToolRegistry(IEnumerable<IDriverTool> tools)
     {
@@ -102,14 +115,24 @@ public sealed class ToolRegistry
     {
         if (!TryGet(name, out var tool))
             return ToolResult.Error($"Unknown tool: {name}");
+
+        var shouldRecord = ActionToolNames.Contains(tool.Definition.Name);
+        var actionStartTimestamp = shouldRecord ? Stopwatch.GetTimestamp() : 0;
+        var recordedArgs = shouldRecord ? (JsonObject)args.DeepClone() : null;
+        ToolResult result;
         try
         {
-            return await tool.InvokeAsync(args, context, ct).ConfigureAwait(false);
+            result = await tool.InvokeAsync(args, context, ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            return ToolResult.Error($"{ex.GetType().Name}: {ex.Message}");
+            result = ToolResult.Error($"{ex.GetType().Name}: {ex.Message}");
         }
+
+        if (shouldRecord && recordedArgs is not null && context.State.Recording.IsEnabled)
+            context.State.Recording.Record(tool.Definition.Name, recordedArgs, result, context, actionStartTimestamp);
+
+        return result;
     }
 
     public static ToolRegistry CreateDefault(DriverState state)
@@ -142,6 +165,7 @@ public sealed class ToolRegistry
             new Tools.GetAgentCursorStateTool(),
             new Tools.SetRecordingTool(),
             new Tools.GetRecordingStateTool(),
+            new Tools.ReplayTrajectoryTool(),
             new Tools.BrowserEvalTool(),
             new Tools.ChildSessionStatusTool(),
         ];
