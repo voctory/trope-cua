@@ -118,38 +118,7 @@ public sealed class UiAutomationTree
             if (root is null)
                 return null;
 
-            var element = AutomationElement.FromPoint(new System.Windows.Point(screenPoint.X, screenPoint.Y));
-            var walker = TreeWalker.ControlViewWalker;
-            var current = element;
-            UiaHitTestResult? fallbackTextInput = null;
-
-            for (var depth = 0; current is not null && depth < 30; depth++)
-            {
-                if (!IsSameWindowTree(current, root, windowId))
-                {
-                    current = Safe(() => walker.GetParent(current));
-                    continue;
-                }
-
-                var info = MakeInfo(current, 0, pid);
-                var rect = Safe(() => current.Current.BoundingRectangle);
-                var isTextInput = IsTextInput(info);
-                var isClickAction = IsClickActionCandidate(info);
-
-                if (isClickAction)
-                    return new UiaHitTestResult(current, info.ControlType, info.Name, isTextInput, true, rect);
-
-                fallbackTextInput ??= isTextInput
-                    ? new UiaHitTestResult(current, info.ControlType, info.Name, true, false, rect)
-                    : null;
-
-                if (AutomationEquals(current, root))
-                    break;
-
-                current = Safe(() => walker.GetParent(current));
-            }
-
-            return fallbackTextInput;
+            return HitTestWithinRoot(root, pid, screenPoint, wantScrollable: false);
         }
         catch
         {
@@ -165,28 +134,7 @@ public sealed class UiAutomationTree
             if (root is null)
                 return null;
 
-            var element = AutomationElement.FromPoint(new System.Windows.Point(screenPoint.X, screenPoint.Y));
-            var walker = TreeWalker.ControlViewWalker;
-            for (var depth = 0; element is not null && depth < 30; depth++)
-            {
-                if (!IsSameWindowTree(element, root, windowId))
-                {
-                    element = Safe(() => walker.GetParent(element));
-                    continue;
-                }
-
-                if (element.TryGetCurrentPattern(ScrollPattern.Pattern, out _))
-                {
-                    var info = MakeInfo(element, 0, pid);
-                    var rect = Safe(() => element.Current.BoundingRectangle);
-                    return new UiaHitTestResult(element, info.ControlType, info.Name, false, false, rect);
-                }
-
-                if (AutomationEquals(element, root))
-                    break;
-
-                element = Safe(() => walker.GetParent(element));
-            }
+            return HitTestWithinRoot(root, pid, screenPoint, wantScrollable: true);
         }
         catch
         {
@@ -194,6 +142,74 @@ public sealed class UiAutomationTree
         }
 
         return null;
+    }
+
+    private static UiaHitTestResult? HitTestWithinRoot(AutomationElement root, int pid, POINT screenPoint, bool wantScrollable)
+    {
+        var point = new System.Windows.Point(screenPoint.X, screenPoint.Y);
+        UiaHitTestResult? bestClick = null;
+        UiaHitTestResult? bestText = null;
+        UiaHitTestResult? bestScrollable = null;
+        var bestClickArea = double.MaxValue;
+        var bestTextArea = double.MaxValue;
+        var bestScrollableArea = double.MaxValue;
+
+        Visit(root, depth: 0);
+        return wantScrollable ? bestScrollable : bestClick ?? bestText;
+
+        void Visit(AutomationElement element, int depth)
+        {
+            if (depth > 25)
+                return;
+
+            UiElementInfo? info = null;
+            Rect rect = Rect.Empty;
+            try
+            {
+                rect = element.Current.BoundingRectangle;
+                if (rect.IsEmpty || !rect.Contains(point))
+                    return;
+
+                info = MakeInfo(element, 0, pid);
+                var area = Math.Max(1, rect.Width * rect.Height);
+                if (wantScrollable && element.TryGetCurrentPattern(ScrollPattern.Pattern, out _) && area < bestScrollableArea)
+                {
+                    bestScrollableArea = area;
+                    bestScrollable = new UiaHitTestResult(element, info.ControlType, info.Name, false, false, rect);
+                }
+                else if (!wantScrollable)
+                {
+                    var isTextInput = IsTextInput(info);
+                    if (IsClickActionCandidate(info) && area < bestClickArea)
+                    {
+                        bestClickArea = area;
+                        bestClick = new UiaHitTestResult(element, info.ControlType, info.Name, isTextInput, true, rect);
+                    }
+                    else if (isTextInput && area < bestTextArea)
+                    {
+                        bestTextArea = area;
+                        bestText = new UiaHitTestResult(element, info.ControlType, info.Name, true, false, rect);
+                    }
+                }
+            }
+            catch
+            {
+                return;
+            }
+
+            var walker = TreeWalker.ControlViewWalker;
+            AutomationElement? child = null;
+            try { child = walker.GetFirstChild(element); } catch { }
+
+            var ordinal = 0;
+            while (child is not null && ordinal < 500)
+            {
+                Visit(child, depth + 1);
+                try { child = walker.GetNextSibling(child); }
+                catch { break; }
+                ordinal++;
+            }
+        }
     }
 
     private static void Walk(

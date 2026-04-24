@@ -86,7 +86,7 @@ public sealed class AgentCursorOverlay
                     _form = form;
                 }
                 ready.Set();
-                Application.Run(form);
+                Application.Run(new ApplicationContext());
             })
             {
                 IsBackground = true,
