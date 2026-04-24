@@ -138,6 +138,7 @@ public sealed class ToolRegistry
             new Tools.GetConfigTool(),
             new Tools.SetConfigTool(),
             new Tools.SetAgentCursorEnabledTool(),
+            new Tools.SetAgentCursorMotionTool(),
             new Tools.GetAgentCursorStateTool(),
             new Tools.SetRecordingTool(),
             new Tools.GetRecordingStateTool(),
