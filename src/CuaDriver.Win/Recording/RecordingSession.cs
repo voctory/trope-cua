@@ -235,6 +235,15 @@ public sealed class RecordingSession
         var y = TryGetDouble(arguments, "y");
         if (x is not null && y is not null)
         {
+            if (TryGetBool(arguments, "from_zoom") == true &&
+                context.State.ZoomContexts.TryGetValue(window.Pid, out var zoom) &&
+                zoom.WindowId == window.WindowId)
+            {
+                return new PointF(
+                    (float)(window.Bounds.X + zoom.OriginX + x.Value),
+                    (float)(window.Bounds.Y + zoom.OriginY + y.Value));
+            }
+
             var ratio = context.State.ImageResizeRatio.TryGetValue((window.Pid, window.WindowId), out var r) ? r : 1.0;
             return new PointF(
                 (float)(window.Bounds.X + x.Value * ratio),
@@ -337,6 +346,12 @@ public sealed class RecordingSession
     private static double? TryGetDouble(JsonObject obj, string key)
     {
         try { return obj.TryGetPropertyValue(key, out var node) && node is not null ? node.GetValue<double>() : null; }
+        catch { return null; }
+    }
+
+    private static bool? TryGetBool(JsonObject obj, string key)
+    {
+        try { return obj.TryGetPropertyValue(key, out var node) && node is not null ? node.GetValue<bool>() : null; }
         catch { return null; }
     }
 }

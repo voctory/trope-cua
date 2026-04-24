@@ -145,6 +145,7 @@ public sealed class ToolRegistry
             new Tools.GetWindowStateTool(),
             new Tools.GetAccessibilityTreeTool(),
             new Tools.ScreenshotTool(),
+            new Tools.ZoomTool(),
             new Tools.ClickTool(),
             new Tools.RightClickTool(),
             new Tools.DoubleClickTool(),
@@ -188,6 +189,13 @@ public static class JsonArgs
         if (args.TryGetPropertyValue(name, out var node) && node is not null)
             return node.GetValue<long>();
         throw new ArgumentException($"Missing required integer field {name}.");
+    }
+
+    public static double RequiredDouble(JsonObject args, string name)
+    {
+        if (args.TryGetPropertyValue(name, out var node) && node is not null)
+            return node.GetValue<double>();
+        throw new ArgumentException($"Missing required number field {name}.");
     }
 
     public static string RequiredString(JsonObject args, string name)

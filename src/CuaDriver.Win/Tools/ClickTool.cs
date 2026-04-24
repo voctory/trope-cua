@@ -21,6 +21,7 @@ public sealed class ClickTool : IDriverTool
             ("y", JsonArgs.Prop("number", "Window-local screenshot Y.")),
             ("action", JsonArgs.Prop("string", "UIA action name: press, show_menu, pick, confirm, cancel, open.")),
             ("count", JsonArgs.Prop("integer", "Click count. Pixel path only.")),
+            ("from_zoom", JsonArgs.Prop("boolean", "When true, x/y are pixel coordinates in the last zoom image for this pid.")),
             ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium remote debugging port for browser pixel route.")),
             ("allow_parent_sendinput", JsonArgs.Prop("boolean", "Explicit unsafe override; default false. Currently reported, not used."))),
         Destructive: true,
@@ -36,11 +37,14 @@ public sealed class ClickTool : IDriverTool
         var y = JsonArgs.OptionalDouble(args, "y");
         var count = JsonArgs.OptionalInt(args, "count") ?? 1;
         var action = JsonArgs.OptionalString(args, "action") ?? "press";
+        var fromZoom = JsonArgs.OptionalBool(args, "from_zoom");
 
         if (index is not null && (x is not null || y is not null))
             return ToolResult.Error("Provide either element_index or x/y, not both.");
         if (index is null && (x is null || y is null))
             return ToolResult.Error("Provide element_index or both x and y.");
+        if (index is not null && fromZoom)
+            return ToolResult.Error("from_zoom only applies to pixel clicks.");
         if (index is not null && windowId is null)
             return ToolResult.Error("window_id is required for element_index clicks.");
 
@@ -91,7 +95,9 @@ public sealed class ClickTool : IDriverTool
         {
             if (windowId is null)
             {
-                var w = WindowEnumerator.MainWindowForPid(pid);
+                var w = fromZoom && context.State.ZoomContexts.TryGetValue(pid, out var zoom)
+                    ? WindowEnumerator.Find(zoom.WindowId)
+                    : WindowEnumerator.MainWindowForPid(pid);
                 if (w is null)
                     return ToolResult.Error($"No window found for pid {pid}.");
                 windowId = w.WindowId;
@@ -103,9 +109,23 @@ public sealed class ClickTool : IDriverTool
             if (window.Pid != pid)
                 return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
 
-            var ratio = context.State.ImageResizeRatio.TryGetValue((pid, window.WindowId), out var r) ? r : 1.0;
-            var clickX = x!.Value * ratio;
-            var clickY = y!.Value * ratio;
+            double clickX;
+            double clickY;
+            if (fromZoom)
+            {
+                if (!context.State.ZoomContexts.TryGetValue(pid, out var zoom))
+                    return ToolResult.Error($"from_zoom=true but no zoom context for pid {pid}. Call zoom first.");
+                if (zoom.WindowId != window.WindowId)
+                    return ToolResult.Error($"from_zoom context belongs to window_id {zoom.WindowId}, not {window.WindowId}.");
+                clickX = zoom.OriginX + x!.Value;
+                clickY = zoom.OriginY + y!.Value;
+            }
+            else
+            {
+                var ratio = context.State.ImageResizeRatio.TryGetValue((pid, window.WindowId), out var r) ? r : 1.0;
+                clickX = x!.Value * ratio;
+                clickY = y!.Value * ratio;
+            }
             var resolved = WindowMessageInput.ResolvePointTarget(window.Hwnd, clickX, clickY);
 
             var hit = context.State.UiaTree.HitTest(pid, window.WindowId, resolved.ScreenPoint);

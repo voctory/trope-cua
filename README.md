@@ -13,10 +13,11 @@ The Windows port intentionally does **not** treat `SendInput` as the normal equi
 ## What is included
 
 - .NET 8 Windows console/MCP server project.
-- Tool names compatible with the macOS driver shape: `list_apps`, `list_windows`, `launch_app`, `get_window_state`, `get_accessibility_tree`, `screenshot`, `click`, `right_click`, `double_click`, `type_text`, `type_text_chars`, `press_key`, `hotkey`, `scroll`, `set_value`, `check_permissions`, config tools, a click-through visual agent cursor overlay, trajectory recording, and replay.
+- Tool names compatible with the macOS driver shape: `list_apps`, `list_windows`, `launch_app`, `get_window_state`, `get_accessibility_tree`, `screenshot`, `zoom`, `click`, `right_click`, `double_click`, `type_text`, `type_text_chars`, `press_key`, `hotkey`, `scroll`, `set_value`, `check_permissions`, config tools, a click-through visual agent cursor overlay, trajectory recording, and replay.
 - UIA element-index snapshots with an in-memory `(pid, window_id) -> element_index -> AutomationElement` cache for MCP/daemon usage.
 - Cursor/foreground no-regression guard around mutating actions.
 - Pixel clicks try UIA hit-test first, so accessible links/buttons use semantic actions instead of blind mouse messages.
+- `zoom` returns native-resolution crops from resized screenshots and stores crop context for `click(..., from_zoom=true)`.
 - CDP lane for Chromium-page pixel clicks and `Runtime.evaluate(... userGesture: true)`.
 - Classic Win32 targeted message fallback for native controls, typing, keys, and scroll; browser web content without UIA/CDP now returns an explicit failure instead of reporting unverified delivery.
 - Visual agent cursor overlay drawn in a click-through, no-activate WinForms window. It does not move the user's hardware cursor.

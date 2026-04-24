@@ -80,12 +80,15 @@ public sealed class DriverState
     public Uia.UiAutomationTree UiaTree { get; } = new();
     public Capture.WindowCapture Capture { get; } = new();
     public ConcurrentDictionary<(int Pid, long WindowId), double> ImageResizeRatio { get; } = new();
+    public ConcurrentDictionary<int, ZoomContext> ZoomContexts { get; } = new();
     public ConcurrentDictionary<(int Pid, long WindowId), IntPtr> LastTargetHwnd { get; } = new();
     public ConcurrentDictionary<(int Pid, long WindowId), AutomationElement> LastUiaTextTarget { get; } = new();
     public AgentCursorOverlay AgentCursor { get; } = new();
     public RecordingSession Recording { get; } = new();
     public DateTimeOffset StartedAt { get; } = DateTimeOffset.UtcNow;
 }
+
+public sealed record ZoomContext(int OriginX, int OriginY, int Width, int Height, double Ratio, long WindowId);
 
 public static class JsonUtil
 {
