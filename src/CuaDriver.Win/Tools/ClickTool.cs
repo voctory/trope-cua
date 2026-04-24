@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using System.Windows.Automation;
 using CuaDriver.Win.Browser;
+using CuaDriver.Win.Capture;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
 using CuaDriver.Win.Uia;
@@ -22,6 +23,7 @@ public sealed class ClickTool : IDriverTool
             ("action", JsonArgs.Prop("string", "UIA action name: press, show_menu, pick, confirm, cancel, open.")),
             ("count", JsonArgs.Prop("integer", "Click count. Pixel path only.")),
             ("from_zoom", JsonArgs.Prop("boolean", "When true, x/y are pixel coordinates in the last zoom image for this pid.")),
+            ("debug_image_out", JsonArgs.Prop("string", "Optional path. For pixel clicks, capture the target window, draw a red crosshair at the received x/y in resized screenshot coordinates, and write a PNG before dispatch. Requires window_id; incompatible with from_zoom.")),
             ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium remote debugging port for browser pixel route.")),
             ("allow_parent_sendinput", JsonArgs.Prop("boolean", "Explicit unsafe override; default false. Currently reported, not used."))),
         Destructive: true,
@@ -38,6 +40,7 @@ public sealed class ClickTool : IDriverTool
         var count = JsonArgs.OptionalInt(args, "count") ?? 1;
         var action = JsonArgs.OptionalString(args, "action") ?? "press";
         var fromZoom = JsonArgs.OptionalBool(args, "from_zoom");
+        var debugImageOut = JsonArgs.OptionalString(args, "debug_image_out");
 
         if (index is not null && (x is not null || y is not null))
             return ToolResult.Error("Provide either element_index or x/y, not both.");
@@ -47,6 +50,15 @@ public sealed class ClickTool : IDriverTool
             return ToolResult.Error("from_zoom only applies to pixel clicks.");
         if (index is not null && windowId is null)
             return ToolResult.Error("window_id is required for element_index clicks.");
+        if (!string.IsNullOrWhiteSpace(debugImageOut))
+        {
+            if (index is not null)
+                return ToolResult.Error("debug_image_out only applies to pixel clicks (x, y); element_index clicks do not have a coordinate to verify.");
+            if (fromZoom)
+                return ToolResult.Error("debug_image_out is incompatible with from_zoom because the received x/y are in zoom-crop space, not window-local screenshot space.");
+            if (windowId is null)
+                return ToolResult.Error("debug_image_out requires window_id so the tool can capture the window for the crosshair overlay.");
+        }
 
         ActionReceipt receipt;
 
@@ -108,6 +120,23 @@ public sealed class ClickTool : IDriverTool
                 return ToolResult.Error($"No window with window_id {windowId.Value}.");
             if (window.Pid != pid)
                 return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
+
+            if (!string.IsNullOrWhiteSpace(debugImageOut))
+            {
+                try
+                {
+                    DebugCrosshair.WriteCrosshair(
+                        context.State.Capture,
+                        window,
+                        new System.Drawing.PointF((float)x!.Value, (float)y!.Value),
+                        context.State.Config.MaxImageDimension,
+                        debugImageOut);
+                }
+                catch (Exception ex)
+                {
+                    return ToolResult.Error($"debug_image_out write failed: {ex.Message}. Not dispatching click; fix the path and retry.");
+                }
+            }
 
             double clickX;
             double clickY;
