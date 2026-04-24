@@ -15,6 +15,11 @@ public sealed class SetAgentCursorEnabledTool : IDriverTool
     {
         var enabled = JsonArgs.OptionalBool(args, "enabled", true);
         context.State.AgentCursor.SetEnabled(enabled);
+        context.State.Config = context.State.Config with
+        {
+            AgentCursor = context.State.Config.AgentCursor with { Enabled = enabled }
+        };
+        context.State.Config.Save();
         return Task.FromResult(ToolResult.Text("✅ " + context.State.AgentCursor.StateJson()));
     }
 }
@@ -53,6 +58,22 @@ public sealed class SetAgentCursorMotionTool : IDriverTool
             JsonArgs.OptionalDouble(args, "glide_duration_ms"),
             JsonArgs.OptionalDouble(args, "dwell_after_click_ms"),
             JsonArgs.OptionalDouble(args, "idle_hide_ms"));
+
+        context.State.Config = context.State.Config with
+        {
+            AgentCursor = context.State.Config.AgentCursor with
+            {
+                Motion = context.State.Config.AgentCursor.Motion with
+                {
+                    StartHandle = motion.StartHandle,
+                    EndHandle = motion.EndHandle,
+                    ArcSize = motion.ArcSize,
+                    ArcFlow = motion.ArcFlow,
+                    Spring = motion.Spring
+                }
+            }
+        };
+        context.State.Config.Save();
 
         return Task.FromResult(ToolResult.Text("✅ " + System.Text.Json.JsonSerializer.Serialize(motion, JsonUtil.SerializerOptions)));
     }

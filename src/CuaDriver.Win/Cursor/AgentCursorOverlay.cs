@@ -66,12 +66,18 @@ public sealed class AgentCursorOverlay
 
     public void SetEnabled(bool enabled)
     {
+        var shouldPost = false;
         lock (_gate)
         {
+            if (_enabled == enabled && _form is null)
+                return;
             _enabled = enabled;
+            shouldPost = _form is not null;
         }
 
-        EnsureThread();
+        if (!shouldPost)
+            return;
+
         Post(form =>
         {
             form.SetEnabled(enabled);
@@ -107,7 +113,6 @@ public sealed class AgentCursorOverlay
             _motion = next;
         }
 
-        EnsureThread();
         Post(form => form.SetMotion(next));
         return next;
     }

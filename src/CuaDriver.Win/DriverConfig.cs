@@ -17,10 +17,23 @@ public enum CaptureMode
 
 public sealed record DriverConfig
 {
+    [JsonPropertyName("schema_version")]
+    public int SchemaVersion { get; init; } = 1;
+
+    [JsonPropertyName("capture_mode")]
     public CaptureMode CaptureMode { get; init; } = CaptureMode.Som;
+
+    [JsonPropertyName("max_image_dimension")]
     public int MaxImageDimension { get; init; } = 1600;
+
+    [JsonPropertyName("chromium_debugging_port")]
     public int? ChromiumDebuggingPort { get; init; }
+
+    [JsonPropertyName("allow_parent_sendinput")]
     public bool AllowParentSendInput { get; init; } = false;
+
+    [JsonPropertyName("agent_cursor")]
+    public AgentCursorConfig AgentCursor { get; init; } = new();
 
     public static string ConfigDirectory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "cua-driver-win");
@@ -57,6 +70,12 @@ public sealed record DriverConfig
             "max_image_dimension" => this with { MaxImageDimension = int.Parse(value) },
             "chromium_debugging_port" => this with { ChromiumDebuggingPort = string.IsNullOrWhiteSpace(value) ? null : int.Parse(value) },
             "allow_parent_sendinput" => this with { AllowParentSendInput = bool.Parse(value) },
+            "agent_cursor.enabled" => this with { AgentCursor = AgentCursor with { Enabled = bool.Parse(value) } },
+            "agent_cursor.motion.start_handle" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { StartHandle = double.Parse(value) } } },
+            "agent_cursor.motion.end_handle" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { EndHandle = double.Parse(value) } } },
+            "agent_cursor.motion.arc_size" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { ArcSize = double.Parse(value) } } },
+            "agent_cursor.motion.arc_flow" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { ArcFlow = double.Parse(value) } } },
+            "agent_cursor.motion.spring" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { Spring = double.Parse(value) } } },
             _ => throw new ArgumentException($"Unknown config key: {key}")
         };
     }
@@ -74,6 +93,33 @@ public sealed record DriverConfig
     }
 }
 
+public sealed record AgentCursorConfig
+{
+    [JsonPropertyName("enabled")]
+    public bool Enabled { get; init; } = true;
+
+    [JsonPropertyName("motion")]
+    public AgentCursorMotionConfig Motion { get; init; } = new();
+}
+
+public sealed record AgentCursorMotionConfig
+{
+    [JsonPropertyName("start_handle")]
+    public double StartHandle { get; init; } = 0.3;
+
+    [JsonPropertyName("end_handle")]
+    public double EndHandle { get; init; } = 0.3;
+
+    [JsonPropertyName("arc_size")]
+    public double ArcSize { get; init; } = 0.25;
+
+    [JsonPropertyName("arc_flow")]
+    public double ArcFlow { get; init; } = 0.0;
+
+    [JsonPropertyName("spring")]
+    public double Spring { get; init; } = 0.72;
+}
+
 public sealed class DriverState
 {
     public DriverConfig Config { get; set; } = DriverConfig.Load();
@@ -86,6 +132,21 @@ public sealed class DriverState
     public AgentCursorOverlay AgentCursor { get; } = new();
     public RecordingSession Recording { get; } = new();
     public DateTimeOffset StartedAt { get; } = DateTimeOffset.UtcNow;
+
+    public DriverState()
+    {
+        AgentCursor.SetEnabled(Config.AgentCursor.Enabled);
+        var motion = Config.AgentCursor.Motion;
+        AgentCursor.UpdateMotion(
+            motion.StartHandle,
+            motion.EndHandle,
+            motion.ArcSize,
+            motion.ArcFlow,
+            motion.Spring,
+            glideDurationMs: null,
+            dwellAfterClickMs: null,
+            idleHideMs: null);
+    }
 }
 
 public sealed record ZoomContext(int OriginX, int OriginY, int Width, int Height, double Ratio, long WindowId);
@@ -102,7 +163,7 @@ public static class JsonUtil
             WriteIndented = writeIndented,
             PropertyNameCaseInsensitive = true
         };
-        options.Converters.Add(new JsonStringEnumConverter());
+        options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
         return options;
     }
 }
