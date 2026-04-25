@@ -7,7 +7,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Uia;
 
-public static class MsaaActions
+internal static class MsaaActions
 {
     private const int ChildIdSelf = 0;
     private const int Ia2TextOffsetLength = -1;

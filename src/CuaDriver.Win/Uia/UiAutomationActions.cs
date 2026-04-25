@@ -5,7 +5,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Uia;
 
-public static class UiAutomationActions
+internal static class UiAutomationActions
 {
     public static async Task<ActionReceipt> InvokeElementAsync(AutomationElement element, string actionName, CancellationToken ct)
     {

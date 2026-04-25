@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace CuaDriver.Win.Input;
 
-public sealed record ActionReceipt
+internal sealed record ActionReceipt
 {
     [JsonPropertyName("ok")]
     public bool Ok { get; init; }

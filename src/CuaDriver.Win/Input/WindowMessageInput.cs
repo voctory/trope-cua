@@ -4,9 +4,9 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Input;
 
-public sealed record WindowMessageDispatch(ActionReceipt Receipt, IntPtr TargetHwnd, POINT ScreenPoint, POINT ClientPoint);
+internal sealed record WindowMessageDispatch(ActionReceipt Receipt, IntPtr TargetHwnd, POINT ScreenPoint, POINT ClientPoint);
 
-public static class WindowMessageInput
+internal static class WindowMessageInput
 {
     public static async Task<WindowMessageDispatch> ClickAsync(IntPtr hwnd, double x, double y, int count, bool rightButton, CancellationToken ct, string[]? modifiers = null)
     {

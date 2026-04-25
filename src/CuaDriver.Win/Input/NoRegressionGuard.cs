@@ -2,7 +2,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Input;
 
-public sealed class NoRegressionGuard : IDisposable
+internal sealed class NoRegressionGuard : IDisposable
 {
     private readonly POINT _cursorBefore;
     private readonly bool _cursorBeforeKnown;
