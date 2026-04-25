@@ -10,8 +10,9 @@ Observed starting point:
 
 - One production project: `src/CuaDriver.Win/CuaDriver.Win.csproj`.
 - Current target: `net10.0-windows10.0.19041.0`.
-- Nullable and implicit usings are enabled in the project file.
+- Nullable, implicit usings, analyzers, warnings-as-errors, and locked restore are enforced through `Directory.Build.props`.
 - Central package management is enabled through `Directory.Packages.props`; there are currently no direct NuGet package dependencies.
+- NuGet auditing is enabled for direct and transitive dependencies, with high/critical vulnerabilities treated as warnings-as-errors.
 - Repo-level `global.json`, `Directory.Build.props`, `Directory.Packages.props`, and a committed NuGet lock file are present.
 - Repo-level `.editorconfig` is present for formatting and baseline style rules.
 - Integration coverage exists under `tests/integration` and is run through `scripts/run-tests.ps1`.
@@ -56,24 +57,23 @@ Rules:
 - Keep self-contained install behavior tested after runtime or framework changes.
 - Treat SDK and runtime updates as dependency changes: build, test, reinstall, and smoke the daemon.
 
-Good eventual defaults:
+Repo defaults:
 
 ```xml
 <Nullable>enable</Nullable>
 <ImplicitUsings>enable</ImplicitUsings>
 <AnalysisMode>Recommended</AnalysisMode>
 <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
 <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
 ```
 
-Turn `TreatWarningsAsErrors` on only after the current warning baseline is clean or intentionally scoped.
+Keep warning suppressions narrow and temporary. A suppression should explain ownership, reason, and the removal condition.
 
 ## Package Policy
 
-Move package versions out of project files once there is more than one production or test project, or before adding more dependencies.
-
-Target shape:
+Current shape:
 
 - `Directory.Packages.props` owns package versions.
 - No floating versions in production code.
