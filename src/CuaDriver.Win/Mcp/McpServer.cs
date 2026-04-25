@@ -46,13 +46,13 @@ public sealed class McpServer
                 };
 
                 Console.WriteLine(response.ToJsonString(JsonUtil.LineSerializerOptions));
-                await Console.Out.FlushAsync().ConfigureAwait(false);
+                await Console.Out.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 var idNode = request?["id"]?.DeepClone();
                 Console.WriteLine(Error(idNode, -32603, $"{ex.GetType().Name}: {ex.Message}").ToJsonString(JsonUtil.LineSerializerOptions));
-                await Console.Out.FlushAsync().ConfigureAwait(false);
+                await Console.Out.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
         }
     }

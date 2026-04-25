@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Tooling;
@@ -85,10 +86,10 @@ public sealed class SetConfigTool : IDriverTool
         value.GetValueKind() == JsonValueKind.String ? value.GetValue<string>() : value.ToJsonString();
 
     private static int IntValue(JsonNode value) =>
-        value.GetValueKind() == JsonValueKind.Number ? value.GetValue<int>() : int.Parse(StringValue(value));
+        value.GetValueKind() == JsonValueKind.Number ? value.GetValue<int>() : int.Parse(StringValue(value), CultureInfo.InvariantCulture);
 
     private static double NumberValue(JsonNode value) =>
-        value.GetValueKind() == JsonValueKind.Number ? value.GetValue<double>() : double.Parse(StringValue(value));
+        value.GetValueKind() == JsonValueKind.Number ? value.GetValue<double>() : double.Parse(StringValue(value), CultureInfo.InvariantCulture);
 
     private static bool BoolValue(JsonNode value) =>
         value.GetValueKind() == JsonValueKind.True ||

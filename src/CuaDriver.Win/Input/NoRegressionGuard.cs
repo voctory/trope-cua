@@ -2,7 +2,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Input;
 
-public sealed class NoRegressionGuard
+public sealed class NoRegressionGuard : IDisposable
 {
     private readonly POINT _cursorBefore;
     private readonly IntPtr _foregroundBefore;
@@ -58,6 +58,8 @@ public sealed class NoRegressionGuard
         };
     }
 
+    public void Dispose() => _foregroundSampler.Dispose();
+
     private void RestoreForeground()
     {
         if (_foregroundBefore == IntPtr.Zero || !NativeMethods.IsWindow(_foregroundBefore))
@@ -89,12 +91,13 @@ public sealed class NoRegressionGuard
         }
     }
 
-    private sealed class ForegroundSampler
+    private sealed class ForegroundSampler : IDisposable
     {
         private readonly IntPtr _initialForeground;
         private readonly CancellationTokenSource _cts = new();
         private readonly Task _task;
         private int _changed;
+        private int _stopped;
 
         public ForegroundSampler(IntPtr initialForeground)
         {
@@ -104,6 +107,15 @@ public sealed class NoRegressionGuard
 
         public bool Stop()
         {
+            Dispose();
+            return Interlocked.CompareExchange(ref _changed, 0, 0) != 0;
+        }
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _stopped, 1) != 0)
+                return;
+
             _cts.Cancel();
             try
             {
@@ -117,8 +129,6 @@ public sealed class NoRegressionGuard
             {
                 _cts.Dispose();
             }
-
-            return Interlocked.CompareExchange(ref _changed, 0, 0) != 0;
         }
 
         private async Task SampleLoop()

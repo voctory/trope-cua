@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -69,18 +70,18 @@ public sealed record DriverConfig
         return key.ToLowerInvariant() switch
         {
             "capture_mode" => this with { CaptureMode = ParseCaptureMode(value) },
-            "max_image_dimension" => this with { MaxImageDimension = int.Parse(value) },
-            "chromium_debugging_port" => this with { ChromiumDebuggingPort = string.IsNullOrWhiteSpace(value) ? null : int.Parse(value) },
+            "max_image_dimension" => this with { MaxImageDimension = int.Parse(value, CultureInfo.InvariantCulture) },
+            "chromium_debugging_port" => this with { ChromiumDebuggingPort = string.IsNullOrWhiteSpace(value) ? null : int.Parse(value, CultureInfo.InvariantCulture) },
             "allow_parent_sendinput" => this with { AllowParentSendInput = bool.Parse(value) },
             "agent_cursor.enabled" => this with { AgentCursor = AgentCursor with { Enabled = bool.Parse(value) } },
-            "agent_cursor.motion.start_handle" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { StartHandle = double.Parse(value) } } },
-            "agent_cursor.motion.end_handle" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { EndHandle = double.Parse(value) } } },
-            "agent_cursor.motion.arc_size" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { ArcSize = double.Parse(value) } } },
-            "agent_cursor.motion.arc_flow" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { ArcFlow = double.Parse(value) } } },
-            "agent_cursor.motion.spring" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { Spring = double.Parse(value) } } },
-            "agent_cursor.motion.glide_duration_ms" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { GlideDurationMs = double.Parse(value) } } },
-            "agent_cursor.motion.dwell_after_click_ms" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { DwellAfterClickMs = double.Parse(value) } } },
-            "agent_cursor.motion.idle_hide_ms" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { IdleHideMs = double.Parse(value) } } },
+            "agent_cursor.motion.start_handle" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { StartHandle = double.Parse(value, CultureInfo.InvariantCulture) } } },
+            "agent_cursor.motion.end_handle" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { EndHandle = double.Parse(value, CultureInfo.InvariantCulture) } } },
+            "agent_cursor.motion.arc_size" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { ArcSize = double.Parse(value, CultureInfo.InvariantCulture) } } },
+            "agent_cursor.motion.arc_flow" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { ArcFlow = double.Parse(value, CultureInfo.InvariantCulture) } } },
+            "agent_cursor.motion.spring" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { Spring = double.Parse(value, CultureInfo.InvariantCulture) } } },
+            "agent_cursor.motion.glide_duration_ms" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { GlideDurationMs = double.Parse(value, CultureInfo.InvariantCulture) } } },
+            "agent_cursor.motion.dwell_after_click_ms" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { DwellAfterClickMs = double.Parse(value, CultureInfo.InvariantCulture) } } },
+            "agent_cursor.motion.idle_hide_ms" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { IdleHideMs = double.Parse(value, CultureInfo.InvariantCulture) } } },
             _ => throw new ArgumentException($"Unknown config key: {key}")
         };
     }
