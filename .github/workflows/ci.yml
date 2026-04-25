@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install Python test dependencies
+        shell: pwsh
+        run: python -m pip install pytest
+
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore cua-driver-win.sln --locked-mode
+
+      - name: Check formatting
+        shell: pwsh
+        run: dotnet format --verify-no-changes --no-restore --verbosity minimal
+
+      - name: Build
+        shell: pwsh
+        run: dotnet build cua-driver-win.sln --no-restore
+
+      - name: Audit packages
+        shell: pwsh
+        run: dotnet list cua-driver-win.sln package --vulnerable --include-transitive
+
+      - name: Test
+        shell: pwsh
+        run: scripts\run-tests.ps1
