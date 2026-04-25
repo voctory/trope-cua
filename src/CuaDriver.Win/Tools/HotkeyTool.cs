@@ -13,7 +13,8 @@ public sealed class HotkeyTool : IDriverTool
         JsonArgs.Schema(
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
-            ("key", JsonArgs.Prop("string", "Main key.")),
+            ("keys", JsonArgs.Prop("array", "Modifier(s) and one non-modifier key, e.g. [\"ctrl\", \"c\"]. Mac-compatible shape.")),
+            ("key", JsonArgs.Prop("string", "Main key. Windows-compatible alias used with modifiers.")),
             ("modifiers", JsonArgs.Prop("array", "Modifiers: ctrl, shift, alt, win/cmd."))),
         Destructive: true,
         Idempotent: false,
@@ -22,10 +23,23 @@ public sealed class HotkeyTool : IDriverTool
     public async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
         var pid = JsonArgs.RequiredInt(args, "pid");
-        var key = JsonArgs.RequiredString(args, "key");
-        var modifiers = JsonArgs.OptionalStringArray(args, "modifiers");
-        if (modifiers.Length == 0)
-            modifiers = JsonArgs.OptionalStringArray(args, "modifier");
+        var keys = JsonArgs.OptionalStringArray(args, "keys");
+        string key;
+        string[] modifiers;
+        if (keys.Length > 0)
+        {
+            if (keys.Length < 2)
+                return ToolResult.Error("keys must include at least one modifier and one non-modifier key.");
+            key = keys.Last();
+            modifiers = keys.Take(keys.Length - 1).ToArray();
+        }
+        else
+        {
+            key = JsonArgs.RequiredString(args, "key");
+            modifiers = JsonArgs.OptionalStringArray(args, "modifiers");
+            if (modifiers.Length == 0)
+                modifiers = JsonArgs.OptionalStringArray(args, "modifier");
+        }
 
         var windowId = JsonArgs.OptionalLong(args, "window_id") ?? WindowEnumerator.MainWindowForPid(pid)?.WindowId;
         if (windowId is null)

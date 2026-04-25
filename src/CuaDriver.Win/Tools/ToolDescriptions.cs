@@ -78,7 +78,7 @@ internal static class ToolDescriptions
         """;
 
     public const string Hotkey = """
-        Press a modifier combination against a target pid/window without parent-session SendInput, for example modifiers ["ctrl"] with key "c".
+        Press a modifier combination against a target pid/window without parent-session SendInput. Prefer the Mac-compatible keys array, for example ["ctrl", "c"]. The Windows-compatible key plus modifiers shape remains accepted.
 
         Recognized modifiers: ctrl/control, shift, alt/option, win/cmd/meta. Non-modifier keys use the same vocabulary as press_key. Pass window_id when available; otherwise the driver's current main-window heuristic is used.
         """;
