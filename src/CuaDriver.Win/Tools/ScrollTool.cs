@@ -1,5 +1,4 @@
 using System.Text.Json.Nodes;
-using System.Windows.Automation;
 using CuaDriver.Win.Browser;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
@@ -56,7 +55,7 @@ internal sealed class ScrollTool : IDriverTool
         {
             var element = context.State.UiaTree.GetCachedElement(pid, window.WindowId, index.Value);
             await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, ct).ConfigureAwait(false);
-            var elementHwnd = ElementHwnd(element);
+            var elementHwnd = ToolWindows.NativeHwndForElement(element);
             if (elementHwnd != IntPtr.Zero)
                 targetHwnd = elementHwnd;
         }
@@ -131,18 +130,5 @@ internal sealed class ScrollTool : IDriverTool
             ("right", "page") => "right",
             _ => null
         };
-    }
-
-    private static IntPtr ElementHwnd(AutomationElement element)
-    {
-        try
-        {
-            var hwnd = element.Current.NativeWindowHandle;
-            return hwnd == 0 ? IntPtr.Zero : new IntPtr(hwnd);
-        }
-        catch
-        {
-            return IntPtr.Zero;
-        }
     }
 }

@@ -1,5 +1,4 @@
 using System.Text.Json.Nodes;
-using System.Windows.Automation;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
 
@@ -38,7 +37,7 @@ internal sealed class PressKeyTool : IDriverTool
         if (index is not null)
         {
             var element = context.State.UiaTree.GetCachedElement(pid, window.WindowId, index.Value);
-            var elementHwnd = ElementHwnd(element);
+            var elementHwnd = ToolWindows.NativeHwndForElement(element);
             if (elementHwnd != IntPtr.Zero)
                 targetHwnd = elementHwnd;
             context.State.LastUiaTextTarget[(pid, window.WindowId)] = element;
@@ -46,18 +45,5 @@ internal sealed class PressKeyTool : IDriverTool
 
         var receipt = await WindowMessageInput.PressKeyAsync(targetHwnd, key, modifiers, cancellationToken).ConfigureAwait(false);
         return ActionToolResult.FromReceipt(receipt);
-    }
-
-    private static IntPtr ElementHwnd(AutomationElement element)
-    {
-        try
-        {
-            var hwnd = element.Current.NativeWindowHandle;
-            return hwnd == 0 ? IntPtr.Zero : new IntPtr(hwnd);
-        }
-        catch
-        {
-            return IntPtr.Zero;
-        }
     }
 }

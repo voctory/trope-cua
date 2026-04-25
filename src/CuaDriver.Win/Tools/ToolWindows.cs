@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Windows.Automation;
 using CuaDriver.Win.Tooling;
 using CuaDriver.Win.Win32;
 
@@ -62,5 +63,18 @@ internal static class ToolWindows
         window = main;
         error = null;
         return true;
+    }
+
+    public static IntPtr NativeHwndForElement(AutomationElement element)
+    {
+        try
+        {
+            var hwnd = element.Current.NativeWindowHandle;
+            return hwnd == 0 ? IntPtr.Zero : new IntPtr(hwnd);
+        }
+        catch
+        {
+            return IntPtr.Zero;
+        }
     }
 }
