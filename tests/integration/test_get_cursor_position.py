@@ -43,6 +43,16 @@ def test_parent_cursor_override_is_reported_as_not_background_safe():
     assert moved["structuredContent"]["session"] == "parent"
 
 
+def test_get_agent_cursor_state_returns_structured_content():
+    result = call("get_agent_cursor_state")
+
+    assert result["isError"] is False
+    structured = result["structuredContent"]
+    assert structured["route"] == "winforms.click_through_overlay"
+    assert "motion" in structured
+    assert "enabled" in structured
+
+
 def test_set_agent_cursor_enabled_requires_boolean():
     result = call("set_agent_cursor_enabled", {"enabled": None})
 

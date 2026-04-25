@@ -21,14 +21,19 @@ public sealed class SetAgentCursorEnabledTool : IDriverTool
             AgentCursor = context.State.Config.AgentCursor with { Enabled = enabled }
         };
         context.State.Config.Save();
-        return Task.FromResult(ToolResult.Text("✅ " + context.State.AgentCursor.StateJson()));
+        var structured = context.State.AgentCursor.StateObject();
+        return Task.FromResult(ToolResult.Text("✅ " + structured.ToJsonString(JsonUtil.SerializerOptions), structured));
     }
 }
 
 public sealed class GetAgentCursorStateTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new("get_agent_cursor_state", "Return the visual agent cursor overlay state.", JsonArgs.Schema(), ReadOnly: true);
-    public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken) => Task.FromResult(ToolResult.Text("✅ " + context.State.AgentCursor.StateJson()));
+    public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
+    {
+        var structured = context.State.AgentCursor.StateObject();
+        return Task.FromResult(ToolResult.Text("✅ " + structured.ToJsonString(JsonUtil.SerializerOptions), structured));
+    }
 }
 
 public sealed class SetAgentCursorMotionTool : IDriverTool

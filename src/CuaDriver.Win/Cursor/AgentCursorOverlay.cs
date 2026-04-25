@@ -4,6 +4,7 @@ using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Windows.Forms;
@@ -184,15 +185,22 @@ public sealed class AgentCursorOverlay
     }
 
     public string StateJson()
+        => StateObject().ToJsonString(JsonUtil.SerializerOptions);
+
+    public JsonObject StateObject()
     {
+        bool enabled;
         var formReady = false;
         var visible = false;
         int? screenX = null;
         int? screenY = null;
         long? targetWindowId = null;
         var layering = "uninitialized";
+        AgentCursorMotion motion;
         lock (_gate)
         {
+            enabled = _enabled;
+            motion = _motion;
             formReady = _form is not null && !_form.IsDisposed;
             if (formReady)
             {
@@ -207,19 +215,19 @@ public sealed class AgentCursorOverlay
             }
         }
 
-        return JsonSerializer.Serialize(new
+        return new JsonObject
         {
-            enabled = Enabled,
-            route = "winforms.click_through_overlay",
-            ready = formReady,
-            visible,
-            screen_x = screenX,
-            screen_y = screenY,
-            target_window_id = targetWindowId,
-            layering,
-            persistent = Motion.IdleHideMs <= 0,
-            motion = Motion
-        }, JsonUtil.SerializerOptions);
+            ["enabled"] = enabled,
+            ["route"] = "winforms.click_through_overlay",
+            ["ready"] = formReady,
+            ["visible"] = visible,
+            ["screen_x"] = screenX,
+            ["screen_y"] = screenY,
+            ["target_window_id"] = targetWindowId,
+            ["layering"] = layering,
+            ["persistent"] = motion.IdleHideMs <= 0,
+            ["motion"] = JsonSerializer.SerializeToNode(motion, JsonUtil.SerializerOptions)
+        };
     }
 
     public void KeepAlive()
