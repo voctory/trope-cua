@@ -173,7 +173,10 @@ public sealed class ToolRegistry
             new Tools.GetRecordingStateTool(),
             new Tools.ReplayTrajectoryTool(),
             new Tools.BrowserEvalTool(),
+            new Tools.AppBroadcastInputProbeTool(),
             new Tools.ChildSessionStatusTool(),
+            new Tools.ChildSessionStartTool(),
+            new Tools.ChildSessionStopTool(),
         ];
 
         return new ToolRegistry(tools);

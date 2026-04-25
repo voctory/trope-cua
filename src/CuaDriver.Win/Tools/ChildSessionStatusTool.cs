@@ -21,6 +21,11 @@ public sealed class ChildSessionStatusTool : IDriverTool
             var ok = ChildSessionBroker.TryEnableChildSessions(out var message);
             lines.Add((ok ? "✅ " : "❌ ") + message);
         }
+        lines.Add($"parent_session_id={ChildSessionBroker.CurrentProcessSessionId()}");
+        lines.Add($"active_console_session_id={ChildSessionBroker.ActiveConsoleSessionId()}");
+        lines.Add($"child_sessions_supported_by_os={ChildSessionBroker.IsSupportedByOs()}");
+        lines.Add($"child_sessions_enabled={ChildSessionBroker.IsEnabled()}");
+        lines.Add(ChildSessionHost.StatusText());
         lines.Add(ChildSessionBroker.Status());
         return Task.FromResult(ToolResult.Text(string.Join(Environment.NewLine, lines)));
     }

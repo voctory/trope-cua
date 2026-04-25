@@ -11,9 +11,19 @@ namespace CuaDriver.Win.HardCases;
 /// </summary>
 public static class ChildSessionBroker
 {
+    public static bool IsSupportedByOs() => OperatingSystem.IsWindowsVersionAtLeast(10);
+
+    public static bool IsEnabled()
+    {
+        if (!IsSupportedByOs())
+            return false;
+
+        return WTSIsChildSessionsEnabled(out var enabled) && enabled;
+    }
+
     public static bool TryEnableChildSessions(out string message)
     {
-        if (!OperatingSystem.IsWindowsVersionAtLeast(10))
+        if (!IsSupportedByOs())
         {
             message = "Child sessions require Windows 10+.";
             return false;
@@ -44,9 +54,31 @@ public static class ChildSessionBroker
             : $"Connected child session id: {child}";
     }
 
+    public static int CurrentProcessSessionId()
+    {
+        return ProcessIdToSessionId(Environment.ProcessId, out var sessionId) ? sessionId : -1;
+    }
+
+    public static int ActiveConsoleSessionId()
+    {
+        unchecked
+        {
+            return (int)WTSGetActiveConsoleSessionId();
+        }
+    }
+
     [DllImport("wtsapi32.dll", SetLastError = true)]
     private static extern bool WTSEnableChildSessions(bool bEnable);
 
     [DllImport("wtsapi32.dll", SetLastError = true)]
+    private static extern bool WTSIsChildSessionsEnabled(out bool pbEnabled);
+
+    [DllImport("wtsapi32.dll", SetLastError = true)]
     private static extern bool WTSGetChildSessionId(out int pSessionId);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool ProcessIdToSessionId(int dwProcessId, out int pSessionId);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint WTSGetActiveConsoleSessionId();
 }
