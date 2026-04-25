@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Nodes;
@@ -7,7 +8,7 @@ namespace CuaDriver.Win.Tooling;
 public sealed class ToolRegistry
 {
     private readonly Dictionary<string, IDriverTool> _tools;
-    private static readonly HashSet<string> ActionToolNames = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly FrozenSet<string> ActionToolNames = new[]
     {
         "click",
         "right_click",
@@ -18,7 +19,7 @@ public sealed class ToolRegistry
         "press_key",
         "hotkey",
         "set_value",
-    };
+    }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     public ToolRegistry(IEnumerable<IDriverTool> tools)
     {
