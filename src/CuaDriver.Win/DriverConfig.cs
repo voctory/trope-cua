@@ -213,6 +213,7 @@ public static class JsonUtil
             PropertyNameCaseInsensitive = true
         };
         options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
+        options.MakeReadOnly(populateMissingResolver: true);
         return options;
     }
 }
