@@ -18,6 +18,8 @@ public enum CaptureMode
 
 public sealed record DriverConfig
 {
+    private const string ConfigDirectoryEnvironmentVariable = "CUA_DRIVER_CONFIG_DIR";
+
     [JsonPropertyName("schema_version")]
     public int SchemaVersion { get; init; } = 1;
 
@@ -36,8 +38,16 @@ public sealed record DriverConfig
     [JsonPropertyName("agent_cursor")]
     public AgentCursorConfig AgentCursor { get; init; } = new();
 
-    public static string ConfigDirectory =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "cua-driver-win");
+    public static string ConfigDirectory
+    {
+        get
+        {
+            var overrideDirectory = Environment.GetEnvironmentVariable(ConfigDirectoryEnvironmentVariable);
+            return string.IsNullOrWhiteSpace(overrideDirectory)
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "cua-driver-win")
+                : Path.GetFullPath(overrideDirectory);
+        }
+    }
 
     public static string ConfigPath => Path.Combine(ConfigDirectory, "config.json");
 
