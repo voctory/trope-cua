@@ -276,14 +276,6 @@ public static class JsonArgs
         return string.IsNullOrWhiteSpace(scalar) ? [] : [scalar];
     }
 
-    public static JsonObject Obj(params (string Key, object? Value)[] values)
-    {
-        var obj = new JsonObject();
-        foreach (var (key, value) in values)
-            obj[key] = value is JsonNode node ? node : JsonValue.Create(value);
-        return obj;
-    }
-
     public static JsonObject Schema(params (string Key, JsonNode Value)[] properties)
     {
         var props = new JsonObject();
