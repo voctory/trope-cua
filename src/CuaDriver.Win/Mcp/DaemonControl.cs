@@ -24,7 +24,7 @@ internal static class DaemonControl
             }
             else
             {
-                var daemon = new NamedPipeDaemon(registry, context, record.InstanceId);
+                var daemon = new NamedPipeDaemonClient(record.InstanceId);
                 result = await daemon.TryShutdownAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false);
                 ok = result is not null && !result.IsError;
             }

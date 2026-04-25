@@ -57,7 +57,7 @@ public static class Program
 
         if (command == "daemon-status")
         {
-            var daemon = new Mcp.NamedPipeDaemon(registry, context, instanceId);
+            var daemon = new Mcp.NamedPipeDaemonClient(instanceId);
             var result = await daemon.TryStatusAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false)
                          ?? ToolResult.Error($"daemon not running on named pipe {daemon.InstancePipeName}");
             CliOutput.PrintResult(result);
@@ -80,7 +80,7 @@ public static class Program
                 return stopAllResult.IsError ? 1 : 0;
             }
 
-            var daemon = new Mcp.NamedPipeDaemon(registry, context, instanceId);
+            var daemon = new Mcp.NamedPipeDaemonClient(instanceId);
             var stopResult = await daemon.TryShutdownAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false)
                          ?? ToolResult.Error($"daemon not running on named pipe {daemon.InstancePipeName}");
             CliOutput.PrintResult(stopResult);
@@ -103,7 +103,7 @@ public static class Program
 
             var toolName = args[1];
             var toolArgs = CliArguments.ParseToolArguments(args.Length >= 3 ? args[2] : "{}");
-            var daemon = new Mcp.NamedPipeDaemon(registry, context, instanceId);
+            var daemon = new Mcp.NamedPipeDaemonClient(instanceId);
             var result = await daemon.TryCallAsync(toolName, toolArgs, TimeSpan.FromMinutes(5), CancellationToken.None).ConfigureAwait(false);
             if (result is null)
             {
