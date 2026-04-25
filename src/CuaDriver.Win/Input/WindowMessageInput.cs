@@ -267,7 +267,7 @@ public static class WindowMessageInput
             "pageup" => 0x21,
             "pagedown" => 0x22,
             var s when s.Length == 1 && char.IsLetterOrDigit(s[0]) => char.ToUpperInvariant(s[0]),
-            var s when s.StartsWith("f", StringComparison.Ordinal) && int.TryParse(s[1..], out var n) && n is >= 1 and <= 24 => 0x70 + n - 1,
+            var s when s.StartsWith('f') && int.TryParse(s[1..], out var n) && n is >= 1 and <= 24 => 0x70 + n - 1,
             _ => 0
         };
     }

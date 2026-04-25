@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Windows.Automation;
 using Accessibility;
@@ -360,7 +361,7 @@ public static class MsaaActions
                 int i => i,
                 short s => s,
                 long l when l is >= int.MinValue and <= int.MaxValue => (int)l,
-                _ => Convert.ToInt32(value)
+                _ => Convert.ToInt32(value, CultureInfo.InvariantCulture)
             };
         }
         catch

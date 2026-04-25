@@ -133,7 +133,7 @@ public sealed class ReplayTrajectoryTool : IDriverTool
     {
         if (path == "~")
             return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        if (path.StartsWith("~" + Path.DirectorySeparatorChar) || path.StartsWith("~/"))
+        if (path.StartsWith("~" + Path.DirectorySeparatorChar, StringComparison.Ordinal) || path.StartsWith("~/", StringComparison.Ordinal))
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path[2..]);
         return Path.GetFullPath(path);
     }
