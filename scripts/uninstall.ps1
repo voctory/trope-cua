@@ -2,6 +2,8 @@ param(
   [string]$InstallDir = "$env:LOCALAPPDATA\Programs\CuaDriverWin"
 )
 
+$ErrorActionPreference = "Stop"
+
 $InstalledExe = Join-Path $InstallDir "cua-driver-win.exe"
 if (Test-Path $InstalledExe) {
   try {
@@ -20,7 +22,11 @@ if (Test-Path $InstallDir) {
 }
 
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-$newPath = (($userPath -split ';') | Where-Object { $_ -and ($_ -ne $InstallDir) }) -join ';'
+$newPath = if ([string]::IsNullOrWhiteSpace($userPath)) {
+  ""
+} else {
+  (($userPath -split ';') | Where-Object { $_ -and ($_ -ne $InstallDir) }) -join ';'
+}
 [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
 
 Write-Host "Removed cua-driver-win."

@@ -27,7 +27,8 @@ Copy-Item -Recurse -Force (Join-Path $Root "artifacts\publish\*") $InstallDir
 
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if (($userPath -split ';') -notcontains $InstallDir) {
-  [Environment]::SetEnvironmentVariable("Path", "$userPath;$InstallDir", "User")
+  $newPath = if ([string]::IsNullOrWhiteSpace($userPath)) { $InstallDir } else { "$userPath;$InstallDir" }
+  [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
   Write-Host "Added $InstallDir to user PATH. Restart your terminal."
 }
 
