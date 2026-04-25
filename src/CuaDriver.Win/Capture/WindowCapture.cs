@@ -9,7 +9,7 @@ public sealed record CapturedImage(byte[] Data, int Width, int Height, int Origi
 
 public sealed class WindowCapture
 {
-    public CapturedImage Capture(IntPtr hwnd, int maxImageDimension, long quality = 85)
+    public CapturedImage Capture(IntPtr hwnd, int maxImageDimension, long quality = 85, string format = "jpeg")
     {
         var rect = NativeMethods.GetBestWindowRect(hwnd);
         if (rect.IsEmpty)
@@ -37,9 +37,29 @@ public sealed class WindowCapture
         }
 
         using var final = ResizeIfNeeded(bitmap, maxImageDimension);
-        var data = EncodeJpeg(final, quality);
+        var (data, mimeType) = Encode(final, format, quality);
         var scale = NativeMethods.GetDpiForWindow(hwnd) / 96.0;
-        return new CapturedImage(data, final.Width, final.Height, bitmap.Width, bitmap.Height, scale, "image/jpeg", "gdi.printwindow");
+        return new CapturedImage(data, final.Width, final.Height, bitmap.Width, bitmap.Height, scale, mimeType, "gdi.printwindow");
+    }
+
+    public CapturedImage CaptureVirtualScreen(int maxImageDimension, long quality = 95, string format = "png")
+    {
+        var left = NativeMethods.GetSystemMetrics(NativeMethods.SM_XVIRTUALSCREEN);
+        var top = NativeMethods.GetSystemMetrics(NativeMethods.SM_YVIRTUALSCREEN);
+        var width = NativeMethods.GetSystemMetrics(NativeMethods.SM_CXVIRTUALSCREEN);
+        var height = NativeMethods.GetSystemMetrics(NativeMethods.SM_CYVIRTUALSCREEN);
+        if (width <= 0 || height <= 0)
+            throw new InvalidOperationException("Virtual screen has empty bounds.");
+
+        using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+        using (var graphics = Graphics.FromImage(bitmap))
+        {
+            graphics.CopyFromScreen(left, top, 0, 0, new Size(width, height), CopyPixelOperation.SourceCopy);
+        }
+
+        using var final = ResizeIfNeeded(bitmap, maxImageDimension);
+        var (data, mimeType) = Encode(final, format, quality);
+        return new CapturedImage(data, final.Width, final.Height, bitmap.Width, bitmap.Height, 1.0, mimeType, "gdi.copyfromscreen.virtual_screen");
     }
 
     private static Bitmap ResizeIfNeeded(Bitmap bitmap, int maxDimension)
@@ -60,13 +80,37 @@ public sealed class WindowCapture
         return resized;
     }
 
+    private static (byte[] Data, string MimeType) Encode(Bitmap bitmap, string format, long quality)
+    {
+        return NormalizeFormat(format) switch
+        {
+            "png" => (EncodePng(bitmap), "image/png"),
+            _ => (EncodeJpeg(bitmap, quality), "image/jpeg")
+        };
+    }
+
+    private static byte[] EncodePng(Bitmap bitmap)
+    {
+        using var ms = new MemoryStream();
+        bitmap.Save(ms, ImageFormat.Png);
+        return ms.ToArray();
+    }
+
     private static byte[] EncodeJpeg(Bitmap bitmap, long quality)
     {
         using var ms = new MemoryStream();
         var encoder = ImageCodecInfo.GetImageEncoders().First(c => c.MimeType == "image/jpeg");
         using var parameters = new EncoderParameters(1);
-        parameters.Param[0] = new EncoderParameter(Encoder.Quality, Math.Clamp(quality, 1, 100));
+        parameters.Param[0] = new EncoderParameter(Encoder.Quality, Math.Clamp(quality, 1, 95));
         bitmap.Save(ms, encoder, parameters);
         return ms.ToArray();
+    }
+
+    private static string NormalizeFormat(string format)
+    {
+        var normalized = format.Trim().ToLowerInvariant();
+        if (normalized is "jpg")
+            return "jpeg";
+        return normalized is "png" or "jpeg" ? normalized : "png";
     }
 }

@@ -100,9 +100,11 @@ internal static class ToolDescriptions
         """;
 
     public const string Screenshot = """
-        Capture a target window image and return it as native MCP image content. This is a raw screenshot tool; it does not walk UIA and does not populate the element_index cache.
+        Capture a screenshot and return it as native MCP image content. Without window_id, captures the full virtual desktop. With window_id, captures that specific target window and can validate pid.
 
-        For normal agent interaction, prefer get_window_state because it returns the screenshot plus the actionable UIA tree and keeps coordinates/cached indices aligned. Use screenshot when you only need pixels or want to write an image file with out.
+        format accepts png or jpeg (default png). quality is JPEG quality 1-95 and is ignored for png. This is a raw screenshot tool; it does not walk UIA and does not populate the element_index cache.
+
+        For normal agent interaction, prefer get_window_state because it returns the screenshot plus the actionable UIA tree and keeps coordinates/cached indices aligned. Use screenshot when you only need pixels, want a full-desktop overview, or want to write an image file with out.
         """;
 
     public const string Zoom = """
