@@ -272,7 +272,7 @@ internal sealed class AgentCursorOverlay
 
     private sealed class OverlayForm : Form
     {
-        private readonly System.Windows.Forms.Timer _timer;
+        private readonly System.Threading.Timer _timer;
         private readonly Rectangle _virtualBounds;
         private readonly string _overlayWindowTitle;
         private AgentCursorMotion _motion = AgentCursorMotion.Default;
@@ -302,6 +302,7 @@ internal sealed class AgentCursorOverlay
         private long _renderFrameCount;
         private double? _renderFps;
         private double? _renderMs;
+        private int _animationQueued;
 
         public OverlayForm(string overlayWindowTitle)
         {
@@ -321,14 +322,10 @@ internal sealed class AgentCursorOverlay
             _current = AgentCursorGeometry.InitialPosition(1f);
             _timerResolutionRaised = NativeMethods.timeBeginPeriod(1) == 0;
 
-            _timer = new System.Windows.Forms.Timer { Interval = 8 };
-            _timer.Tick += (_, _) =>
-            {
-                StepAnimation();
-            };
-            _timer.Start();
+            _timer = new System.Threading.Timer(_ => QueueAnimationStep(), null, TimeSpan.FromMilliseconds(8), TimeSpan.FromMilliseconds(8));
             FormClosed += (_, _) =>
             {
+                _timer.Dispose();
                 if (_timerResolutionRaised)
                     _ = NativeMethods.timeEndPeriod(1);
                 Application.ExitThread();
@@ -522,6 +519,26 @@ internal sealed class AgentCursorOverlay
         protected override void OnPaintBackground(PaintEventArgs e)
         {
             // Suppress the normal WinForms background paint; this window is a per-pixel alpha surface.
+        }
+
+        private void QueueAnimationStep()
+        {
+            if (IsDisposed || !IsHandleCreated || Interlocked.Exchange(ref _animationQueued, 1) == 1)
+                return;
+
+            try
+            {
+                BeginInvoke((MethodInvoker)(() =>
+                {
+                    Interlocked.Exchange(ref _animationQueued, 0);
+                    if (!IsDisposed && IsHandleCreated)
+                        StepAnimation();
+                }));
+            }
+            catch
+            {
+                Interlocked.Exchange(ref _animationQueued, 0);
+            }
         }
 
         private void StepAnimation()
