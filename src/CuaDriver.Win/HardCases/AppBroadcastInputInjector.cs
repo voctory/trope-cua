@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text.Json.Nodes;
 using CuaDriver.Win.Win32;
 using Windows.Foundation.Metadata;
 using Windows.UI.Input.Preview.Injection;
@@ -12,6 +13,8 @@ namespace CuaDriver.Win.HardCases;
 /// </summary>
 public static class AppBroadcastInputInjector
 {
+    public sealed record ProbeResult(string Text, JsonObject StructuredContent, bool IsError);
+
     public static string Status()
     {
         try
@@ -30,20 +33,23 @@ public static class AppBroadcastInputInjector
         }
     }
 
-    public static string ProbeMouseDelta(bool appBroadcastOnly)
+    public static ProbeResult ProbeMouseDelta(bool appBroadcastOnly)
     {
+        var route = appBroadcastOnly ? "inputinjector.trycreateforappbroadcastonly" : "inputinjector.trycreate";
         try
         {
             if (!ApiInformation.IsTypePresent("Windows.UI.Input.Preview.Injection.InputInjector"))
-                return "ok=false reason=\"InputInjector WinRT type is not present on this OS.\"";
+                return Failure(appBroadcastOnly, route, "InputInjector WinRT type is not present on this OS.");
 
             var injector = appBroadcastOnly
                 ? InputInjector.TryCreateForAppBroadcastOnly()
                 : InputInjector.TryCreate();
             if (injector is null)
-                return $"ok=false appbroadcast_only={appBroadcastOnly} reason=\"InputInjector factory returned null.\"";
+                return Failure(appBroadcastOnly, route, "InputInjector factory returned null.");
 
-            NativeMethods.GetCursorPos(out var before);
+            if (!NativeMethods.GetCursorPos(out var before))
+                return Failure(appBroadcastOnly, "user32.getcursorpos", "GetCursorPos failed before probe injection.");
+
             var forward = new InjectedInputMouseInfo
             {
                 MouseOptions = InjectedInputMouseOptions.Move,
@@ -51,7 +57,8 @@ public static class AppBroadcastInputInjector
                 DeltaY = 0
             };
             injector.InjectMouseInput([forward]);
-            var afterForward = WaitForCursor(point => point.X != before.X || point.Y != before.Y, TimeSpan.FromMilliseconds(50));
+            if (!TryWaitForCursor(point => point.X != before.X || point.Y != before.Y, TimeSpan.FromMilliseconds(50), out var afterForward))
+                return Failure(appBroadcastOnly, "user32.getcursorpos", "GetCursorPos failed after forward probe injection.");
 
             var back = new InjectedInputMouseInfo
             {
@@ -60,19 +67,35 @@ public static class AppBroadcastInputInjector
                 DeltaY = 0
             };
             injector.InjectMouseInput([back]);
-            var afterBack = WaitForCursor(point => point.X == before.X && point.Y == before.Y, TimeSpan.FromMilliseconds(50));
+            if (!TryWaitForCursor(point => point.X == before.X && point.Y == before.Y, TimeSpan.FromMilliseconds(50), out var afterBack))
+                return Failure(appBroadcastOnly, "user32.getcursorpos", "GetCursorPos failed after restore probe injection.");
 
             var movedOnForward = before.X != afterForward.X || before.Y != afterForward.Y;
             var restoredByInjector = before.X == afterBack.X && before.Y == afterBack.Y;
             var restoredByProbe = false;
             if (!restoredByInjector)
             {
-                _ = NativeMethods.SetCursorPos(before.X, before.Y);
-                afterBack = WaitForCursor(point => point.X == before.X && point.Y == before.Y, TimeSpan.FromMilliseconds(50));
+                var restoreRequested = NativeMethods.SetCursorPos(before.X, before.Y);
+                if (!TryWaitForCursor(point => point.X == before.X && point.Y == before.Y, TimeSpan.FromMilliseconds(50), out afterBack))
+                    return Failure(appBroadcastOnly, "user32.getcursorpos", "GetCursorPos failed after parent cursor restoration attempt.");
                 restoredByProbe = before.X == afterBack.X && before.Y == afterBack.Y;
+                if (!restoreRequested || !restoredByProbe)
+                {
+                    var restoreFailureText = $"ok=false appbroadcast_only={appBroadcastOnly} route=\"{route}\" reason=\"Probe could not restore the parent cursor.\" cursor_before={before} cursor_after_back={afterBack}";
+                    return new ProbeResult(restoreFailureText, new JsonObject
+                    {
+                        ["ok"] = false,
+                        ["appbroadcast_only"] = appBroadcastOnly,
+                        ["route"] = route,
+                        ["reason"] = "Probe could not restore the parent cursor.",
+                        ["cursor_before"] = PointObject(before),
+                        ["cursor_after_back"] = PointObject(afterBack),
+                        ["cursor_restored_by_probe"] = restoredByProbe
+                    }, IsError: true);
+                }
             }
 
-            return string.Join(Environment.NewLine, [
+            var text = string.Join(Environment.NewLine, [
                 "ok=true",
                 $"appbroadcast_only={appBroadcastOnly}",
                 $"cursor_before={before}",
@@ -82,25 +105,73 @@ public static class AppBroadcastInputInjector
                 $"cursor_restored_by_injector={restoredByInjector}",
                 $"cursor_restored_by_probe={restoredByProbe}",
                 $"background_safe={!movedOnForward}",
-                $"route={(appBroadcastOnly ? "inputinjector.trycreateforappbroadcastonly" : "inputinjector.trycreate")}"
+                $"route={route}"
             ]);
+            return new ProbeResult(text, new JsonObject
+            {
+                ["ok"] = true,
+                ["appbroadcast_only"] = appBroadcastOnly,
+                ["route"] = route,
+                ["cursor_before"] = PointObject(before),
+                ["cursor_after_forward"] = PointObject(afterForward),
+                ["cursor_after_back"] = PointObject(afterBack),
+                ["cursor_position_verified"] = true,
+                ["cursor_moved_on_forward"] = movedOnForward,
+                ["cursor_restored_by_injector"] = restoredByInjector,
+                ["cursor_restored_by_probe"] = restoredByProbe,
+                ["background_safe"] = !movedOnForward
+            }, IsError: false);
         }
         catch (Exception ex)
         {
-            return $"ok=false appbroadcast_only={appBroadcastOnly} type={ex.GetType().Name} hresult=0x{Marshal.GetHRForException(ex):X8} message=\"{ex.Message}\"";
+            var message = $"{ex.GetType().Name}: {ex.Message}";
+            return new ProbeResult(
+                $"ok=false appbroadcast_only={appBroadcastOnly} route=\"{route}\" hresult=0x{Marshal.GetHRForException(ex):X8} message=\"{ex.Message}\"",
+                new JsonObject
+                {
+                    ["ok"] = false,
+                    ["appbroadcast_only"] = appBroadcastOnly,
+                    ["route"] = route,
+                    ["hresult"] = $"0x{Marshal.GetHRForException(ex):X8}",
+                    ["reason"] = message
+                },
+                IsError: true);
         }
     }
 
-    private static POINT WaitForCursor(Func<POINT, bool> predicate, TimeSpan timeout)
+    private static ProbeResult Failure(bool appBroadcastOnly, string route, string reason)
     {
-        NativeMethods.GetCursorPos(out var current);
+        var text = $"ok=false appbroadcast_only={appBroadcastOnly} route=\"{route}\" reason=\"{reason}\"";
+        return new ProbeResult(text, new JsonObject
+        {
+            ["ok"] = false,
+            ["appbroadcast_only"] = appBroadcastOnly,
+            ["route"] = route,
+            ["reason"] = reason
+        }, IsError: true);
+    }
+
+    private static bool TryWaitForCursor(Func<POINT, bool> predicate, TimeSpan timeout, out POINT current)
+    {
+        if (!NativeMethods.GetCursorPos(out current))
+            return false;
+
+        var observed = current;
         SpinWait.SpinUntil(() =>
         {
-            NativeMethods.GetCursorPos(out current);
-            return predicate(current);
+            if (!NativeMethods.GetCursorPos(out observed))
+                return false;
+            return predicate(observed);
         }, timeout);
-        return current;
+        current = observed;
+        return true;
     }
+
+    private static JsonObject PointObject(POINT point) => new()
+    {
+        ["x"] = point.X,
+        ["y"] = point.Y
+    };
 
 #if CUA_ENABLE_APPBROADCAST
     // Intentionally left as an integration seam. The provisioned broker should

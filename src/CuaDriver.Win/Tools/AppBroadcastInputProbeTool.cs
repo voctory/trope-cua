@@ -16,8 +16,7 @@ public sealed class AppBroadcastInputProbeTool : IDriverTool
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
         var appBroadcastOnly = JsonArgs.OptionalBool(args, "appbroadcast_only", true);
-        var text = AppBroadcastInputInjector.ProbeMouseDelta(appBroadcastOnly);
-        var isError = text.Contains("ok=false", StringComparison.OrdinalIgnoreCase);
-        return Task.FromResult(ToolResult.Text(text, isError));
+        var result = AppBroadcastInputInjector.ProbeMouseDelta(appBroadcastOnly);
+        return Task.FromResult(ToolResult.Text(result.Text, result.StructuredContent, result.IsError));
     }
 }
