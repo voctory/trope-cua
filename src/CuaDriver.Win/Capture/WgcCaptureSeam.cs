@@ -5,7 +5,7 @@ namespace CuaDriver.Win.Capture;
 /// implementation needs Windows-only WinRT/D3D interop packages and validation
 /// against the user's target OS build. See docs/capture.md.
 /// </summary>
-public static class WgcCaptureSeam
+internal static class WgcCaptureSeam
 {
     public static bool IsSupportedByOs()
         => OperatingSystem.IsWindowsVersionAtLeast(10, 0, 18362);

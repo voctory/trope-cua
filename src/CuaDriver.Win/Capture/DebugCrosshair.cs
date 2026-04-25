@@ -5,7 +5,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Capture;
 
-public static class DebugCrosshair
+internal static class DebugCrosshair
 {
     public static void WriteCrosshair(WindowInfo window, PointF point, int maxImageDimension, string path)
     {
