@@ -337,7 +337,7 @@ public sealed class AgentCursorOverlay
         private bool _visibleCursor;
         private bool _enabled = true;
         private double _pulseStartedMs;
-        private DateTime _lastActivityAt = DateTime.UtcNow;
+        private long _lastActivityMs = Environment.TickCount64;
         private TaskCompletionSource? _arrival;
         private IntPtr _pinnedTargetHwnd;
         private long _lastPinAtMs;
@@ -420,7 +420,7 @@ public sealed class AgentCursorOverlay
 
             CancelFadeOut();
             _visibleCursor = true;
-            _lastActivityAt = DateTime.UtcNow;
+            MarkActivity();
             ShowOverlay();
         }
 
@@ -445,7 +445,7 @@ public sealed class AgentCursorOverlay
             if (_enabled && _visibleCursor)
             {
                 CancelFadeOut();
-                _lastActivityAt = DateTime.UtcNow;
+                MarkActivity();
                 ShowOverlay();
             }
         }
@@ -494,7 +494,7 @@ public sealed class AgentCursorOverlay
                     _springTarget = null;
                     _isGliding = false;
                     _distanceSoFar = 0;
-                    _lastActivityAt = DateTime.UtcNow;
+                    MarkActivity();
                     _lastFrameTimestamp = Stopwatch.GetTimestamp();
                     _visibleCursor = true;
                     _pulseStartedMs = 0;
@@ -522,7 +522,7 @@ public sealed class AgentCursorOverlay
             _springTarget = null;
             _distanceSoFar = 0;
             _lastFrameTimestamp = Stopwatch.GetTimestamp();
-            _lastActivityAt = DateTime.UtcNow;
+            MarkActivity();
             _visibleCursor = true;
             _pulseStartedMs = 0;
 
@@ -551,7 +551,7 @@ public sealed class AgentCursorOverlay
 
             _motion = motion;
             CancelFadeOut();
-            _lastActivityAt = DateTime.UtcNow;
+            MarkActivity();
             _pulseStartedMs = Environment.TickCount64;
             _visibleCursor = true;
             ShowOverlay();
@@ -578,7 +578,7 @@ public sealed class AgentCursorOverlay
             var nowTimestamp = Stopwatch.GetTimestamp();
             var dt = Math.Min(0.05, Math.Max(0, (nowTimestamp - _lastFrameTimestamp) / (double)Stopwatch.Frequency));
             _lastFrameTimestamp = nowTimestamp;
-            var now = DateTime.UtcNow;
+            var nowMs = Environment.TickCount64;
 
             if (_path is { } path && _trip is { } trip)
             {
@@ -603,7 +603,7 @@ public sealed class AgentCursorOverlay
                     _trip = null;
                     _distanceSoFar = 0;
                     _isGliding = false;
-                    _lastActivityAt = now;
+                    _lastActivityMs = nowMs;
                     _arrival?.TrySetResult();
                     _arrival = null;
                 }
@@ -663,7 +663,7 @@ public sealed class AgentCursorOverlay
             if (_pulseStartedMs > 0 && Environment.TickCount64 - _pulseStartedMs > Math.Max(1, _motion.PressDurationMs))
             {
                 _pulseStartedMs = 0;
-                _lastActivityAt = now;
+                _lastActivityMs = nowMs;
                 changed = true;
             }
             else if (_pulseStartedMs > 0)
@@ -673,7 +673,7 @@ public sealed class AgentCursorOverlay
 
             if (!_isGliding && _pulseStartedMs <= 0 && !_isFadingOut)
             {
-                var idleMs = (now - _lastActivityAt).TotalMilliseconds;
+                var idleMs = Math.Max(0, nowMs - _lastActivityMs);
                 if (_motion.IdleHideMs > 0 && idleMs >= _motion.IdleHideMs)
                 {
                     BeginFadeOut();
@@ -1012,7 +1012,7 @@ public sealed class AgentCursorOverlay
             if (_path is not null || _spring is not null || _pulseStartedMs > 0)
                 return 1;
 
-            var seconds = Math.Max(0, (DateTime.UtcNow - _lastActivityAt).TotalSeconds);
+            var seconds = IdleSeconds();
             return 0.5 + 0.5 * Math.Sin(seconds / IdleBreathPeriodSeconds * Math.PI * 2);
         }
 
@@ -1036,9 +1036,13 @@ public sealed class AgentCursorOverlay
 
         private double IdleRotation()
         {
-            var seconds = Math.Max(0, (DateTime.UtcNow - _lastActivityAt).TotalSeconds);
+            var seconds = IdleSeconds();
             return Math.Sin(seconds / IdleRotationPeriodSeconds * Math.PI * 2) * IdleRotationAmplitudeRadians;
         }
+
+        private void MarkActivity() => _lastActivityMs = Environment.TickCount64;
+
+        private double IdleSeconds() => Math.Max(0, Environment.TickCount64 - _lastActivityMs) / 1000.0;
 
         private bool UpdateDisplayHeading(double dt)
         {
