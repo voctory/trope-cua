@@ -12,6 +12,15 @@ namespace CuaDriver.Win.Browser;
 
 public static class CdpBrowserBridge
 {
+    private static readonly HttpClient PageDiscoveryClient = new(new SocketsHttpHandler
+    {
+        ConnectTimeout = TimeSpan.FromSeconds(2),
+        PooledConnectionLifetime = TimeSpan.FromMinutes(2)
+    })
+    {
+        Timeout = TimeSpan.FromSeconds(5)
+    };
+
     public static async Task<ActionReceipt?> TryClickAsync(IntPtr hwnd, long windowId, double x, double y, int count, bool rightButton, int? port, CancellationToken ct, IReadOnlyCollection<string>? modifiers = null)
     {
         if (port is null)
@@ -136,8 +145,7 @@ public static class CdpBrowserBridge
 
     private static async Task<string?> PageWebSocketUrlAsync(int port, long? windowId, CancellationToken ct)
     {
-        using var http = new HttpClient();
-        var json = await http.GetStringAsync($"http://127.0.0.1:{port}/json", ct).ConfigureAwait(false);
+        var json = await PageDiscoveryClient.GetStringAsync($"http://127.0.0.1:{port}/json", ct).ConfigureAwait(false);
         var arr = JsonNode.Parse(json) as JsonArray;
         if (arr is null)
             return null;
