@@ -43,6 +43,24 @@ def test_daemon_stop_missing_instance_reports_error():
     assert "daemon not running" in result["content"][0]["text"]
 
 
+def test_call_with_missing_explicit_instance_does_not_fallback_direct():
+    instance = f"pytest-missing-{uuid.uuid4().hex}"
+    env = os.environ.copy()
+    env["CUA_DRIVER_JSON"] = "1"
+    proc = subprocess.run(
+        [EXE, "call", "--instance", instance, "get_config", "{}"],
+        text=True,
+        capture_output=True,
+        env=env,
+        timeout=30,
+    )
+
+    assert proc.returncode == 1
+    result = json.loads(proc.stdout)
+    assert result["isError"] is True
+    assert "daemon not running" in result["content"][0]["text"]
+
+
 def test_daemon_instances_are_isolated():
     first = f"pytest-{uuid.uuid4().hex}-a"
     second = f"pytest-{uuid.uuid4().hex}-b"

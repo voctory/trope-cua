@@ -15,6 +15,8 @@ public sealed record DaemonInstanceRecord(string InstanceId, int Pid, string Pip
 
 public sealed class NamedPipeDaemon
 {
+    private static readonly TimeSpan PipeConnectTimeout = TimeSpan.FromSeconds(2);
+
     private readonly ToolRegistry _registry;
     private readonly ToolContext _context;
     private readonly string _instanceId;
@@ -138,7 +140,9 @@ public sealed class NamedPipeDaemon
         try
         {
             await using var pipe = new NamedPipeClientStream(".", InstancePipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
-            await pipe.ConnectAsync(cts.Token).ConfigureAwait(false);
+            using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+            connectCts.CancelAfter(Min(timeout, PipeConnectTimeout));
+            await pipe.ConnectAsync(connectCts.Token).ConfigureAwait(false);
             await using var writer = new StreamWriter(pipe, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
             using var reader = new StreamReader(pipe, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, 1024, leaveOpen: true);
 
@@ -154,6 +158,8 @@ public sealed class NamedPipeDaemon
             return null;
         }
     }
+
+    private static TimeSpan Min(TimeSpan left, TimeSpan right) => left <= right ? left : right;
 
     private ToolResult StatusResult()
     {

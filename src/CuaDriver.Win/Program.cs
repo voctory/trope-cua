@@ -35,6 +35,7 @@ public static class Program
         var parsed = ExtractInstanceArg(args);
         args = parsed.Args;
         var instanceId = parsed.InstanceId;
+        var instanceSpecified = parsed.InstanceSpecified;
 
         if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
         {
@@ -105,8 +106,14 @@ public static class Program
             var toolName = args[1];
             var toolArgs = ParseArgs(args.Length >= 3 ? args[2] : "{}");
             var daemon = new Mcp.NamedPipeDaemon(registry, context, instanceId);
-            var result = await daemon.TryCallAsync(toolName, toolArgs, TimeSpan.FromMinutes(5), CancellationToken.None).ConfigureAwait(false)
-                         ?? await registry.InvokeAsync(toolName, toolArgs, context, CancellationToken.None).ConfigureAwait(false);
+            var result = await daemon.TryCallAsync(toolName, toolArgs, TimeSpan.FromMinutes(5), CancellationToken.None).ConfigureAwait(false);
+            if (result is null)
+            {
+                result = instanceSpecified
+                    ? ToolResult.Error($"daemon not running on named pipe {daemon.InstancePipeName}")
+                    : await registry.InvokeAsync(toolName, toolArgs, context, CancellationToken.None).ConfigureAwait(false);
+            }
+
             PrintResult(result);
             return result.IsError ? 1 : 0;
         }
@@ -136,9 +143,10 @@ public static class Program
     private static string FirstLine(string text)
         => text.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim() ?? "";
 
-    private static (string[] Args, string? InstanceId) ExtractInstanceArg(string[] args)
+    private static (string[] Args, string? InstanceId, bool InstanceSpecified) ExtractInstanceArg(string[] args)
     {
         string? instanceId = null;
+        var instanceSpecified = false;
         var kept = new List<string>();
         for (var i = 0; i < args.Length; i++)
         {
@@ -148,19 +156,21 @@ public static class Program
                 if (i + 1 >= args.Length)
                     throw new ArgumentException("--instance requires a value.");
                 instanceId = args[++i];
+                instanceSpecified = true;
                 continue;
             }
 
             if (arg.StartsWith("--instance=", StringComparison.Ordinal))
             {
                 instanceId = arg["--instance=".Length..];
+                instanceSpecified = true;
                 continue;
             }
 
             kept.Add(arg);
         }
 
-        return (kept.ToArray(), instanceId);
+        return (kept.ToArray(), instanceId, instanceSpecified);
     }
 
     private static async Task<ToolResult> StopAllDaemonsAsync(ToolRegistry registry, ToolContext context)
