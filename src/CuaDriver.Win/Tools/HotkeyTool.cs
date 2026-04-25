@@ -45,7 +45,13 @@ public sealed class HotkeyTool : IDriverTool
         if (windowId is null)
             return ToolResult.Error($"No window found for pid {pid}.");
 
-        var receipt = await WindowMessageInput.PressKeyAsync(new IntPtr(windowId.Value), key, modifiers, cancellationToken).ConfigureAwait(false);
+        var window = WindowEnumerator.Find(windowId.Value);
+        if (window is null)
+            return ToolResult.Error($"No window with window_id {windowId.Value}.");
+        if (window.Pid != pid)
+            return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
+
+        var receipt = await WindowMessageInput.PressKeyAsync(window.Hwnd, key, modifiers, cancellationToken).ConfigureAwait(false);
         return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
     }
 }

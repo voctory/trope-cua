@@ -27,7 +27,12 @@ public sealed class SetValueTool : IDriverTool
         var value = JsonArgs.RequiredString(args, "value");
 
         var window = WindowEnumerator.Find(windowId);
-        var targetHwnd = window?.Hwnd ?? new IntPtr(windowId);
+        if (window is null)
+            return ToolResult.Error($"No window with window_id {windowId}.");
+        if (window.Pid != pid)
+            return ToolResult.Error($"window_id {windowId} belongs to pid {window.Pid}, not pid {pid}.");
+
+        var targetHwnd = window.Hwnd;
         var element = context.State.UiaTree.GetCachedElement(pid, windowId, index);
         await AgentCursorTooling.MoveToElementAsync(context, element, targetHwnd, cancellationToken).ConfigureAwait(false);
 
@@ -36,13 +41,13 @@ public sealed class SetValueTool : IDriverTool
         {
             receipt = UiAutomationActions.SetRangeValue(element, number);
             if (!receipt.Ok)
-                receipt = MsaaActions.SetEditableTextAtElement(new IntPtr(windowId), element, value);
+                receipt = MsaaActions.SetEditableTextAtElement(window.Hwnd, element, value);
             if (!receipt.Ok)
                 receipt = UiAutomationActions.SetValue(element, value);
         }
         else
         {
-            receipt = MsaaActions.SetEditableTextAtElement(new IntPtr(windowId), element, value);
+            receipt = MsaaActions.SetEditableTextAtElement(window.Hwnd, element, value);
             if (!receipt.Ok)
                 receipt = UiAutomationActions.SetValue(element, value);
         }

@@ -171,6 +171,9 @@ public sealed class UiAutomationTree
                     return;
 
                 info = MakeInfo(element, 0, pid);
+                if (info.ProcessId != pid)
+                    return;
+
                 var area = Math.Max(1, rect.Width * rect.Height);
                 if (wantScrollable && element.TryGetCurrentPattern(ScrollPattern.Pattern, out _) && area < bestScrollableArea)
                 {
@@ -230,7 +233,7 @@ public sealed class UiAutomationTree
             info = MakeInfo(element, cache.Count, pid);
             if (info.ProcessId != 0 && info.ProcessId != pid)
             {
-                // Windows-owned popup fragments occasionally appear in the tree. Keep them out unless they are children without a process id.
+                return;
             }
 
             var indent = new string(' ', depth * 2);
