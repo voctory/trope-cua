@@ -38,9 +38,24 @@ public sealed class TypeTextTool : IDriverTool
         {
             if (windowId is null)
                 return ToolResult.Error("window_id is required for element_index type_text.");
+            var window = WindowEnumerator.Find(windowId.Value);
+            if (window is null)
+                return ToolResult.Error($"No window with window_id {windowId.Value}.");
+            if (window.Pid != pid)
+                return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
+
+            var cdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
+            if (BrowserWindowClassifier.IsLikelyChromium(window) && cdpPort is null)
+            {
+                var refused = ActionReceipt.Failure(
+                    "requires_cdp_or_child_session",
+                    "Refusing Chromium UIA/IA2 text setters from the parent session because Chromium can foreground the target while focusing editable web content. Provide cdp_port, configure chromium_debugging_port, or use the child-session/AppBroadcast lane.");
+                return ToolResult.Text("❌ " + refused.ToJson(), true);
+            }
+
             var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
-            await AgentCursorTooling.MoveToElementAsync(context, element, new IntPtr(windowId.Value), cancellationToken).ConfigureAwait(false);
-            receipt = await TypeViaElementAsync(context, new IntPtr(windowId.Value), element, text, delayMs, cancellationToken).ConfigureAwait(false);
+            await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
+            receipt = await TypeViaElementAsync(context, window.Hwnd, element, text, delayMs, cancellationToken).ConfigureAwait(false);
         }
         else
         {

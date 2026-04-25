@@ -12,4 +12,12 @@ public static class BrowserWindowClassifier
                || cls.Contains("mozillawindowclass", StringComparison.Ordinal)
                || cls.Contains("chrome_widgetwin", StringComparison.Ordinal);
     }
+
+    public static bool IsLikelyChromium(WindowInfo window)
+    {
+        var app = window.AppName.ToLowerInvariant();
+        var cls = window.ClassName.ToLowerInvariant();
+        return app is "chrome" or "msedge" or "brave" or "opera" or "vivaldi"
+               || cls.Contains("chrome_widgetwin", StringComparison.Ordinal);
+    }
 }

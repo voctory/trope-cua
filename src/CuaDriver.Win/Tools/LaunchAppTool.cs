@@ -19,7 +19,7 @@ public sealed class LaunchAppTool : IDriverTool
             ("name", JsonArgs.Prop("string", "Alias for exe.")),
             ("app_id", JsonArgs.Prop("string", "UWP/AppUserModelID launched through shell:AppsFolder.")),
             ("arguments", JsonArgs.Prop("string", "Optional command-line arguments.")),
-            ("allow_foreground", JsonArgs.Prop("boolean", "Explicitly allow a launch that may foreground the target app."))),
+            ("unsafe_allow_foreground", JsonArgs.Prop("boolean", "Explicitly allow a parent-session launch that may foreground the target app. Do not use for background automation."))),
         Destructive: true,
         Idempotent: false,
         OpenWorld: true);
@@ -32,16 +32,24 @@ public sealed class LaunchAppTool : IDriverTool
         var appId = JsonArgs.OptionalString(args, "app_id")
                     ?? JsonArgs.OptionalString(args, "bundle_id");
         var arguments = JsonArgs.OptionalString(args, "arguments") ?? "";
-        var allowForeground = JsonArgs.OptionalBool(args, "allow_foreground");
+        if (args.ContainsKey("allow_foreground"))
+        {
+            var renamed = ActionReceipt.Failure(
+                "foreground_launch_not_background_safe",
+                "allow_foreground was removed from the advertised schema. The Mac driver launches hidden and suppresses self-activation; parent-session Windows ShellExecute cannot provide that contract. If a human explicitly wants a visible foreground launch, pass unsafe_allow_foreground=true.");
+            return ToolResult.Text("❌ " + renamed.ToJson(), true);
+        }
+
+        var unsafeAllowForeground = JsonArgs.OptionalBool(args, "unsafe_allow_foreground");
 
         if (string.IsNullOrWhiteSpace(path) && string.IsNullOrWhiteSpace(appId))
             return ToolResult.Error("Provide path, exe, name, or app_id.");
 
-        if (!allowForeground)
+        if (!unsafeAllowForeground)
         {
             var denied = ActionReceipt.Failure(
-                "requires_allow_foreground_or_child_session",
-                "Parent-session Windows launches can foreground the target app. Refusing by default; pass allow_foreground=true for an explicit foreground launch, or use the child-session/AppBroadcast lane.");
+                "requires_background_launch_lane",
+                "Parent-session Windows launches can foreground the target app. The Mac driver launches hidden and suppresses self-activation; this Windows route cannot guarantee that. Reuse an existing window, use the child-session/AppBroadcast lane, or pass unsafe_allow_foreground=true only when the user explicitly asks for a visible foreground launch.");
             return ToolResult.Text("❌ " + denied.ToJson(), true);
         }
 
@@ -73,7 +81,7 @@ public sealed class LaunchAppTool : IDriverTool
             windows = newWindows.Length > 0 ? newWindows : allAfter.Where(w => MatchesLaunchTarget(w, path, appId)).ToArray();
         }
 
-        var receipt = guard.Finish(ActionReceipt.Success("shellexecute.allow_foreground"), allowForegroundChange: true);
+        var receipt = guard.Finish(ActionReceipt.Success("shellexecute.unsafe_foreground"), allowForegroundChange: true);
         var sb = new StringBuilder();
         sb.AppendLine("✅ " + receipt.ToJson());
         sb.AppendLine($"Launch requested: {(appId ?? path)}");

@@ -34,12 +34,15 @@ public sealed class NoRegressionGuard
             RestoreForeground();
 
         var backgroundSafe = receipt.BackgroundSafe
-                             && (!cursorMoved || allowCursorMove)
-                             && (!foregroundChanged || allowForegroundChange);
+                             && !cursorMoved
+                             && !foregroundChanged;
+        var allowed = receipt.BackgroundSafe
+                      && (!cursorMoved || allowCursorMove)
+                      && (!foregroundChanged || allowForegroundChange);
 
         var reason = receipt.Reason;
         var ok = receipt.Ok;
-        if (receipt.Ok && !backgroundSafe)
+        if (receipt.Ok && !allowed)
         {
             ok = false;
             reason = $"No-regression guard detected {(cursorMoved ? "cursor movement" : "")}{(cursorMoved && foregroundChanged ? " and " : "")}{(foregroundChanged ? "foreground change" : "")}.";

@@ -90,7 +90,7 @@ internal static class ToolDescriptions
         """;
 
     public const string LaunchApp = """
-        Launch an app for background automation. By default the Windows port refuses parent-session foreground launch behavior; pass allow_foreground=true only when the user explicitly wants the app to appear or take focus.
+        Launch an app for background automation. Parent-session Windows launches can foreground the target, unlike the Mac driver which launches hidden and suppresses self-activation, so this tool refuses those launches by default. Only pass unsafe_allow_foreground=true when the user explicitly asks for a visible foreground launch.
 
         Provide path for an executable or name for an app/executable name. Use list_apps to discover installed apps and list_windows after launch to choose the target window_id for get_window_state. This mirrors the Mac workflow: launch or identify an app, enumerate windows, snapshot a specific (pid, window_id), then act by element_index whenever possible.
         """;
