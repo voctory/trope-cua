@@ -19,7 +19,7 @@ public sealed class SetConfigTool : IDriverTool
     {
         var key = JsonArgs.RequiredString(args, "key");
         if (!args.TryGetPropertyValue("value", out var value) || value is null)
-            value = JsonValue.Create("");
+            return Task.FromResult(ToolResult.Error("Missing required field value. Pass null explicitly to clear nullable config values such as chromium_debugging_port."));
 
         try
         {
