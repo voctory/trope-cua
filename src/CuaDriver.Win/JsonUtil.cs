@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace CuaDriver.Win;
 
-public static class JsonUtil
+internal static class JsonUtil
 {
     public static readonly JsonSerializerOptions SerializerOptions = Create(writeIndented: true);
     public static readonly JsonSerializerOptions LineSerializerOptions = Create(writeIndented: false);

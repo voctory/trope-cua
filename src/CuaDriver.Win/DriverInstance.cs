@@ -2,7 +2,7 @@ using System.IO;
 
 namespace CuaDriver.Win;
 
-public static class DriverInstance
+internal static class DriverInstance
 {
     public const string DefaultId = "default";
 
