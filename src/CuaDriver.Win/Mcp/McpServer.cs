@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using CuaDriver.Win.Tools;
 using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Mcp;
@@ -60,7 +61,8 @@ public sealed class McpServer
     {
         ["protocolVersion"] = "2024-11-05",
         ["capabilities"] = new JsonObject { ["tools"] = new JsonObject() },
-        ["serverInfo"] = new JsonObject { ["name"] = "cua-driver-win", ["version"] = "0.1.0" }
+        ["serverInfo"] = new JsonObject { ["name"] = "cua-driver-win", ["version"] = "0.1.0" },
+        ["instructions"] = ToolDescriptions.AgentInstructions
     };
 
     private JsonObject ToolsListResult()

@@ -39,3 +39,40 @@ def test_mcp_tool_schemas_advertise_required_and_alternatives():
 
     zoom = tools["zoom"]["inputSchema"]
     assert "window_id" in zoom["properties"]
+
+
+def test_mcp_initialize_includes_background_agent_instructions():
+    result = mcp_request("initialize", {})
+    instructions = result["instructions"]
+    assert "background-safe" in instructions
+    assert "list_windows" in instructions
+    assert "get_window_state" in instructions
+    assert "unsafe_allow_foreground" in instructions
+    assert "Do not pass unsafe_allow_foreground" in instructions
+    for blocked in ("M" + "ac", "mac" + "OS"):
+        assert blocked not in instructions
+
+
+def test_mcp_tool_descriptions_steer_away_from_foreground_routes():
+    result = mcp_request("tools/list")
+    tools = {tool["name"]: tool for tool in result["tools"]}
+
+    launch = tools["launch_app"]
+    launch_schema = launch["inputSchema"]
+    assert "allow_foreground" not in launch_schema["properties"]
+    assert "unsafe_allow_foreground" in launch_schema["properties"]
+    assert "Do not pass unsafe_allow_foreground" in launch["description"]
+    assert "routine background automation" in launch_schema["properties"]["unsafe_allow_foreground"]["description"]
+
+    click_description = tools["click"]["description"]
+    assert "element_index" in click_description
+    assert "background-safe" in click_description
+    assert "blind browser PostMessage clicks are refused" in click_description
+
+    move_cursor = tools["move_cursor"]
+    assert "visual agent cursor overlay" in move_cursor["description"]
+    assert "should not be used as an input route" in move_cursor["description"]
+
+    for blocked in ("M" + "ac", "mac" + "OS"):
+        for tool in tools.values():
+            assert blocked not in tool["description"]

@@ -13,7 +13,7 @@ public sealed class HotkeyTool : IDriverTool
         JsonArgs.SchemaWithAnyOf(["pid"], [["keys"], ["key"]],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
-            ("keys", JsonArgs.Prop("array", "Modifier(s) and one non-modifier key, e.g. [\"ctrl\", \"c\"]. Mac-compatible shape.")),
+            ("keys", JsonArgs.Prop("array", "Modifier(s) and one non-modifier key, e.g. [\"ctrl\", \"c\"]. Preferred shape.")),
             ("key", JsonArgs.Prop("string", "Main key. Windows-compatible alias used with modifiers.")),
             ("modifiers", JsonArgs.Prop("array", "Modifiers: ctrl, shift, alt, win/cmd."))),
         Destructive: true,

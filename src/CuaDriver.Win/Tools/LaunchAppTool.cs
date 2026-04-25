@@ -19,7 +19,7 @@ public sealed class LaunchAppTool : IDriverTool
             ("name", JsonArgs.Prop("string", "Alias for exe.")),
             ("app_id", JsonArgs.Prop("string", "UWP/AppUserModelID launched through shell:AppsFolder.")),
             ("arguments", JsonArgs.Prop("string", "Optional command-line arguments.")),
-            ("unsafe_allow_foreground", JsonArgs.Prop("boolean", "Explicitly allow a parent-session launch that may foreground the target app. Do not use for background automation."))),
+            ("unsafe_allow_foreground", JsonArgs.Prop("boolean", "Explicitly allow a parent-session launch that may foreground the target app. Do not use for routine background automation; only set when the user explicitly requests a visible foreground launch."))),
         Destructive: true,
         Idempotent: false,
         OpenWorld: true);
@@ -36,7 +36,7 @@ public sealed class LaunchAppTool : IDriverTool
         {
             var renamed = ActionReceipt.Failure(
                 "foreground_launch_not_background_safe",
-                "allow_foreground was removed from the advertised schema. The Mac driver launches hidden and suppresses self-activation; parent-session Windows ShellExecute cannot provide that contract. If a human explicitly wants a visible foreground launch, pass unsafe_allow_foreground=true.");
+                "allow_foreground was removed from the advertised schema. Parent-session Windows ShellExecute cannot guarantee a background launch. If a human explicitly wants a visible foreground launch, pass unsafe_allow_foreground=true.");
             return ToolResult.Text("❌ " + renamed.ToJson(), true);
         }
 
@@ -49,7 +49,7 @@ public sealed class LaunchAppTool : IDriverTool
         {
             var denied = ActionReceipt.Failure(
                 "requires_background_launch_lane",
-                "Parent-session Windows launches can foreground the target app. The Mac driver launches hidden and suppresses self-activation; this Windows route cannot guarantee that. Reuse an existing window, use the child-session/AppBroadcast lane, or pass unsafe_allow_foreground=true only when the user explicitly asks for a visible foreground launch.");
+                "Parent-session Windows launches can foreground the target app. Reuse an existing window, use the child-session/AppBroadcast lane, or pass unsafe_allow_foreground=true only when the user explicitly asks for a visible foreground launch.");
             return ToolResult.Text("❌ " + denied.ToJson(), true);
         }
 

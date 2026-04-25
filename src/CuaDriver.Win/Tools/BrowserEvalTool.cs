@@ -9,7 +9,7 @@ public sealed class BrowserEvalTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "browser_eval",
-        "Chromium CDP Runtime.evaluate with userGesture=true for browser activation-gated flows. Requires cdp_port or config chromium_debugging_port.",
+        "Chromium CDP Runtime.evaluate with userGesture=true for browser activation-gated flows. Use this only as the browser-native background lane when UIA/MSAA cannot safely activate the target. Requires cdp_port or config chromium_debugging_port; pass pid/window_id when available so the CDP page is bound to the intended browser window.",
         JsonArgs.RequiredSchema(["expression"],
             ("expression", JsonArgs.Prop("string", "JavaScript expression.")),
             ("cdp_port", JsonArgs.Prop("integer", "Chromium remote debugging port.")),

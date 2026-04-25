@@ -9,12 +9,12 @@ public sealed class MoveCursorTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "move_cursor",
-        "Move the visual agent cursor to a screen point. This never moves the parent-session cursor unless allow_parent_cursor=true.",
+        "Move the visual agent cursor overlay to a screen point. This is for displaying agent intent only and should not be used as an input route. It never moves the parent-session cursor unless allow_parent_cursor=true, which is an unsafe local experiment requiring explicit user intent.",
         JsonArgs.RequiredSchema(["x", "y"],
             ("x", JsonArgs.Prop("integer", "Screen X.")),
             ("y", JsonArgs.Prop("integer", "Screen Y.")),
             ("window_id", JsonArgs.Prop("integer", "Optional target HWND used to layer the visual cursor just above that window.")),
-            ("allow_parent_cursor", JsonArgs.Prop("boolean", "Explicit unsafe override for moving the real parent-session cursor."))),
+            ("allow_parent_cursor", JsonArgs.Prop("boolean", "Explicit unsafe override for moving the real parent-session cursor. Do not set for background automation."))),
         Destructive: true,
         Idempotent: false);
 

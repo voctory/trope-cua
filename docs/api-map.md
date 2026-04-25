@@ -1,6 +1,6 @@
 # API map
 
-| macOS cua-driver shape | Windows port route |
+| Driver surface | Windows route |
 |---|---|
 | App/window enumeration | `EnumWindows`, `GetWindowThreadProcessId`, `GetWindowTextW`, `GetClassNameW`, `DwmGetWindowAttribute` |
 | AX tree | `System.Windows.Automation` / UI Automation |

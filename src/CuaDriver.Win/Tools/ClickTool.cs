@@ -27,7 +27,7 @@ public sealed class ClickTool : IDriverTool
             ("from_zoom", JsonArgs.Prop("boolean", "When true, x/y are pixel coordinates in the last zoom image for this pid.")),
             ("debug_image_out", JsonArgs.Prop("string", "Optional path. For pixel clicks, capture the target window, draw a red crosshair at the received x/y in resized screenshot coordinates, and write a PNG before dispatch. Requires window_id; incompatible with from_zoom.")),
             ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium remote debugging port for browser pixel route.")),
-            ("allow_parent_sendinput", JsonArgs.Prop("boolean", "Explicit unsafe override; default false. Currently reported, not used."))),
+            ("allow_parent_sendinput", JsonArgs.Prop("boolean", "Explicit unsafe override for local experiments only. Do not set for background automation; default false and currently reported, not used."))),
         Destructive: true,
         Idempotent: false,
         OpenWorld: true);

@@ -1,6 +1,6 @@
-# Port equivalence notes
+# Routing equivalence notes
 
-The macOS driver uses semantic AX actions first and pixel routes second. The Windows port preserves that routing priority:
+The Windows driver uses semantic UIA actions first and pixel routes second:
 
 1. Element-indexed actions are UIA pattern calls, not synthetic mouse input.
 2. Pixel actions first run a UIA hit-test at the screenshot coordinate. Accessible buttons/links are activated semantically, and text targets are remembered for later `type_text`.

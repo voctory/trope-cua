@@ -2,6 +2,20 @@ namespace CuaDriver.Win.Tools;
 
 internal static class ToolDescriptions
 {
+    public const string AgentInstructions = """
+        You are controlling Windows through cua-driver-win. Treat this as a background-safe computer-use driver, not as a foreground mouse and keyboard driver.
+
+        Default workflow:
+        1. Reuse an existing window when possible. Call list_windows, choose an explicit pid and window_id, then call get_window_state for that exact pair.
+        2. Prefer element_index actions from the latest get_window_state snapshot for that same pid/window_id. Use pixels only for canvas, custom, or non-UIA surfaces.
+        3. Read every action receipt. A successful background action must report background_safe=true, cursor_moved=false, and foreground_changed=false.
+        4. If a route refuses with requires_cdp, requires_child_session, requires_appbroadcast, or requires_background_launch_lane, switch to that lane or report the blocker. Do not work around it with blind parent-session mouse or keyboard input.
+        5. For Chromium/Electron browser surfaces, use cdp_port or configured chromium_debugging_port when UIA/MSAA cannot act safely.
+        6. Do not pass unsafe_allow_foreground, allow_parent_sendinput, or allow_parent_cursor unless the user explicitly asks for a visible foreground/unsafe local experiment.
+
+        The visual agent cursor is an overlay that shows intent above the target window. It must not be treated as the real Windows cursor.
+        """;
+
     public const string GetWindowState = """
         Walk a running app's UI Automation tree and return a Markdown rendering of its UI, tagging actionable elements with [element_index N]. Pass those indices to click, double_click, right_click, type_text, press_key, hotkey, scroll, or set_value.
 
@@ -24,7 +38,7 @@ internal static class ToolDescriptions
 
         - x and y are window-local screenshot pixels, top-left origin, in the same pixel space as get_window_state returned. Use this for canvas, WebGL, custom surfaces, or when there is no useful element_index. The driver maps resized screenshot pixels back to native window pixels internally. count: 2 posts a double-click. modifier/modifiers holds ctrl, shift, alt/option, or win/cmd during the pixel click.
 
-        Exactly one of element_index or (x and y) must be provided. window_id is required for element_index and recommended for pixel clicks. action is only valid with element_index; count and modifier only affect the pixel route. For Chromium web content, provide cdp_port or configure chromium_debugging_port; blind browser PostMessage clicks are refused to avoid reporting an unsafe foreground-only route as success.
+        Agent rule: after get_window_state exposes an element_index, use it instead of approximating a pixel click. Pixel clicks are for surfaces that do not expose a useful UIA element. Exactly one of element_index or (x and y) must be provided. window_id is required for element_index and recommended for pixel clicks. action is only valid with element_index; count and modifier only affect the pixel route. For Chromium web content, provide cdp_port or configure chromium_debugging_port; blind browser PostMessage clicks are refused to avoid reporting an unsafe foreground-only route as success.
         """;
 
     public const string DoubleClick = """
@@ -34,7 +48,7 @@ internal static class ToolDescriptions
 
         - x and y are window-local screenshot pixels, top-left origin, in the same pixel space as get_window_state returned. This routes through the same pixel engine as click(count=2). modifier/modifiers holds ctrl, shift, alt/option, or win/cmd during the gesture.
 
-        Exactly one of element_index or (x and y) must be provided. pid is required. window_id is required for element_index and recommended for pixel double-clicks.
+        Agent rule: do not double-click a browser or custom surface just to force focus. Use the same background-safe routing rules as click and trust the returned receipt. Exactly one of element_index or (x and y) must be provided. pid is required. window_id is required for element_index and recommended for pixel double-clicks.
         """;
 
     public const string RightClick = """
@@ -44,17 +58,17 @@ internal static class ToolDescriptions
 
         - x and y are window-local screenshot pixels, top-left origin, in the same pixel space as get_window_state returned. Use this for non-UIA surfaces. modifier/modifiers holds ctrl, shift, alt/option, or win/cmd during the pixel right-click and forces the pixel route rather than a semantic UIA action.
 
-        Exactly one of element_index or (x and y) must be provided. pid is required. window_id is required for element_index and recommended for pixel right-clicks. For browser web content, configure cdp_port when possible; unsafe browser fallback routes are refused instead of stealing focus.
+        Agent rule: do not use right-click as a foregrounding workaround. Exactly one of element_index or (x and y) must be provided. pid is required. window_id is required for element_index and recommended for pixel right-clicks. For browser web content, configure cdp_port when possible; unsafe browser fallback routes are refused instead of stealing focus.
         """;
 
     public const string Scroll = """
-        Scroll a target window without parent-session SendInput. Prefer the Mac-compatible direction mode: direction up/down/left/right, amount repetitions, and by line/page. This sends background-safe key messages such as Down, PageDown, or PageUp.
+        Scroll a target window without parent-session SendInput. Prefer direction mode: direction up/down/left/right, amount repetitions, and by line/page. This sends background-safe key messages such as Down, PageDown, or PageUp.
 
         Optional element_index + window_id from the last get_window_state snapshot targets that element's native HWND when available, falling back to the root target window. Skip it when a prior click already established the target's internal focus.
 
         Windows wheel mode remains available when direction is omitted: x/y identify the region to scroll in window-local screenshot pixels, delta controls wheel amount, and the target window center is used when x/y are omitted. Prefer direction mode for browser-like surfaces because wheel messages are commonly filtered or foreground-prone.
 
-        Browser providers often expose partial UIA trees and foreground-prone routes. The Windows driver refuses unsafe browser scroll fallbacks unless a background-safe UIA or CDP route is available.
+        Browser providers often expose partial UIA trees and foreground-prone routes. The Windows driver refuses unsafe browser scroll fallbacks unless a background-safe UIA or CDP route is available. When scrolling fails with an unsafe-route receipt, configure CDP or a child-session lane instead of foregrounding the browser.
         """;
 
     public const string TypeText = """
@@ -62,37 +76,37 @@ internal static class ToolDescriptions
 
         For Chromium or Electron inputs, first click the input or pass element_index so the driver has a text target. If the browser route has no safe target and no cdp_port, the tool refuses blind WM_CHAR delivery rather than typing into the wrong foreground app.
 
-        delay_ms spaces streamed text chunks so autocomplete and reactive inputs can keep up. Default is 30 ms, matching the Mac type_text_chars pacing. Pass delay_ms=0 for the old instant/bulk behavior. For an explicitly atomic write, use set_value.
+        delay_ms spaces streamed text chunks so autocomplete and reactive inputs can keep up. Default is 30 ms. Pass delay_ms=0 for the old instant/bulk behavior. For an explicitly atomic write, use set_value.
 
-        Special keys such as Return, Escape, arrows, and shortcuts go through press_key or hotkey, not type_text.
+        Agent rule: use element_index when filling a known field. Do not click the page and then blindly type unless the receipt proves a background-safe text target was established. Special keys such as Return, Escape, arrows, and shortcuts go through press_key or hotkey, not type_text.
         """;
 
     public const string TypeTextChars = """
         Compatibility surface for type_text. It accepts the same pid, window_id, element_index, text, and cdp_port arguments and routes through the same background-safe text insertion logic.
 
-        delay_ms spaces character delivery, matching the Mac pacing knob. Default is 30 ms, clamped to 0-200. Pass delay_ms=0 when an instant/bulk write is explicitly desired.
+        delay_ms spaces character delivery. Default is 30 ms, clamped to 0-200. Pass delay_ms=0 when an instant/bulk write is explicitly desired.
 
-        Use this name when a Mac-oriented caller expects type_text_chars for character-by-character entry; on Windows the implementation intentionally shares the safer type_text routing where possible.
+        Use this name when a caller expects character-by-character entry; the implementation intentionally shares the safer type_text routing where possible. Do not use this to bypass a type_text refusal.
         """;
 
     public const string PressKey = """
         Press and release a single key against a target pid/window without parent-session SendInput. The target does not need to be foreground if the target HWND accepts posted key messages.
 
-        Optional element_index + window_id from the last get_window_state snapshot targets that element's native HWND when available, falling back to the root target window. This is the Windows equivalent of the Mac focus-then-key route while avoiding parent-session SendInput.
+        Optional element_index + window_id from the last get_window_state snapshot targets that element's native HWND when available, falling back to the root target window. This preserves control-specific key routing while avoiding parent-session SendInput.
 
-        Pass window_id when you know the target window; otherwise the driver's current main-window heuristic is used. Key vocabulary: enter/return, tab, escape/esc, arrows, space, backspace, delete, home, end, pageup, pagedown, f1-f24, plus any letter or digit. modifiers can hold ctrl, shift, alt/option, or win/cmd. For true key combinations such as ctrl+c, use hotkey.
+        Agent rule: pass window_id whenever possible and prefer element_index when targeting a specific control. Do not use keys as a fallback to foreground-only typing. Key vocabulary: enter/return, tab, escape/esc, arrows, space, backspace, delete, home, end, pageup, pagedown, f1-f24, plus any letter or digit. modifiers can hold ctrl, shift, alt/option, or win/cmd. For true key combinations such as ctrl+c, use hotkey.
         """;
 
     public const string Hotkey = """
-        Press a modifier combination against a target pid/window without parent-session SendInput. Prefer the Mac-compatible keys array, for example ["ctrl", "c"]. The Windows-compatible key plus modifiers shape remains accepted.
+        Press a modifier combination against a target pid/window without parent-session SendInput. Prefer the keys array, for example ["ctrl", "c"]. The key plus modifiers shape remains accepted.
 
-        Recognized modifiers: ctrl/control, shift, alt/option, win/cmd/meta. Non-modifier keys use the same vocabulary as press_key. Pass window_id when available; otherwise the driver's current main-window heuristic is used.
+        Recognized modifiers: ctrl/control, shift, alt/option, win/cmd/meta. Non-modifier keys use the same vocabulary as press_key. Pass window_id when available; otherwise the driver's current main-window heuristic is used. Do not use hotkeys to compensate for a missing safe text/click route.
         """;
 
     public const string LaunchApp = """
-        Launch an app for background automation. Parent-session Windows launches can foreground the target, unlike the Mac driver which launches hidden and suppresses self-activation, so this tool refuses those launches by default. Only pass unsafe_allow_foreground=true when the user explicitly asks for a visible foreground launch.
+        Launch an app for background automation. Parent-session Windows launches can foreground the target, so this tool refuses those launches by default. Do not pass unsafe_allow_foreground for routine automation. Only pass unsafe_allow_foreground=true when the user explicitly asks for a visible foreground launch or unsafe local experiment.
 
-        Provide path for an executable or name for an app/executable name. Use list_apps to discover installed apps and list_windows after launch to choose the target window_id for get_window_state. This mirrors the Mac workflow: launch or identify an app, enumerate windows, snapshot a specific (pid, window_id), then act by element_index whenever possible.
+        Prefer list_windows to reuse an already running app before launching a new one. Provide path for an executable or name for an app/executable name. Use list_apps to discover installed apps and list_windows after launch to choose the target window_id for get_window_state. Normal workflow: launch or identify an app, enumerate windows, snapshot a specific (pid, window_id), then act by element_index whenever possible.
         """;
 
     public const string ListApps = """

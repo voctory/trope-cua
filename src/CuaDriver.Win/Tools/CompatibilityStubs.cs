@@ -38,7 +38,7 @@ public sealed class SetAgentCursorMotionTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "set_agent_cursor_motion",
-        "Tune the visual agent cursor's Mac-style glide curve, click dwell, and idle hide timing.",
+        "Tune the visual agent cursor's glide curve, click dwell, and idle hide timing.",
         JsonArgs.Schema(
             ("start_handle", JsonArgs.Prop("number", "Start-handle fraction in [0, 1]. Default 0.3.")),
             ("end_handle", JsonArgs.Prop("number", "End-handle fraction in [0, 1]. Default 0.3.")),
@@ -94,7 +94,7 @@ public sealed class SetRecordingTool : IDriverTool
         JsonArgs.RequiredSchema(["enabled"],
             ("enabled", JsonArgs.Prop("boolean", "True to start recording subsequent action tool calls; false to stop.")),
             ("output_dir", JsonArgs.Prop("string", "Directory where turn folders are written. Required when enabled=true.")),
-            ("video_experimental", JsonArgs.Prop("boolean", "Accepted for Mac compatibility; Windows currently records trajectory files only."))),
+            ("video_experimental", JsonArgs.Prop("boolean", "Accepted for schema compatibility; Windows currently records trajectory files only."))),
         Destructive: true);
 
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
