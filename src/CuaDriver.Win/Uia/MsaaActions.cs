@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Runtime.InteropServices;
 using System.Windows.Automation;
 using Accessibility;
 using CuaDriver.Win.Input;
@@ -11,9 +10,6 @@ internal static class MsaaActions
 {
     private const int ChildIdSelf = 0;
     private const int Ia2TextOffsetLength = -1;
-    private static readonly Guid IidAccessible2 = new("E89F726E-C4F4-4C19-BB19-B647D7FA8478");
-    private static readonly Guid IidAccessibleAction = new("B70D9F59-3B5A-4DBA-AB9E-22012F607DF5");
-    private static readonly Guid IidAccessibleEditableText = new("A59AA09A-7011-4b65-939D-32B1FB5547E3");
 
     public static ActionReceipt DoDefaultActionAtElement(IntPtr rootHwnd, AutomationElement element)
     {
@@ -383,170 +379,16 @@ internal static class MsaaActions
     }
 
     private static IAccessible? AsAccessible(object? value)
-    {
-        if (value is null)
-            return null;
-
-        if (value is IAccessible accessible)
-            return accessible;
-
-        if (!Marshal.IsComObject(value))
-            return null;
-
-        IntPtr unknown = IntPtr.Zero;
-        IntPtr accessiblePtr = IntPtr.Zero;
-        try
-        {
-            unknown = Marshal.GetIUnknownForObject(value);
-            var iid = NativeMethods.IID_IAccessible;
-            if (Marshal.QueryInterface(unknown, in iid, out accessiblePtr) != 0 || accessiblePtr == IntPtr.Zero)
-                return null;
-
-            return Marshal.GetObjectForIUnknown(accessiblePtr) as IAccessible;
-        }
-        catch
-        {
-            return null;
-        }
-        finally
-        {
-            if (accessiblePtr != IntPtr.Zero)
-                Marshal.Release(accessiblePtr);
-            if (unknown != IntPtr.Zero)
-                Marshal.Release(unknown);
-        }
-    }
+        => Ia2ComQuery.AsAccessible(value);
 
     private static IAccessibleAction? AsAccessibleAction(object? value)
-    {
-        if (value is null)
-            return null;
-
-        if (value is IAccessibleAction action)
-            return action;
-
-        if (!Marshal.IsComObject(value))
-            return null;
-
-        IntPtr unknown = IntPtr.Zero;
-        IntPtr actionPtr = IntPtr.Zero;
-        try
-        {
-            unknown = Marshal.GetIUnknownForObject(value);
-            var iid = IidAccessibleAction;
-            if (Marshal.QueryInterface(unknown, in iid, out actionPtr) != 0 || actionPtr == IntPtr.Zero)
-            {
-                if (value is not IServiceProvider serviceProvider)
-                    return null;
-
-                var service = IidAccessible2;
-                iid = IidAccessibleAction;
-                if (serviceProvider.QueryService(ref service, ref iid, out actionPtr) != 0 || actionPtr == IntPtr.Zero)
-                    return null;
-            }
-
-            return Marshal.GetObjectForIUnknown(actionPtr) as IAccessibleAction;
-        }
-        catch
-        {
-            return null;
-        }
-        finally
-        {
-            if (actionPtr != IntPtr.Zero)
-                Marshal.Release(actionPtr);
-            if (unknown != IntPtr.Zero)
-                Marshal.Release(unknown);
-        }
-    }
+        => Ia2ComQuery.AsIa2Service<IAccessibleAction>(value, Ia2ComQuery.AccessibleAction);
 
     private static IAccessibleEditableText? AsAccessibleEditableText(object? value)
-    {
-        if (value is null)
-            return null;
-
-        if (value is IAccessibleEditableText editable)
-            return editable;
-
-        if (!Marshal.IsComObject(value))
-            return null;
-
-        IntPtr unknown = IntPtr.Zero;
-        IntPtr editablePtr = IntPtr.Zero;
-        try
-        {
-            unknown = Marshal.GetIUnknownForObject(value);
-            var iid = IidAccessibleEditableText;
-            if (Marshal.QueryInterface(unknown, in iid, out editablePtr) != 0 || editablePtr == IntPtr.Zero)
-            {
-                if (value is not IServiceProvider serviceProvider)
-                    return null;
-
-                var service = IidAccessible2;
-                iid = IidAccessibleEditableText;
-                if (serviceProvider.QueryService(ref service, ref iid, out editablePtr) != 0 || editablePtr == IntPtr.Zero)
-                    return null;
-            }
-
-            return Marshal.GetObjectForIUnknown(editablePtr) as IAccessibleEditableText;
-        }
-        catch
-        {
-            return null;
-        }
-        finally
-        {
-            if (editablePtr != IntPtr.Zero)
-                Marshal.Release(editablePtr);
-            if (unknown != IntPtr.Zero)
-                Marshal.Release(unknown);
-        }
-    }
+        => Ia2ComQuery.AsIa2Service<IAccessibleEditableText>(value, Ia2ComQuery.AccessibleEditableText);
 
     private static IAccessibleText? AsAccessibleText(object? value)
-    {
-        if (value is null)
-            return null;
-
-        if (value is IAccessibleText text)
-            return text;
-
-        if (!Marshal.IsComObject(value))
-            return null;
-
-        IntPtr unknown = IntPtr.Zero;
-        IntPtr textPtr = IntPtr.Zero;
-        try
-        {
-            unknown = Marshal.GetIUnknownForObject(value);
-            var iid = IidAccessibleText;
-            if (Marshal.QueryInterface(unknown, in iid, out textPtr) != 0 || textPtr == IntPtr.Zero)
-            {
-                if (value is not IServiceProvider serviceProvider)
-                    return null;
-
-                var service = IidAccessible2;
-                iid = IidAccessibleText;
-                if (serviceProvider.QueryService(ref service, ref iid, out textPtr) != 0 || textPtr == IntPtr.Zero)
-                    return null;
-            }
-
-            return Marshal.GetObjectForIUnknown(textPtr) as IAccessibleText;
-        }
-        catch
-        {
-            return null;
-        }
-        finally
-        {
-            if (textPtr != IntPtr.Zero)
-                Marshal.Release(textPtr);
-            if (unknown != IntPtr.Zero)
-                Marshal.Release(unknown);
-        }
-    }
-
-    private static readonly Guid IidAccessibleText = new("24FD2FFB-3AAD-4a08-8335-A3AD89C0FB4B");
+        => Ia2ComQuery.AsIa2Service<IAccessibleText>(value, Ia2ComQuery.AccessibleText);
 
     private sealed record AccessibleHit(IAccessible Accessible, object ChildId);
 }
