@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using CuaDriver.Win.Browser;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
+using CuaDriver.Win.Uia;
 using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
@@ -67,10 +68,18 @@ public sealed class DoubleClickTool : IDriverTool
         ActionReceipt receipt;
         if (BrowserWindowClassifier.IsLikelyBrowser(window))
         {
+            receipt = MsaaActions.DoDefaultActionAtElement(window.Hwnd, element);
+            if (receipt.Ok || receipt.ForegroundChanged || receipt.CursorMoved)
+            {
+                if (receipt.Ok)
+                    await context.State.AgentCursor.ClickPulseAsync(screenPoint, cancellationToken).ConfigureAwait(false);
+                return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+            }
+
             var cdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
             if (cdpPort is null)
             {
-                receipt = ActionReceipt.Failure("requires_cdp_or_child_session", "Refusing browser element_index double-click without cdp_port because browser providers can foreground the target. Provide cdp_port for Chromium or use the child-session/AppBroadcast lane.");
+                receipt = ActionReceipt.Failure("requires_browser_semantic_route", "Browser element did not expose a safe MSAA/IA2 default action and no CDP port was configured; refusing UIA double-click because browser providers can foreground the target.");
                 return ToolResult.Text("❌ " + receipt.ToJson(), true);
             }
 

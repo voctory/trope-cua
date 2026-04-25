@@ -353,7 +353,7 @@ public sealed class UiAutomationTree
     private static bool IsTextInput(UiElementInfo info)
     {
         var type = info.ControlType.ToLowerInvariant();
-        if (!type.Contains("edit") && !type.Contains("document"))
+        if (!type.Contains("edit"))
             return false;
 
         return info.Patterns.Any(p => p.Contains("Value", StringComparison.OrdinalIgnoreCase)
