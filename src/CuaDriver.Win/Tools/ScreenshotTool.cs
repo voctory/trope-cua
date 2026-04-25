@@ -46,9 +46,7 @@ public sealed class ScreenshotTool : IDriverTool
                 }
 
                 capture = WindowCapture.Capture(new IntPtr(windowId.Value), context.State.Config.MaxImageDimension, quality, format);
-                context.State.ImageResizeRatio[(window.Pid, windowId.Value)] = capture.Width > 0
-                    ? capture.OriginalWidth / (double)capture.Width
-                    : 1.0;
+                context.State.ImageResizeRatio[(window.Pid, windowId.Value)] = capture.ResizeRatio;
             }
             else
             {
@@ -67,7 +65,7 @@ public sealed class ScreenshotTool : IDriverTool
 
             var ratioText = window is null
                 ? ""
-                : $" image_resize_ratio={context.State.ImageResizeRatio[(window.Pid, window.WindowId)]:0.###}";
+                : $" image_resize_ratio={capture.ResizeRatio:0.###}";
             var targetText = window is null ? "desktop" : $"window_id={window.WindowId} pid={window.Pid}";
             var structured = new JsonObject
             {
@@ -78,7 +76,7 @@ public sealed class ScreenshotTool : IDriverTool
                 ["out"] = outPath
             };
             if (window is not null)
-                structured["image_resize_ratio"] = context.State.ImageResizeRatio[(window.Pid, window.WindowId)];
+                structured["image_resize_ratio"] = capture.ResizeRatio;
 
             var text = $"✅ screenshot target={targetText} route={capture.Route} width={capture.Width} height={capture.Height} original_width={capture.OriginalWidth} original_height={capture.OriginalHeight} format={format}{ratioText}"
                        + (string.IsNullOrWhiteSpace(outPath) ? "" : $" wrote=\"{outPath}\"");

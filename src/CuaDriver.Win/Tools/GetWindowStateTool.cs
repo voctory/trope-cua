@@ -51,11 +51,12 @@ public sealed class GetWindowStateTool : IDriverTool
             try
             {
                 var capture = WindowCapture.Capture(new IntPtr(windowId), context.State.Config.MaxImageDimension);
-                context.State.ImageResizeRatio[(pid, windowId)] = capture.Width > 0 ? capture.OriginalWidth / (double)capture.Width : 1.0;
+                var resizeRatio = capture.ResizeRatio;
+                context.State.ImageResizeRatio[(pid, windowId)] = resizeRatio;
                 content.Add(ContentBlock.ImageBlock(capture.Data, capture.MimeType));
                 structured["capture"] = ToolJson.Capture(capture);
-                structured["image_resize_ratio"] = context.State.ImageResizeRatio[(pid, windowId)];
-                sb.AppendLine(CultureInfo.InvariantCulture, $"✅ screenshot route={capture.Route} width={capture.Width} height={capture.Height} original_width={capture.OriginalWidth} original_height={capture.OriginalHeight} scale_factor={capture.ScaleFactor:0.###} image_resize_ratio={context.State.ImageResizeRatio[(pid, windowId)]:0.###}");
+                structured["image_resize_ratio"] = resizeRatio;
+                sb.AppendLine(CultureInfo.InvariantCulture, $"✅ screenshot route={capture.Route} width={capture.Width} height={capture.Height} original_width={capture.OriginalWidth} original_height={capture.OriginalHeight} scale_factor={capture.ScaleFactor:0.###} image_resize_ratio={resizeRatio:0.###}");
             }
             catch (Exception ex)
             {

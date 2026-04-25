@@ -5,7 +5,10 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Capture;
 
-public sealed record CapturedImage(byte[] Data, int Width, int Height, int OriginalWidth, int OriginalHeight, double ScaleFactor, string MimeType, string Route);
+public sealed record CapturedImage(byte[] Data, int Width, int Height, int OriginalWidth, int OriginalHeight, double ScaleFactor, string MimeType, string Route)
+{
+    public double ResizeRatio => Width > 0 ? OriginalWidth / (double)Width : 1.0;
+}
 
 public static class WindowCapture
 {
