@@ -56,7 +56,7 @@ public sealed class RecordingSession
             if (string.IsNullOrWhiteSpace(outputDirectory))
                 throw new ArgumentException("output_dir is required when enabling recording.");
 
-            var resolved = ExpandPath(outputDirectory);
+            var resolved = PathHelpers.ExpandUserPathToFullPath(outputDirectory);
             Directory.CreateDirectory(resolved);
             _enabled = true;
             _outputDirectory = resolved;
@@ -334,15 +334,6 @@ public sealed class RecordingSession
         if (start <= 0 || end < start)
             return 0;
         return (long)((end - start) * 1000.0 / Stopwatch.Frequency);
-    }
-
-    private static string ExpandPath(string path)
-    {
-        if (path == "~")
-            return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        if (path.StartsWith("~" + Path.DirectorySeparatorChar, StringComparison.Ordinal) || path.StartsWith("~/", StringComparison.Ordinal))
-            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path[2..]);
-        return Path.GetFullPath(path);
     }
 
     private static int? TryGetInt(JsonObject obj, string key)

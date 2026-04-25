@@ -10,7 +10,7 @@ public static class DebugCrosshair
 {
     public static void WriteCrosshair(WindowInfo window, PointF point, int maxImageDimension, string path)
     {
-        var resolvedPath = ExpandPath(path);
+        var resolvedPath = PathHelpers.ExpandUserPath(path);
         var directory = Path.GetDirectoryName(Path.GetFullPath(resolvedPath));
         if (!string.IsNullOrWhiteSpace(directory))
             Directory.CreateDirectory(directory);
@@ -40,14 +40,5 @@ public static class DebugCrosshair
         graphics.FillEllipse(fill, cx - dotRadius, cy - dotRadius, dotRadius * 2, dotRadius * 2);
 
         bitmap.Save(resolvedPath, ImageFormat.Png);
-    }
-
-    private static string ExpandPath(string path)
-    {
-        if (path == "~")
-            return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        if (path.StartsWith("~" + Path.DirectorySeparatorChar, StringComparison.Ordinal) || path.StartsWith("~/", StringComparison.Ordinal))
-            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path[2..]);
-        return path;
     }
 }

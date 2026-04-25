@@ -20,7 +20,7 @@ public sealed class ReplayTrajectoryTool : IDriverTool
     public async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
         var rawDir = JsonArgs.RequiredString(args, "dir");
-        var dir = ExpandPath(rawDir);
+        var dir = PathHelpers.ExpandUserPathToFullPath(rawDir);
         if (!Directory.Exists(dir))
             return ToolResult.Error($"Trajectory directory does not exist: {dir}");
 
@@ -160,15 +160,6 @@ public sealed class ReplayTrajectoryTool : IDriverTool
 
     private static string FirstText(ToolResult result) =>
         result.Content.FirstOrDefault(c => c.Type == "text" && c.Text is not null)?.Text ?? "tool reported an error";
-
-    private static string ExpandPath(string path)
-    {
-        if (path == "~")
-            return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        if (path.StartsWith("~" + Path.DirectorySeparatorChar, StringComparison.Ordinal) || path.StartsWith("~/", StringComparison.Ordinal))
-            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path[2..]);
-        return Path.GetFullPath(path);
-    }
 
     private sealed record ParsedAction(bool IsValid, string? Tool, JsonObject Arguments, string? Error)
     {

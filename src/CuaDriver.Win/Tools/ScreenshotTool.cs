@@ -58,7 +58,7 @@ public sealed class ScreenshotTool : IDriverTool
             var outPath = JsonArgs.OptionalString(args, "out");
             if (!string.IsNullOrWhiteSpace(outPath))
             {
-                outPath = ExpandPath(outPath);
+                outPath = PathHelpers.ExpandUserPath(outPath);
                 Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outPath))!);
                 File.WriteAllBytes(outPath, capture.Data);
             }
@@ -127,12 +127,4 @@ public sealed class ScreenshotTool : IDriverTool
         };
     }
 
-    private static string ExpandPath(string path)
-    {
-        if (path == "~")
-            return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        if (path.StartsWith("~" + Path.DirectorySeparatorChar, StringComparison.Ordinal) || path.StartsWith("~/", StringComparison.Ordinal))
-            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path[2..]);
-        return path;
-    }
 }
