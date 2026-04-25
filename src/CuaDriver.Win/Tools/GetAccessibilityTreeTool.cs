@@ -17,15 +17,6 @@ public sealed class GetAccessibilityTreeTool : IDriverTool
 
     public async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
-        var old = context.State.Config;
-        context.State.Config = old with { CaptureMode = CaptureMode.Ax };
-        try
-        {
-            return await new GetWindowStateTool().InvokeAsync(args, context, cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            context.State.Config = old;
-        }
+        return await new GetWindowStateTool(CaptureMode.Ax).InvokeAsync(args, context, cancellationToken).ConfigureAwait(false);
     }
 }

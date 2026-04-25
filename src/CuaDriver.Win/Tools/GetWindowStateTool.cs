@@ -9,6 +9,13 @@ namespace CuaDriver.Win.Tools;
 
 public sealed class GetWindowStateTool : IDriverTool
 {
+    private readonly CaptureMode? _modeOverride;
+
+    public GetWindowStateTool(CaptureMode? modeOverride = null)
+    {
+        _modeOverride = modeOverride;
+    }
+
     public ToolDefinition Definition { get; } = new(
         "get_window_state",
         ToolDescriptions.GetWindowState,
@@ -31,7 +38,7 @@ public sealed class GetWindowStateTool : IDriverTool
         if (window.Pid != pid)
             return Task.FromResult(ToolResult.Error($"window_id {windowId} belongs to pid {window.Pid}, not pid {pid}."));
 
-        var mode = context.State.Config.CaptureMode;
+        var mode = _modeOverride ?? context.State.Config.CaptureMode;
         var content = new List<ContentBlock>();
         var sb = new StringBuilder();
         var structured = new JsonObject
