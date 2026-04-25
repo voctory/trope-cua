@@ -8,22 +8,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "install-common.ps1")
 $InstallSelfContained = $SelfContained -or -not $FrameworkDependent
 & (Join-Path $PSScriptRoot "build.ps1") -Configuration $Configuration -Runtime $Runtime -SelfContained:$InstallSelfContained
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-$InstalledExe = Join-Path $InstallDir "cua-driver-win.exe"
-if (Test-Path $InstalledExe) {
-  try {
-    & $InstalledExe daemon-stop --all *> $null
-  } catch {
-    try { & $InstalledExe daemon-stop *> $null } catch {}
-  }
-}
-
-Get-Process cua-driver-win -ErrorAction SilentlyContinue |
-  Where-Object { $_.Path -and ($_.Path -like "$InstallDir*") } |
-  Stop-Process -Force
+Stop-CuaDriverProcessesForInstallDir -InstallDir $InstallDir
 
 Copy-Item -Recurse -Force (Join-Path $Root "artifacts\publish\*") $InstallDir
 
