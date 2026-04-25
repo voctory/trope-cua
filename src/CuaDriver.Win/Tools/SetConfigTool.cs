@@ -48,7 +48,7 @@ public sealed class SetConfigTool : IDriverTool
         {
             "capture_mode" => config with { CaptureMode = DriverConfig.ParseCaptureMode(StringValue(value)) },
             "max_image_dimension" => config with { MaxImageDimension = IntValue(value) },
-            "chromium_debugging_port" => config with { ChromiumDebuggingPort = IsNullOrBlank(value) ? null : IntValue(value) },
+            "chromium_debugging_port" => config with { ChromiumDebuggingPort = IsNullOrBlank(value) ? null : DriverConfig.ValidateTcpPort(IntValue(value)) },
             "allow_parent_sendinput" => config with { AllowParentSendInput = BoolValue(value) },
             "agent_cursor.enabled" => config with { AgentCursor = config.AgentCursor with { Enabled = BoolValue(value) } },
             "agent_cursor.motion.start_handle" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { StartHandle = NumberValue(value) } } },

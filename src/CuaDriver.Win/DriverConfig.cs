@@ -19,6 +19,10 @@ public enum CaptureMode
 public sealed record DriverConfig
 {
     private const string ConfigDirectoryEnvironmentVariable = "CUA_DRIVER_CONFIG_DIR";
+    internal const int MinImageDimension = 0;
+    internal const int MaxImageDimensionLimit = 8192;
+    internal const int MinTcpPort = 1;
+    internal const int MaxTcpPort = 65535;
 
     [JsonPropertyName("schema_version")]
     public int SchemaVersion { get; init; } = 1;
@@ -77,6 +81,8 @@ public sealed record DriverConfig
 
     public DriverConfig Normalize() => this with
     {
+        MaxImageDimension = Math.Clamp(MaxImageDimension, MinImageDimension, MaxImageDimensionLimit),
+        ChromiumDebuggingPort = NormalizeTcpPortOrNull(ChromiumDebuggingPort),
         AgentCursor = AgentCursor.Normalize()
     };
 
@@ -113,6 +119,16 @@ public sealed record DriverConfig
             _ => throw new ArgumentException("capture_mode must be one of som, ax, vision")
         };
     }
+
+    internal static int ValidateTcpPort(int port)
+    {
+        if (port is < MinTcpPort or > MaxTcpPort)
+            throw new ArgumentException($"TCP port must be between {MinTcpPort} and {MaxTcpPort}.");
+        return port;
+    }
+
+    private static int? NormalizeTcpPortOrNull(int? port) =>
+        port is >= MinTcpPort and <= MaxTcpPort ? port : null;
 }
 
 public sealed record AgentCursorConfig
