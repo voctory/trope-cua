@@ -93,7 +93,14 @@ public sealed class LaunchAppTool : IDriverTool
         foreach (var w in windows)
             sb.AppendLine(CultureInfo.InvariantCulture, $"- window_id={w.WindowId} title=\"{w.Title}\" bounds=({w.Bounds.X},{w.Bounds.Y},{w.Bounds.Width},{w.Bounds.Height})");
 
-        return ToolResult.Text(sb.ToString().TrimEnd());
+        var structured = JsonNode.Parse(receipt.ToJson())!.AsObject();
+        structured["requested"] = appId ?? path;
+        structured["pid"] = pid;
+        if (windows.Length > 0 && windows[0].Pid != pid)
+            structured["resolved_pid"] = windows[0].Pid;
+        structured["windows"] = ToolJson.Array(windows, ToolJson.Window);
+
+        return ToolResult.Text(sb.ToString().TrimEnd(), structured, !receipt.Ok);
     }
 
     private static bool MatchesLaunchTarget(WindowInfo window, string? path, string? appId)
