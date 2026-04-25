@@ -94,7 +94,7 @@ internal sealed class TypeTextTool : IDriverTool
                 {
                     var hwnd = context.State.LastTargetHwnd.TryGetValue((target.Pid, window.WindowId), out var clickedTarget)
                         ? clickedTarget
-                        : WindowMessageInput.FindTextInputTarget(window.Hwnd);
+                        : WindowMessageTextTargeting.FindTextInputTarget(window.Hwnd);
                     receipt = await WindowMessageInput.TypeTextAsync(hwnd, target.Text, cancellationToken, target.DelayMs).ConfigureAwait(false);
                 }
             }

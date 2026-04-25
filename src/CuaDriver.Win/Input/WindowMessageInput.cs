@@ -102,32 +102,6 @@ internal static class WindowMessageInput
         }
     }
 
-    public static IntPtr FindTextInputTarget(IntPtr root)
-    {
-        var best = IntPtr.Zero;
-        var bestScore = 0;
-        NativeMethods.EnumChildWindows(root, (child, _) =>
-        {
-            try
-            {
-                var cls = NativeMethods.GetClassName(child).ToLowerInvariant();
-                var score = TextInputClassScore(cls);
-                if (score > bestScore)
-                {
-                    best = child;
-                    bestScore = score;
-                }
-            }
-            catch
-            {
-                // Ignore transient child windows.
-            }
-            return true;
-        }, IntPtr.Zero);
-
-        return best != IntPtr.Zero ? best : root;
-    }
-
     public static async Task<ActionReceipt> PressKeyAsync(IntPtr hwnd, string key, string[] modifiers, CancellationToken ct)
     {
         using var guard = NoRegressionGuard.Capture();
@@ -179,21 +153,6 @@ internal static class WindowMessageInput
         {
             return guard.Finish(ActionReceipt.Failure("hwnd.wm_mousewheel", ex.Message));
         }
-    }
-
-    private static int TextInputClassScore(string className)
-    {
-        if (string.IsNullOrWhiteSpace(className))
-            return 0;
-        if (className.Contains("richedit", StringComparison.Ordinal))
-            return 100;
-        if (className.Contains("edit", StringComparison.Ordinal))
-            return 90;
-        if (className.Contains("scintilla", StringComparison.Ordinal))
-            return 80;
-        if (className.Contains("text", StringComparison.Ordinal))
-            return 50;
-        return 0;
     }
 
     private static void PostMessageOrThrow(IntPtr hwnd, uint message, UIntPtr wParam, IntPtr lParam)
