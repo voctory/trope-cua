@@ -165,7 +165,7 @@ public sealed class RecordingSession
             };
         }
 
-        File.WriteAllText(
+        AtomicFile.WriteAllText(
             Path.Combine(turnDir, "action.json"),
             payload.ToJsonString(JsonUtil.SerializerOptions));
     }
@@ -175,7 +175,7 @@ public sealed class RecordingSession
         try
         {
             var snapshot = context.State.UiaTree.Snapshot(pid, windowId);
-            File.WriteAllText(
+            AtomicFile.WriteAllText(
                 Path.Combine(turnDir, "app_state.json"),
                 JsonSerializer.Serialize(snapshot, JsonUtil.SerializerOptions));
         }
@@ -323,7 +323,7 @@ public sealed class RecordingSession
                 ["sample_count"] = 0,
             }
         };
-        File.WriteAllText(Path.Combine(_outputDirectory!, "session.json"), payload.ToJsonString(JsonUtil.SerializerOptions));
+        AtomicFile.WriteAllText(Path.Combine(_outputDirectory!, "session.json"), payload.ToJsonString(JsonUtil.SerializerOptions));
     }
 
     private static string FirstText(ToolResult result) =>

@@ -72,10 +72,7 @@ public sealed record DriverConfig
 
     public void Save()
     {
-        Directory.CreateDirectory(ConfigDirectory);
-        var tmp = Path.Combine(ConfigDirectory, $"config.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp");
-        File.WriteAllText(tmp, JsonSerializer.Serialize(this, JsonUtil.SerializerOptions));
-        File.Move(tmp, ConfigPath, overwrite: true);
+        AtomicFile.WriteAllText(ConfigPath, JsonSerializer.Serialize(this, JsonUtil.SerializerOptions));
     }
 
     public DriverConfig Normalize() => this with

@@ -216,7 +216,6 @@ public sealed class NamedPipeDaemon
 
     private void WriteInstanceRecord()
     {
-        Directory.CreateDirectory(DaemonRegistryDirectory);
         var record = new DaemonInstanceRecord(
             _instanceId,
             Environment.ProcessId,
@@ -224,9 +223,7 @@ public sealed class NamedPipeDaemon
             _startedAt.ToString("O"),
             Environment.ProcessPath ?? "");
         var path = InstanceRecordPath(_instanceId);
-        var tmp = path + $".{Environment.ProcessId}.tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(record, JsonUtil.SerializerOptions));
-        File.Move(tmp, path, overwrite: true);
+        AtomicFile.WriteAllText(path, JsonSerializer.Serialize(record, JsonUtil.SerializerOptions));
     }
 
     public static bool IsInstanceRunning(DaemonInstanceRecord record) => IsProcessRunning(record.Pid, record.ExePath);
