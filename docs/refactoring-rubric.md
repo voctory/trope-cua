@@ -13,7 +13,7 @@ Observed starting point:
 - Nullable and implicit usings are enabled in the project file.
 - Central package management is enabled through `Directory.Packages.props`; there are currently no direct NuGet package dependencies.
 - Repo-level `global.json`, `Directory.Build.props`, `Directory.Packages.props`, and a committed NuGet lock file are present.
-- A repo-level `.editorconfig` is still pending.
+- Repo-level `.editorconfig` is present for formatting and baseline style rules.
 - Integration coverage exists under `tests/integration` and is run through `scripts/run-tests.ps1`.
 
 Do not treat this baseline as bad by default. It is the map for staged refactors.

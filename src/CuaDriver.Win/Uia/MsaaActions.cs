@@ -1,8 +1,8 @@
+using System.Runtime.InteropServices;
+using System.Windows.Automation;
 using Accessibility;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Win32;
-using System.Runtime.InteropServices;
-using System.Windows.Automation;
 
 namespace CuaDriver.Win.Uia;
 
