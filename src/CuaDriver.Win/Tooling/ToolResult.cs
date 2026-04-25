@@ -4,29 +4,6 @@ using System.Text.Json.Serialization;
 
 namespace CuaDriver.Win.Tooling;
 
-public sealed record ContentBlock
-{
-    [JsonPropertyName("type")]
-    public string Type { get; init; } = "text";
-
-    [JsonPropertyName("text")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Text { get; init; }
-
-    [JsonPropertyName("data")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Data { get; init; }
-
-    [JsonPropertyName("mimeType")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? MimeType { get; init; }
-
-    public static ContentBlock TextBlock(string text) => new() { Type = "text", Text = text };
-
-    public static ContentBlock ImageBlock(byte[] data, string mimeType) =>
-        new() { Type = "image", Data = Convert.ToBase64String(data), MimeType = mimeType };
-}
-
 public sealed record ToolResult
 {
     [JsonPropertyName("content")]
@@ -88,25 +65,4 @@ public sealed record ToolResult
         }
         return string.Join(Environment.NewLine, parts);
     }
-}
-
-public sealed record ToolDefinition(
-    string Name,
-    string Description,
-    JsonObject InputSchema,
-    bool ReadOnly = false,
-    bool Destructive = false,
-    bool Idempotent = true,
-    bool OpenWorld = false);
-
-public interface IDriverTool
-{
-    ToolDefinition Definition { get; }
-    Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken);
-}
-
-public sealed class ToolContext
-{
-    public required DriverState State { get; init; }
-    public required ToolRegistry Registry { get; init; }
 }
