@@ -49,7 +49,7 @@ internal sealed class McpServer
             }
             catch (McpRequestException ex)
             {
-                await WriteResponseAsync(McpProtocol.Error(idNode, ex.Code, ex.Message), cancellationToken).ConfigureAwait(false);
+                await WriteResponseAsync(McpProtocol.Error(idNode ?? ex.Id, ex.Code, ex.Message), cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

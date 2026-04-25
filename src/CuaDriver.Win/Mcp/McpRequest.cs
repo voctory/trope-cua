@@ -12,9 +12,9 @@ internal sealed record McpRequest(JsonObject Raw, JsonNode? Id, string Method)
         var raw = JsonNode.Parse(line) as JsonObject
                   ?? throw new McpRequestException(-32600, "Invalid request: expected a JSON object.");
         var id = raw["id"]?.DeepClone();
-        var method = OptionalString(raw, "method", -32600, "Invalid request: method must be a string.") ?? "";
+        var method = OptionalString(raw, "method", -32600, "Invalid request: method must be a string.", id) ?? "";
         if (string.IsNullOrWhiteSpace(method))
-            throw new McpRequestException(-32600, "Invalid request: missing method.");
+            throw new McpRequestException(-32600, "Invalid request: missing method.", id);
 
         return new McpRequest(raw, id, method);
     }
@@ -33,19 +33,21 @@ internal sealed record McpRequest(JsonObject Raw, JsonNode? Id, string Method)
         return new ToolCallRequest(name, args);
     }
 
-    private static string? OptionalString(JsonObject obj, string key, int errorCode, string errorMessage)
+    private static string? OptionalString(JsonObject obj, string key, int errorCode, string errorMessage, JsonNode? id = null)
     {
         if (!obj.TryGetPropertyValue(key, out var node) || node is null)
             return null;
         if (node.GetValueKind() != JsonValueKind.String)
-            throw new McpRequestException(errorCode, errorMessage);
+            throw new McpRequestException(errorCode, errorMessage, id);
         return node.GetValue<string>();
     }
 }
 
 internal sealed record ToolCallRequest(string Name, JsonObject Args);
 
-internal sealed class McpRequestException(int code, string message) : Exception(message)
+internal sealed class McpRequestException(int code, string message, JsonNode? id = null) : Exception(message)
 {
     public int Code { get; } = code;
+
+    public JsonNode? Id { get; } = id;
 }
