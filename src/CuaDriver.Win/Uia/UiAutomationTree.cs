@@ -5,35 +5,6 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Uia;
 
-internal sealed record UiElementInfo(
-    int ElementIndex,
-    string ControlType,
-    string Name,
-    string AutomationId,
-    string ClassName,
-    RectDto Bounds,
-    bool IsEnabled,
-    bool IsOffscreen,
-    int ProcessId,
-    long NativeWindowHandle,
-    IReadOnlyList<string> Patterns);
-
-internal sealed record UiSnapshot(
-    int Pid,
-    long WindowId,
-    int TurnId,
-    string TreeMarkdown,
-    int ElementCount,
-    IReadOnlyList<UiElementInfo> Elements);
-
-internal sealed record UiaHitTestResult(
-    AutomationElement Element,
-    string ControlType,
-    string Name,
-    bool IsTextInput,
-    bool IsClickAction,
-    Rect BoundingRectangle);
-
 internal sealed class UiAutomationTree
 {
     private readonly object _gate = new();
