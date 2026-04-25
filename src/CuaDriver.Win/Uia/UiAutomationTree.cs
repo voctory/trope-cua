@@ -182,8 +182,8 @@ internal sealed class UiAutomationTree
                 }
                 else if (!wantScrollable)
                 {
-                    var isTextInput = IsTextInput(info);
-                    if (IsClickActionCandidate(info) && area < bestClickArea)
+                    var isTextInput = UiElementClassifier.IsTextInput(info);
+                    if (UiElementClassifier.IsClickActionCandidate(info) && area < bestClickArea)
                     {
                         bestClickArea = area;
                         bestClick = new UiaHitTestResult(element, info.ControlType, info.Name, isTextInput, true, rect);
@@ -238,7 +238,7 @@ internal sealed class UiAutomationTree
                 return;
             }
 
-            var actionable = IsActionable(info);
+            var actionable = UiElementClassifier.IsActionable(info);
             if (actionable)
             {
                 cache[info.ElementIndex] = element;
@@ -295,55 +295,6 @@ internal sealed class UiAutomationTree
             processId == 0 ? fallbackPid : processId,
             nativeWindowHandle,
             patterns);
-    }
-
-    private static bool IsActionable(UiElementInfo info)
-    {
-        if (info.Patterns.Count > 0)
-            return true;
-
-        var type = info.ControlType.ToLowerInvariant();
-        return type.Contains("button")
-               || type.Contains("edit")
-               || type.Contains("hyperlink")
-               || type.Contains("menu item")
-               || type.Contains("list item")
-               || type.Contains("tab item")
-               || type.Contains("tree item")
-               || type.Contains("combo box")
-               || type.Contains("slider")
-               || type.Contains("scroll bar")
-               || type.Contains("document");
-    }
-
-    private static bool IsClickActionCandidate(UiElementInfo info)
-    {
-        var type = info.ControlType.ToLowerInvariant();
-        if (type.Contains("button")
-            || type.Contains("hyperlink")
-            || type == "link"
-            || type.Contains("menu item")
-            || type.Contains("tab item")
-            || type.Contains("list item")
-            || type.Contains("tree item")
-            || type.Contains("check box")
-            || type.Contains("radio button")
-            || type.Contains("combo box")
-            || type.Contains("slider")
-            || type.Contains("scroll bar"))
-            return info.Patterns.Count > 0;
-
-        return false;
-    }
-
-    private static bool IsTextInput(UiElementInfo info)
-    {
-        var type = info.ControlType.ToLowerInvariant();
-        if (!type.Contains("edit"))
-            return false;
-
-        return info.Patterns.Any(p => p.Contains("Value", StringComparison.OrdinalIgnoreCase)
-                                      || p.Contains("Text", StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool IsSameWindowTree(AutomationElement element, AutomationElement root, long windowId)
