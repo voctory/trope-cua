@@ -25,21 +25,22 @@ def test_daemon_list_returns_structured_instances():
     assert "instances" in result["structuredContent"]
 
 
-def test_daemon_stop_all_succeeds_without_instances():
+def test_daemon_stop_missing_instance_reports_error():
+    instance = f"pytest-missing-{uuid.uuid4().hex}"
     env = os.environ.copy()
     env["CUA_DRIVER_JSON"] = "1"
     proc = subprocess.run(
-        [EXE, "daemon-stop", "--all"],
+        [EXE, "daemon-stop", "--instance", instance],
         text=True,
         capture_output=True,
         env=env,
         timeout=30,
     )
 
-    assert proc.returncode == 0
+    assert proc.returncode == 1
     result = json.loads(proc.stdout)
-    assert result["isError"] is False
-    assert "instances" in result["structuredContent"]
+    assert result["isError"] is True
+    assert "daemon not running" in result["content"][0]["text"]
 
 
 def test_daemon_instances_are_isolated():
