@@ -56,12 +56,12 @@ public sealed class GetWindowStateTool : IDriverTool
                 content.Add(ContentBlock.ImageBlock(capture.Data, capture.MimeType));
                 structured["capture"] = ToolJson.Capture(capture);
                 structured["image_resize_ratio"] = resizeRatio;
-                sb.AppendLine(CultureInfo.InvariantCulture, $"✅ screenshot route={capture.Route} width={capture.Width} height={capture.Height} original_width={capture.OriginalWidth} original_height={capture.OriginalHeight} scale_factor={capture.ScaleFactor:0.###} image_resize_ratio={resizeRatio:0.###}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"{ToolText.OkPrefix}screenshot route={capture.Route} width={capture.Width} height={capture.Height} original_width={capture.OriginalWidth} original_height={capture.OriginalHeight} scale_factor={capture.ScaleFactor:0.###} image_resize_ratio={resizeRatio:0.###}");
             }
             catch (Exception ex)
             {
                 structured["capture_error"] = ex.Message;
-                sb.Append("⚠️ screenshot failed: ").AppendLine(ex.Message);
+                sb.Append(ToolText.WarningPrefix + "screenshot failed: ").AppendLine(ex.Message);
             }
         }
 
@@ -77,16 +77,16 @@ public sealed class GetWindowStateTool : IDriverTool
                     ["tree_markdown"] = snapshot.TreeMarkdown,
                     ["elements"] = ToolJson.Array(snapshot.Elements, ToolJson.Element)
                 };
-                sb.AppendLine(CultureInfo.InvariantCulture, $"✅ {window.AppName} — {snapshot.ElementCount} elements, turn {snapshot.TurnId} [uia/{mode.ToString().ToLowerInvariant()} mode]");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"{ToolText.OkPrefix}{window.AppName} — {snapshot.ElementCount} elements, turn {snapshot.TurnId} [uia/{mode.ToString().ToLowerInvariant()} mode]");
                 if (snapshot.ElementCount <= 15)
-                    sb.AppendLine("⚠️ Small UIA tree — target may be custom-rendered. Use CDP, HWND-message pixel route, or child-session lane for raw surfaces.");
+                    sb.AppendLine(ToolText.WarningPrefix + "Small UIA tree — target may be custom-rendered. Use CDP, HWND-message pixel route, or child-session lane for raw surfaces.");
                 if (!string.IsNullOrWhiteSpace(snapshot.TreeMarkdown))
                     sb.AppendLine().AppendLine(snapshot.TreeMarkdown);
             }
             catch (Exception ex)
             {
                 structured["uia_error"] = ex.Message;
-                sb.Append("⚠️ UIA snapshot failed: ").AppendLine(ex.Message);
+                sb.Append(ToolText.WarningPrefix + "UIA snapshot failed: ").AppendLine(ex.Message);
             }
         }
 

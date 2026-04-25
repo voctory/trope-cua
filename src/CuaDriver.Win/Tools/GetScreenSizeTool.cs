@@ -14,7 +14,7 @@ public sealed class GetScreenSizeTool : IDriverTool
         var y = NativeMethods.GetSystemMetrics(NativeMethods.SM_YVIRTUALSCREEN);
         var w = NativeMethods.GetSystemMetrics(NativeMethods.SM_CXVIRTUALSCREEN);
         var h = NativeMethods.GetSystemMetrics(NativeMethods.SM_CYVIRTUALSCREEN);
-        return Task.FromResult(ToolResult.Text($"✅ virtual_screen x={x} y={y} width={w} height={h}", new JsonObject
+        return Task.FromResult(ToolResult.Text($"{ToolText.OkPrefix}virtual_screen x={x} y={y} width={w} height={h}", new JsonObject
         {
             ["x"] = x,
             ["y"] = y,

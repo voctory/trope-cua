@@ -101,7 +101,7 @@ public sealed class ZoomTool : IDriverTool
                 Content =
                 [
                     ContentBlock.ImageBlock(data, "image/jpeg"),
-                    ContentBlock.TextBlock("✅ Zoomed region captured at native resolution. To click a target in this image, use click(pid, window_id, x, y, from_zoom=true) where x,y are pixel coordinates in this zoomed image.")
+                    ContentBlock.TextBlock(ToolText.OkPrefix + "Zoomed region captured at native resolution. To click a target in this image, use click(pid, window_id, x, y, from_zoom=true) where x,y are pixel coordinates in this zoomed image.")
                 ],
                 IsError = false,
                 StructuredContent = structured

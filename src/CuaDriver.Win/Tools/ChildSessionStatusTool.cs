@@ -19,7 +19,7 @@ public sealed class ChildSessionStatusTool : IDriverTool
         if (JsonArgs.OptionalBool(args, "enable"))
         {
             var ok = ChildSessionBroker.TryEnableChildSessions(out var message);
-            lines.Add((ok ? "✅ " : "❌ ") + message);
+            lines.Add((ok ? ToolText.OkPrefix : ToolText.ErrorPrefix) + message);
         }
         lines.Add($"parent_session_id={ChildSessionBroker.CurrentProcessSessionId()}");
         lines.Add($"active_console_session_id={ChildSessionBroker.ActiveConsoleSessionId()}");

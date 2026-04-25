@@ -213,7 +213,7 @@ public static class Program
             lines.Add($"- instance={record.InstanceId} pid={record.Pid} ok={ok} stale={stale}");
         }
 
-        lines[0] = (failed == 0 ? "✅ " : "❌ ") + lines[0] + $" stopped={stopped} failed={failed}";
+        lines[0] = (failed == 0 ? ToolText.OkPrefix : ToolText.ErrorPrefix) + lines[0] + $" stopped={stopped} failed={failed}";
         return ToolResult.Text(string.Join(Environment.NewLine, lines), new JsonObject
         {
             ["stopped"] = stopped,

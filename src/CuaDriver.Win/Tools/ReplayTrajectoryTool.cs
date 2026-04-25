@@ -112,7 +112,7 @@ public sealed class ReplayTrajectoryTool : IDriverTool
             };
         }
 
-        return ToolResult.Text("✅ " + summary, structured, failed > 0 && stopOnError);
+        return ToolResult.Text(ToolText.OkPrefix + summary, structured, failed > 0 && stopOnError);
     }
 
     private static ParsedAction ParseActionJson(string path)

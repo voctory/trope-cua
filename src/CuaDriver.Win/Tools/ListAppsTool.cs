@@ -20,7 +20,7 @@ public sealed class ListAppsTool : IDriverTool
         var shortcuts = AppEnumerator.StartMenuShortcuts();
 
         var sb = new StringBuilder();
-        sb.AppendLine(CultureInfo.InvariantCulture, $"✅ Found {apps.Count} running GUI app(s). Start Menu shortcuts detected: {shortcuts.Count}.");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"{ToolText.OkPrefix}Found {apps.Count} running GUI app(s). Start Menu shortcuts detected: {shortcuts.Count}.");
         foreach (var app in apps)
         {
             sb.Append("- ").Append(app.Name)

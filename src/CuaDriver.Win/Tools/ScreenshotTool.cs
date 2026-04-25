@@ -76,7 +76,7 @@ public sealed class ScreenshotTool : IDriverTool
             if (window is not null)
                 structured["image_resize_ratio"] = capture.ResizeRatio;
 
-            var text = $"✅ screenshot target={targetText} route={capture.Route} width={capture.Width} height={capture.Height} original_width={capture.OriginalWidth} original_height={capture.OriginalHeight} format={format}{ratioText}"
+            var text = $"{ToolText.OkPrefix}screenshot target={targetText} route={capture.Route} width={capture.Width} height={capture.Height} original_width={capture.OriginalWidth} original_height={capture.OriginalHeight} format={format}{ratioText}"
                        + (string.IsNullOrWhiteSpace(outPath) ? "" : $" wrote=\"{outPath}\"");
 
             if (window is null)

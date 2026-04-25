@@ -23,7 +23,7 @@ public sealed class ListWindowsTool : IDriverTool
         var windows = WindowEnumerator.AllWindows(pid, visibleOnly);
 
         var sb = new StringBuilder();
-        sb.AppendLine(CultureInfo.InvariantCulture, $"✅ Found {windows.Count} window(s).");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"{ToolText.OkPrefix}Found {windows.Count} window(s).");
         foreach (var w in windows)
         {
             sb.Append("- ")

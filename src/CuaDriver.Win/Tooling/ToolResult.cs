@@ -24,7 +24,7 @@ public sealed record ToolResult
     public static ToolResult JsonText(string prefix, JsonObject structuredContent, bool isError = false) =>
         Text(prefix + structuredContent.ToJsonString(JsonUtil.SerializerOptions), structuredContent, isError);
 
-    public static ToolResult Error(string text) => Text("❌ " + text, true);
+    public static ToolResult Error(string text) => Text(ToolText.ErrorPrefix + text, true);
 
     public string FirstText(string fallback = "") =>
         Content.FirstOrDefault(c => c.Type == "text" && c.Text is not null)?.Text ?? fallback;

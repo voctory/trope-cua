@@ -21,7 +21,7 @@ public sealed class SetAgentCursorEnabledTool : IDriverTool
         };
         context.State.SaveConfig(next, "agent_cursor.enabled");
         var structured = context.State.AgentCursor.StateObject();
-        return Task.FromResult(ToolResult.JsonText("✅ ", structured));
+        return Task.FromResult(ToolResult.JsonText(ToolText.OkPrefix, structured));
     }
 }
 
@@ -32,7 +32,7 @@ public sealed class GetAgentCursorStateTool : IDriverTool
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
         var structured = context.State.AgentCursor.StateObject();
-        return Task.FromResult(ToolResult.JsonText("✅ ", structured));
+        return Task.FromResult(ToolResult.JsonText(ToolText.OkPrefix, structured));
     }
 }
 
@@ -68,7 +68,7 @@ public sealed class SetAgentCursorMotionTool : IDriverTool
 
         var structured = JsonSerializer.SerializeToNode(context.State.AgentCursor.Motion, JsonUtil.SerializerOptions)?.AsObject()
                          ?? new JsonObject();
-        return Task.FromResult(ToolResult.JsonText("✅ ", structured));
+        return Task.FromResult(ToolResult.JsonText(ToolText.OkPrefix, structured));
     }
 
     private static AgentCursorMotionConfig UpdatedMotion(AgentCursorMotionConfig current, JsonObject args) =>

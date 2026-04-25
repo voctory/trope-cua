@@ -91,7 +91,7 @@ public sealed class LaunchAppTool : IDriverTool
             allowForegroundChange: true,
             allowUnsafeRoute: true);
         var sb = new StringBuilder();
-        sb.AppendLine("✅ " + receipt.ToJson());
+        sb.AppendLine(ToolText.OkPrefix + receipt.ToJson());
         sb.Append("Launch requested: ").AppendLine(appId ?? path);
         if (pid is not null)
             sb.AppendLine(CultureInfo.InvariantCulture, $"pid={pid}");

@@ -12,14 +12,14 @@ public sealed class GetCursorPositionTool : IDriverTool
     {
         if (!NativeMethods.GetCursorPos(out var p))
         {
-            return Task.FromResult(ToolResult.Text("❌ GetCursorPos failed.", new JsonObject
+            return Task.FromResult(ToolResult.Text(ToolText.ErrorPrefix + "GetCursorPos failed.", new JsonObject
             {
                 ["ok"] = false,
                 ["route"] = "user32.getcursorpos"
             }, isError: true));
         }
 
-        return Task.FromResult(ToolResult.Text($"✅ cursor x={p.X} y={p.Y}", new JsonObject
+        return Task.FromResult(ToolResult.Text($"{ToolText.OkPrefix}cursor x={p.X} y={p.Y}", new JsonObject
         {
             ["ok"] = true,
             ["route"] = "user32.getcursorpos",

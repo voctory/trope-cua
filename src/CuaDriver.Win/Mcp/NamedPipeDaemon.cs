@@ -71,7 +71,7 @@ public sealed class NamedPipeDaemon
                     {
                         "call" when !string.IsNullOrWhiteSpace(request.Name) => await CallAsync(request, shutdown.Token).ConfigureAwait(false),
                         "status" => new DaemonResponse(true, StatusResult(), null),
-                        "shutdown" => new DaemonResponse(true, ToolResult.Text("✅ daemon shutdown requested", StatusObject()), null),
+                        "shutdown" => new DaemonResponse(true, ToolResult.Text(ToolText.OkPrefix + "daemon shutdown requested", StatusObject()), null),
                         _ => new DaemonResponse(false, null, "Invalid daemon request")
                     };
 
@@ -160,7 +160,7 @@ public sealed class NamedPipeDaemon
     private ToolResult StatusResult()
     {
         var structured = StatusObject();
-        var text = $"✅ daemon: running instance={_instanceId} pid={Environment.ProcessId} pipe={InstancePipeName} started_at={_startedAt:O}";
+        var text = $"{ToolText.OkPrefix}daemon: running instance={_instanceId} pid={Environment.ProcessId} pipe={InstancePipeName} started_at={_startedAt:O}";
         return ToolResult.Text(text, structured);
     }
 
@@ -180,7 +180,7 @@ public sealed class NamedPipeDaemon
     {
         var records = RegisteredInstances();
         var structuredRecords = new JsonArray();
-        var lines = new List<string> { $"✅ daemon instances: {records.Count}" };
+        var lines = new List<string> { $"{ToolText.OkPrefix}daemon instances: {records.Count}" };
         foreach (var record in records)
         {
             var running = IsInstanceRunning(record);

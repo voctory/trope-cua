@@ -26,8 +26,8 @@ public sealed class SetRecordingTool : IDriverTool
             context.State.Recording.Configure(enabled, enabled ? JsonArgs.OptionalString(args, "output_dir") : null);
             var state = context.State.Recording.CurrentState();
             var text = state.Enabled
-                ? $"✅ Recording enabled -> {state.OutputDirectory}"
-                : "✅ Recording disabled.";
+                ? $"{ToolText.OkPrefix}Recording enabled -> {state.OutputDirectory}"
+                : ToolText.OkPrefix + "Recording disabled.";
             return Task.FromResult(ToolResult.Text(text, RecordingStateObject(state)));
         }
         catch (Exception ex)
@@ -53,8 +53,8 @@ public sealed class GetRecordingStateTool : IDriverTool
     {
         var state = context.State.Recording.CurrentState();
         var text = state.Enabled
-            ? $"✅ recording: enabled output_dir={state.OutputDirectory} next_turn={state.NextTurn}"
-            : "✅ recording: disabled";
+            ? $"{ToolText.OkPrefix}recording: enabled output_dir={state.OutputDirectory} next_turn={state.NextTurn}"
+            : ToolText.OkPrefix + "recording: disabled";
         return Task.FromResult(ToolResult.Text(text, SetRecordingTool.RecordingStateObject(state)));
     }
 }

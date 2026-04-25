@@ -11,6 +11,6 @@ public sealed class GetConfigTool : IDriverTool
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
         var node = JsonSerializer.SerializeToNode(context.State.Config, JsonUtil.SerializerOptions)?.AsObject() ?? new JsonObject();
-        return Task.FromResult(ToolResult.JsonText("✅ ", node));
+        return Task.FromResult(ToolResult.JsonText(ToolText.OkPrefix, node));
     }
 }

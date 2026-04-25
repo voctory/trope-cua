@@ -24,7 +24,7 @@ public sealed class CheckPermissionsTool : IDriverTool
         var appBroadcastStatus = AppBroadcastInputInjector.Status();
         var lines = new List<string>
         {
-            "✅ Windows permission/capability probe",
+            ToolText.OkPrefix + "Windows permission/capability probe",
             $"admin={admin}",
             $"wgc_supported_by_os={wgcSupported}",
             $"wgc_status=\"{WgcCaptureSeam.Status()}\"",
