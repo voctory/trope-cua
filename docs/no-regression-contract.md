@@ -16,6 +16,8 @@ Required fields:
 }
 ```
 
+`ok=true` is not sufficient for background automation. A route may be an explicit local escape hatch and still return `background_safe=false`. Agents must require `background_safe=true`, `cursor_moved=false`, and `foreground_changed=false` before treating an action as safe.
+
 Default same-session rules:
 
 - Do not call `SendInput`.

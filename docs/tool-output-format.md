@@ -29,4 +29,6 @@ Tools should return `structuredContent` whenever the caller needs to make a rout
 }
 ```
 
+`ok=true` means the requested route completed. It does not by itself mean the route was safe for background automation. Treat a mutating action as background-safe only when `background_safe=true`, `cursor_moved=false`, and `foreground_changed=false`.
+
 When a tool cannot safely act, `structuredContent.route` should name the missing or refused lane, such as `requires_cdp_or_child_session`, `requires_child_session_or_appbroadcast`, or `requires_background_launch_lane`.
