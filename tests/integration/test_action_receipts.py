@@ -16,6 +16,13 @@ def test_legacy_allow_foreground_flag_is_refused():
     assert "unsafe_allow_foreground" in result["structuredContent"]["reason"]
 
 
+def test_launch_rejects_mixed_target_aliases():
+    result = call("launch_app", {"name": "notepad", "app_id": "example.app"})
+
+    assert result["isError"] is True
+    assert "either app_id or path/exe/name" in result["content"][0]["text"]
+
+
 def test_explicit_cdp_port_is_range_checked():
     result = call("browser_eval", {"expression": "1 + 1", "cdp_port": 70000})
 

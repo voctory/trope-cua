@@ -27,11 +27,13 @@ public sealed class LaunchAppTool : IDriverTool
 
     public async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
-        var path = JsonArgs.OptionalString(args, "path")
-                   ?? JsonArgs.OptionalString(args, "exe")
-                   ?? JsonArgs.OptionalString(args, "name");
-        var appId = JsonArgs.OptionalString(args, "app_id")
-                    ?? JsonArgs.OptionalString(args, "bundle_id");
+        var path = FirstNonBlank(
+            JsonArgs.OptionalString(args, "path"),
+            JsonArgs.OptionalString(args, "exe"),
+            JsonArgs.OptionalString(args, "name"));
+        var appId = FirstNonBlank(
+            JsonArgs.OptionalString(args, "app_id"),
+            JsonArgs.OptionalString(args, "bundle_id"));
         var arguments = JsonArgs.OptionalString(args, "arguments") ?? "";
         if (args.ContainsKey("allow_foreground"))
         {
@@ -45,6 +47,8 @@ public sealed class LaunchAppTool : IDriverTool
 
         if (string.IsNullOrWhiteSpace(path) && string.IsNullOrWhiteSpace(appId))
             return ToolResult.Error("Provide path, exe, name, or app_id.");
+        if (!string.IsNullOrWhiteSpace(path) && !string.IsNullOrWhiteSpace(appId))
+            return ToolResult.Error("Provide either app_id or path/exe/name, not both.");
 
         if (!unsafeAllowForeground)
         {
@@ -122,4 +126,7 @@ public sealed class LaunchAppTool : IDriverTool
         => window.AppName.Equals("cua-driver-win", StringComparison.OrdinalIgnoreCase)
            || window.Title.Contains("GDI+", StringComparison.OrdinalIgnoreCase)
            || window.ClassName.Contains("WindowsForms", StringComparison.OrdinalIgnoreCase);
+
+    private static string? FirstNonBlank(params string?[] values)
+        => values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 }
