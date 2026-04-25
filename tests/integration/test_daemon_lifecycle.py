@@ -129,19 +129,59 @@ def test_parallel_daemon_cursors_remain_isolated():
                 process.wait(timeout=5)
 
 
-def start_daemon(instance):
+def test_agent_cursor_idle_hide_lifecycle(tmp_path):
+    instance = f"pytest-cursor-idle-{uuid.uuid4().hex}"
+    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    process = None
+
+    try:
+        process = start_daemon(instance, env)
+        wait_for_status(instance, env)
+        screen = call_instance(instance, "get_screen_size", extra_env=env)["structuredContent"]
+        x = screen["x"] + min(120, max(0, screen["width"] - 1))
+        y = screen["y"] + min(140, max(0, screen["height"] - 1))
+
+        motion = call_instance(instance, "set_agent_cursor_motion", {"idle_hide_ms": 100}, extra_env=env)
+        assert motion["isError"] is False
+
+        moved = call_instance(instance, "move_cursor", {"x": x, "y": y}, extra_env=env)
+        assert moved["isError"] is False
+
+        visible = call_instance(instance, "get_agent_cursor_state", extra_env=env)
+        assert visible["structuredContent"]["visible"] is True
+
+        time.sleep(0.8)
+        hidden = call_instance(instance, "get_agent_cursor_state", extra_env=env)
+        assert hidden["structuredContent"]["visible"] is False
+    finally:
+        stop_daemon(instance, env)
+        if process is not None:
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+
+
+def start_daemon(instance, extra_env=None):
+    env = os.environ.copy()
+    if extra_env:
+        env.update(extra_env)
     return subprocess.Popen(
         [EXE, "serve", "--instance", instance],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         text=True,
+        env=env,
     )
 
 
-def call_instance(instance, tool, args=None):
+def call_instance(instance, tool, args=None, extra_env=None):
     env = os.environ.copy()
     env["CUA_DRIVER_JSON"] = "1"
+    if extra_env:
+        env.update(extra_env)
     proc = subprocess.run(
         [EXE, "call", "--instance", instance, tool, json.dumps(args or {})],
         text=True,
@@ -154,9 +194,11 @@ def call_instance(instance, tool, args=None):
     return json.loads(proc.stdout)
 
 
-def wait_for_status(instance):
+def wait_for_status(instance, extra_env=None):
     env = os.environ.copy()
     env["CUA_DRIVER_JSON"] = "1"
+    if extra_env:
+        env.update(extra_env)
     last_stdout = ""
     last_stderr = ""
     for _ in range(50):
@@ -178,9 +220,11 @@ def wait_for_status(instance):
     raise AssertionError(f"daemon {instance} did not start\nstdout={last_stdout}\nstderr={last_stderr}")
 
 
-def stop_daemon(instance):
+def stop_daemon(instance, extra_env=None):
     env = os.environ.copy()
     env["CUA_DRIVER_JSON"] = "1"
+    if extra_env:
+        env.update(extra_env)
     subprocess.run(
         [EXE, "daemon-stop", "--instance", instance],
         text=True,
