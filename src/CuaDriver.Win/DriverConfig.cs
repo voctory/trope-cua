@@ -59,7 +59,7 @@ public sealed record DriverConfig
                 return new DriverConfig();
 
             var json = File.ReadAllText(ConfigPath);
-            return JsonSerializer.Deserialize<DriverConfig>(json, JsonUtil.SerializerOptions) ?? new DriverConfig();
+            return (JsonSerializer.Deserialize<DriverConfig>(json, JsonUtil.SerializerOptions) ?? new DriverConfig()).Normalize();
         }
         catch
         {
@@ -75,9 +75,14 @@ public sealed record DriverConfig
         File.Move(tmp, ConfigPath, overwrite: true);
     }
 
+    public DriverConfig Normalize() => this with
+    {
+        AgentCursor = AgentCursor.Normalize()
+    };
+
     public DriverConfig With(string key, string value)
     {
-        return key.ToLowerInvariant() switch
+        var next = key.ToLowerInvariant() switch
         {
             "capture_mode" => this with { CaptureMode = ParseCaptureMode(value) },
             "max_image_dimension" => this with { MaxImageDimension = int.Parse(value, CultureInfo.InvariantCulture) },
@@ -94,6 +99,7 @@ public sealed record DriverConfig
             "agent_cursor.motion.idle_hide_ms" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { IdleHideMs = double.Parse(value, CultureInfo.InvariantCulture) } } },
             _ => throw new ArgumentException($"Unknown config key: {key}")
         };
+        return next.Normalize();
     }
 
     public static CaptureMode ParseCaptureMode(string value)
@@ -116,6 +122,11 @@ public sealed record AgentCursorConfig
 
     [JsonPropertyName("motion")]
     public AgentCursorMotionConfig Motion { get; init; } = new();
+
+    public AgentCursorConfig Normalize() => this with
+    {
+        Motion = Motion.Normalize()
+    };
 }
 
 public sealed record AgentCursorMotionConfig
@@ -143,6 +154,21 @@ public sealed record AgentCursorMotionConfig
 
     [JsonPropertyName("idle_hide_ms")]
     public double IdleHideMs { get; init; } = 20000;
+
+    public AgentCursorMotionConfig Normalize() => this with
+    {
+        StartHandle = Clamp(StartHandle, 0, 1),
+        EndHandle = Clamp(EndHandle, 0, 1),
+        ArcSize = Clamp(ArcSize, 0, 1),
+        ArcFlow = Clamp(ArcFlow, -1, 1),
+        Spring = Clamp(Spring, 0.3, 1),
+        GlideDurationMs = Clamp(GlideDurationMs, 50, 5000),
+        DwellAfterClickMs = Clamp(DwellAfterClickMs, 0, 5000),
+        IdleHideMs = Clamp(IdleHideMs, 0, 60000)
+    };
+
+    private static double Clamp(double value, double min, double max) =>
+        double.IsFinite(value) ? Math.Min(max, Math.Max(min, value)) : min;
 }
 
 public sealed class DriverState

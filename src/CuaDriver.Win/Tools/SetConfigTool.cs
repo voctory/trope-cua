@@ -24,11 +24,14 @@ public sealed class SetConfigTool : IDriverTool
 
         try
         {
-            var next = WithValue(context.State.Config, key, value);
+            var next = WithValue(context.State.Config, key, value).Normalize();
             next.Save();
             context.State.Config = next;
             ApplyLiveConfig(key, next, context);
-            return Task.FromResult(ToolResult.Text("✅ " + JsonSerializer.Serialize(next, JsonUtil.SerializerOptions)));
+
+            var serialized = JsonSerializer.Serialize(next, JsonUtil.SerializerOptions);
+            var structured = JsonNode.Parse(serialized)?.AsObject() ?? new JsonObject();
+            return Task.FromResult(ToolResult.Text("✅ " + serialized, structured));
         }
         catch (Exception ex)
         {
@@ -88,8 +91,15 @@ public sealed class SetConfigTool : IDriverTool
     private static int IntValue(JsonNode value) =>
         value.GetValueKind() == JsonValueKind.Number ? value.GetValue<int>() : int.Parse(StringValue(value), CultureInfo.InvariantCulture);
 
-    private static double NumberValue(JsonNode value) =>
-        value.GetValueKind() == JsonValueKind.Number ? value.GetValue<double>() : double.Parse(StringValue(value), CultureInfo.InvariantCulture);
+    private static double NumberValue(JsonNode value)
+    {
+        var number = value.GetValueKind() == JsonValueKind.Number
+            ? value.GetValue<double>()
+            : double.Parse(StringValue(value), CultureInfo.InvariantCulture);
+        if (!double.IsFinite(number))
+            throw new ArgumentException("Config number values must be finite.");
+        return number;
+    }
 
     private static bool BoolValue(JsonNode value) =>
         value.GetValueKind() == JsonValueKind.True ||
