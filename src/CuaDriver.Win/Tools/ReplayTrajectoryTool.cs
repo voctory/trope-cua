@@ -42,16 +42,33 @@ public sealed class ReplayTrajectoryTool : IDriverTool
         {
             cancellationToken.ThrowIfCancellationRequested();
             var turnDir = turnDirs[i];
+            var turnName = Path.GetFileName(turnDir);
             var parsed = ParseActionJson(Path.Combine(turnDir, "action.json"));
-            if (parsed is null)
+            if (!parsed.IsValid)
+            {
+                failed++;
+                var error = parsed.Error ?? "Invalid action.json.";
+                firstFailure ??= new ReplayFailure(turnName, parsed.Tool ?? "action.json", error);
+                turns.Add(new JsonObject
+                {
+                    ["turn"] = turnName,
+                    ["tool"] = parsed.Tool,
+                    ["ok"] = false,
+                    ["replay_error"] = true,
+                    ["error"] = error
+                });
+                if (stopOnError)
+                    break;
+
                 continue;
+            }
 
             attempted++;
-            var result = await context.Registry.InvokeAsync(parsed.Value.Tool, parsed.Value.Arguments, context, cancellationToken).ConfigureAwait(false);
+            var result = await context.Registry.InvokeAsync(parsed.Tool!, parsed.Arguments, context, cancellationToken).ConfigureAwait(false);
             turns.Add(new JsonObject
             {
-                ["turn"] = Path.GetFileName(turnDir),
-                ["tool"] = parsed.Value.Tool,
+                ["turn"] = turnName,
+                ["tool"] = parsed.Tool,
                 ["ok"] = !result.IsError,
                 ["result_summary"] = FirstText(result),
                 ["result_structured"] = result.StructuredContent?.DeepClone()
@@ -59,7 +76,7 @@ public sealed class ReplayTrajectoryTool : IDriverTool
             if (result.IsError)
             {
                 failed++;
-                firstFailure ??= new ReplayFailure(Path.GetFileName(turnDir), parsed.Value.Tool, FirstText(result));
+                firstFailure ??= new ReplayFailure(turnName, parsed.Tool!, FirstText(result));
                 if (stopOnError)
                     break;
             }
@@ -98,31 +115,46 @@ public sealed class ReplayTrajectoryTool : IDriverTool
         return ToolResult.Text("✅ " + summary, structured, failed > 0 && stopOnError);
     }
 
-    private static ParsedAction? ParseActionJson(string path)
+    private static ParsedAction ParseActionJson(string path)
     {
         try
         {
             if (!File.Exists(path))
-                return null;
+                return ParsedAction.Invalid("Missing action.json.");
+
             using var document = JsonDocument.Parse(File.ReadAllText(path));
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+                return ParsedAction.Invalid("action.json root must be a JSON object.");
+
             if (!document.RootElement.TryGetProperty("tool", out var toolNode))
-                return null;
+                return ParsedAction.Invalid("action.json is missing required string field tool.");
+
             var tool = toolNode.GetString();
             if (string.IsNullOrWhiteSpace(tool))
-                return null;
+                return ParsedAction.Invalid("action.json field tool must be a non-empty string.");
 
             var args = new JsonObject();
-            if (document.RootElement.TryGetProperty("arguments", out var argumentsNode) &&
-                argumentsNode.ValueKind == JsonValueKind.Object)
+            if (document.RootElement.TryGetProperty("arguments", out var argumentsNode))
             {
+                if (argumentsNode.ValueKind != JsonValueKind.Object)
+                    return ParsedAction.Invalid("action.json field arguments must be a JSON object.", tool);
+
                 args = JsonNode.Parse(argumentsNode.GetRawText())?.AsObject() ?? new JsonObject();
             }
 
-            return new ParsedAction(tool, args);
+            return ParsedAction.Valid(tool, args);
+        }
+        catch (JsonException ex)
+        {
+            return ParsedAction.Invalid($"Invalid action.json: {ex.Message}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ParsedAction.Invalid($"Invalid action.json: {ex.Message}");
         }
         catch
         {
-            return null;
+            return ParsedAction.Invalid("Failed to parse action.json.");
         }
     }
 
@@ -138,6 +170,12 @@ public sealed class ReplayTrajectoryTool : IDriverTool
         return Path.GetFullPath(path);
     }
 
-    private readonly record struct ParsedAction(string Tool, JsonObject Arguments);
+    private sealed record ParsedAction(bool IsValid, string? Tool, JsonObject Arguments, string? Error)
+    {
+        public static ParsedAction Valid(string tool, JsonObject arguments) => new(true, tool, arguments, null);
+
+        public static ParsedAction Invalid(string error, string? tool = null) => new(false, tool, new JsonObject(), error);
+    }
+
     private sealed record ReplayFailure(string Turn, string Tool, string Error);
 }
