@@ -12,7 +12,7 @@ The Windows driver intentionally does **not** treat `SendInput` as the normal au
 
 ## What is included
 
-- .NET 8 Windows console/MCP server project.
+- .NET 10 Windows console/MCP server project.
 - Tool names for app/window discovery, target-window state, screenshots, zoom, clicks, text entry, keys, scrolling, value setting, permissions, config, a click-through visual agent cursor overlay, trajectory recording, and replay.
 - UIA element-index snapshots with an in-memory `(pid, window_id) -> element_index -> AutomationElement` cache for MCP/daemon usage.
 - Cursor/foreground no-regression guard around mutating actions.
@@ -30,7 +30,7 @@ The Windows driver intentionally does **not** treat `SendInput` as the normal au
 
 ## Build
 
-On Windows 10 1903+ or Windows 11 with the .NET 8 SDK or newer:
+On Windows 10 1903+ or Windows 11 with the .NET 10 SDK or newer:
 
 ```powershell
 cd cua-driver-win

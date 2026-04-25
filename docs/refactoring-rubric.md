@@ -9,10 +9,11 @@ Use this document as a working rubric. It is not a style checklist for its own s
 Observed starting point:
 
 - One production project: `src/CuaDriver.Win/CuaDriver.Win.csproj`.
-- Current target: `net8.0-windows10.0.19041.0`.
+- Current target: `net10.0-windows10.0.19041.0`.
 - Nullable and implicit usings are enabled in the project file.
-- `System.Drawing.Common` is versioned directly in the project file.
-- No repo-level `global.json`, `.editorconfig`, `Directory.Build.props`, `Directory.Packages.props`, or committed NuGet lock file yet.
+- Central package management is enabled through `Directory.Packages.props`; there are currently no direct NuGet package dependencies.
+- Repo-level `global.json`, `Directory.Build.props`, `Directory.Packages.props`, and a committed NuGet lock file are present.
+- A repo-level `.editorconfig` is still pending.
 - Integration coverage exists under `tests/integration` and is run through `scripts/run-tests.ps1`.
 
 Do not treat this baseline as bad by default. It is the map for staged refactors.
@@ -45,7 +46,7 @@ Avoid big-bang reshapes. A refactor commit should be reviewable without needing 
 
 ## Build Policy
 
-Preferred future target for new or heavily refactored work is the current LTS .NET line, using a Windows target framework when desktop APIs require it. This repo currently targets .NET 8 for compatibility, so target framework changes should be planned and tested as their own commit.
+The repo minimum is .NET 10, using a Windows target framework because desktop APIs are part of the product surface. Runtime or target framework changes should remain isolated from behavioral refactors.
 
 Rules:
 
