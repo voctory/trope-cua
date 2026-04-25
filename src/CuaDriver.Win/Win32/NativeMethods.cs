@@ -94,6 +94,13 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
 
+    [DllImport("oleacc.dll")]
+    public static extern int AccessibleObjectFromWindow(
+        IntPtr hwnd,
+        uint dwObjectId,
+        ref Guid riid,
+        [MarshalAs(UnmanagedType.Interface)] out Accessibility.IAccessible accessible);
+
     [DllImport("user32.dll", SetLastError = true)]
     public static extern IntPtr GetDC(IntPtr hWnd);
 
@@ -157,6 +164,9 @@ internal static class NativeMethods
 
     public const uint PW_CLIENTONLY = 0x00000001;
     public const uint PW_RENDERFULLCONTENT = 0x00000002;
+
+    public const uint OBJID_CLIENT = unchecked((uint)-4);
+    public static readonly Guid IID_IAccessible = new("618736e0-3c3d-11cf-810c-00aa00389b71");
 
     public const int WS_EX_TRANSPARENT = 0x00000020;
     public const int WS_EX_LAYERED = 0x00080000;

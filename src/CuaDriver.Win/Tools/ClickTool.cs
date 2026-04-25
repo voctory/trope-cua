@@ -82,6 +82,14 @@ public sealed class ClickTool : IDriverTool
                 var rect = element.Current.BoundingRectangle;
                 if (!rect.IsEmpty)
                 {
+                    var msaaReceipt = MsaaActions.DoDefaultActionAtElement(window.Hwnd, element);
+                    if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
+                    {
+                        if (msaaReceipt.Ok)
+                            await AgentCursorTooling.PulseAtElementAsync(context, element, cancellationToken).ConfigureAwait(false);
+                        return ToolResult.Text((msaaReceipt.Ok ? "✅ " : "❌ ") + msaaReceipt.ToJson(), !msaaReceipt.Ok);
+                    }
+
                     var cdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
                     if (cdpPort is not null)
                     {
@@ -97,11 +105,17 @@ public sealed class ClickTool : IDriverTool
                 }
 
                 receipt = BrowserNavigation.RefuseForegroundOnlyLinkRoute(UiAutomationActions.TryGetValue(element))
-                          ?? ActionReceipt.Failure("requires_cdp_or_child_session", "Refusing browser UIA Invoke from element_index because browser providers can foreground the target. Provide cdp_port for Chromium or use the child-session/AppBroadcast lane.");
+                          ?? ActionReceipt.Failure("requires_browser_semantic_route", "Browser element did not expose a safe MSAA default action and no CDP port was configured; refusing UIA Invoke because browser providers can foreground the target.");
                 return ToolResult.Text("❌ " + receipt.ToJson(), true);
             }
 
             receipt = await UiAutomationActions.InvokeElementAsync(element, action, cancellationToken).ConfigureAwait(false);
+            if (!receipt.Ok && !receipt.ForegroundChanged && !receipt.CursorMoved)
+            {
+                var msaaReceipt = MsaaActions.DoDefaultActionAtElement(window.Hwnd, element);
+                if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
+                    receipt = msaaReceipt;
+            }
             context.State.LastUiaTextTarget[(pid, windowId.Value)] = element;
             await AgentCursorTooling.PulseAtElementAsync(context, element, cancellationToken).ConfigureAwait(false);
         }
@@ -165,6 +179,14 @@ public sealed class ClickTool : IDriverTool
                 await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
                 if (BrowserWindowClassifier.IsLikelyBrowser(window))
                 {
+                    var msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, resolved.ScreenPoint);
+                    if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
+                    {
+                        if (msaaReceipt.Ok)
+                            await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
+                        return ToolResult.Text((msaaReceipt.Ok ? "✅ " : "❌ ") + msaaReceipt.ToJson(), !msaaReceipt.Ok);
+                    }
+
                     var hitCdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
                     if (hitCdpPort is not null)
                     {
@@ -183,11 +205,17 @@ public sealed class ClickTool : IDriverTool
                         return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
                     }
 
-                    receipt = ActionReceipt.Failure("requires_cdp_or_browser_link_value", "Browser UIA hit-test found an actionable element, but it did not expose a URL value and no CDP port was configured; refusing UIA Invoke because browser providers commonly raise/focus the window.");
+                    receipt = ActionReceipt.Failure("requires_browser_semantic_route", "Browser UIA hit-test found an actionable element, but it did not expose a safe MSAA default action, URL value, or CDP route; refusing UIA Invoke because browser providers commonly raise/focus the window.");
                     return ToolResult.Text("❌ " + receipt.ToJson(), true);
                 }
 
                 var hitReceipt = await UiAutomationActions.InvokeElementAsync(hit.Element, action, cancellationToken).ConfigureAwait(false);
+                if (!hitReceipt.Ok && !hitReceipt.ForegroundChanged && !hitReceipt.CursorMoved)
+                {
+                    var msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, resolved.ScreenPoint);
+                    if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
+                        hitReceipt = msaaReceipt;
+                }
                 if (hitReceipt.Ok)
                 {
                     receipt = hitReceipt with { Route = "uia.hit_test." + hitReceipt.Route };
@@ -206,9 +234,20 @@ public sealed class ClickTool : IDriverTool
                 return ToolResult.Text("✅ " + receipt.ToJson(), false);
             }
 
+            await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
+            if (BrowserWindowClassifier.IsLikelyBrowser(window) && modifiers.Length == 0)
+            {
+                var msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, resolved.ScreenPoint);
+                if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
+                {
+                    if (msaaReceipt.Ok)
+                        await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
+                    return ToolResult.Text((msaaReceipt.Ok ? "✅ " : "❌ ") + msaaReceipt.ToJson(), !msaaReceipt.Ok);
+                }
+            }
+
             var cdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
             var cdp = new CdpBrowserBridge(context.State.UiaTree);
-            await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
             receipt = await cdp.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, cdpPort, cancellationToken, modifiers).ConfigureAwait(false)
                       ?? (BrowserWindowClassifier.IsLikelyBrowser(window)
                           ? ActionReceipt.Failure("requires_cdp_or_uia_hit_test", "Browser web content did not expose an actionable UIA target and no CDP port was configured; refusing to report a blind PostMessage click as delivered.")
