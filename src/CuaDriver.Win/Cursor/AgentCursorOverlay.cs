@@ -47,6 +47,10 @@ public sealed record CursorSnapshot(bool Visible, int? ScreenX, int? ScreenY);
 public sealed class AgentCursorOverlay
 {
     private const string OverlayWindowTitle = "CuaDriverWin.AgentCursorOverlay";
+    private const double RestingHeadingRadians = Math.PI / 4;
+    private const float CursorTipOffset = 16f;
+    private const float SurfaceHalfSize = 38f;
+    private const int Supersample = 3;
 
     private readonly object _gate = new();
     private OverlayForm? _form;
@@ -355,7 +359,7 @@ public sealed class AgentCursorOverlay
             _motion = motion;
             if (!_hasPosition)
             {
-                _current = ToLocal(screenX, screenY);
+                _current = VisualPositionForTip(ToLocal(screenX, screenY), DpiScaleForPoint(screenX, screenY));
                 _start = _current;
                 _target = _current;
                 _control1 = _current;
@@ -386,7 +390,7 @@ public sealed class AgentCursorOverlay
             }
 
             _motion = motion;
-            var target = ToLocal(screenX, screenY);
+            var target = VisualPositionForTip(ToLocal(screenX, screenY), DpiScaleForPoint(screenX, screenY));
             if (!_hasPosition)
             {
                 _current = InitialPosition(target);
@@ -462,7 +466,7 @@ public sealed class AgentCursorOverlay
                 if (t >= 1)
                 {
                     _current = _target;
-                    _heading = Math.PI / 4;
+                    _heading = RestingHeadingRadians;
                     _isGliding = false;
                     _arrival?.TrySetResult();
                     _arrival = null;
@@ -488,9 +492,14 @@ public sealed class AgentCursorOverlay
 
         public CursorSnapshot Snapshot()
         {
-            return _hasPosition
-                ? new CursorSnapshot(_visibleCursor, (int)Math.Round(_current.X + _virtualBounds.Left), (int)Math.Round(_current.Y + _virtualBounds.Top))
-                : new CursorSnapshot(_visibleCursor, null, null);
+            if (!_hasPosition)
+                return new CursorSnapshot(_visibleCursor, null, null);
+
+            var tip = TipPointFromVisualPosition(_current, CurrentDpiScale());
+            return new CursorSnapshot(
+                _visibleCursor,
+                (int)Math.Round(tip.X + _virtualBounds.Left),
+                (int)Math.Round(tip.Y + _virtualBounds.Top));
         }
 
         private PointF ToLocal(int screenX, int screenY) => new(screenX - _virtualBounds.Left, screenY - _virtualBounds.Top);
@@ -509,14 +518,33 @@ public sealed class AgentCursorOverlay
             if (!_enabled || !_visibleCursor || !IsHandleCreated || IsDisposed)
                 return;
 
-            using var bitmap = new Bitmap(_virtualBounds.Width, _virtualBounds.Height, PixelFormat.Format32bppPArgb);
+            var scale = CurrentDpiScale();
+            var screenCenter = new PointF(_current.X + _virtualBounds.Left, _current.Y + _virtualBounds.Top);
+            var halfSize = Math.Max(32, (int)Math.Ceiling(SurfaceHalfSize * scale));
+            var width = halfSize * 2;
+            var height = halfSize * 2;
+            var left = (int)Math.Floor(screenCenter.X - halfSize);
+            var top = (int)Math.Floor(screenCenter.Y - halfSize);
+            var localCenter = new PointF(screenCenter.X - left, screenCenter.Y - top);
+
+            using var high = new Bitmap(width * Supersample, height * Supersample, PixelFormat.Format32bppPArgb);
+            high.SetResolution(96 * Supersample, 96 * Supersample);
+            using (var g = Graphics.FromImage(high))
+            {
+                g.Clear(Color.Transparent);
+                ConfigureHighQuality(g);
+                g.ScaleTransform(Supersample, Supersample);
+                DrawBloom(g, localCenter, scale);
+                DrawCursor(g, localCenter, _heading, scale);
+            }
+
+            using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
+            bitmap.SetResolution(96, 96);
             using (var g = Graphics.FromImage(bitmap))
             {
                 g.Clear(Color.Transparent);
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                var scale = CursorScale(g);
-                DrawBloom(g, _current, scale);
-                DrawCursor(g, _current, _heading, scale);
+                ConfigureHighQuality(g);
+                g.DrawImage(high, new Rectangle(0, 0, width, height), 0, 0, high.Width, high.Height, GraphicsUnit.Pixel);
             }
 
             var screenDc = NativeMethods.GetDC(IntPtr.Zero);
@@ -534,8 +562,8 @@ public sealed class AgentCursorOverlay
 
                 hBitmap = bitmap.GetHbitmap(Color.FromArgb(0));
                 oldBitmap = NativeMethods.SelectObject(memDc, hBitmap);
-                var dst = new POINT(_virtualBounds.Left, _virtualBounds.Top);
-                var size = new SIZE(_virtualBounds.Width, _virtualBounds.Height);
+                var dst = new POINT(left, top);
+                var size = new SIZE(width, height);
                 var src = new POINT(0, 0);
                 var blend = new BLENDFUNCTION
                 {
@@ -595,12 +623,12 @@ public sealed class AgentCursorOverlay
             using var brush = new PathGradientBrush(path)
             {
                 CenterPoint = p,
-                CenterColor = Color.FromArgb(115, 94, 192, 232),
+                CenterColor = Color.FromArgb(140, 94, 192, 232),
                 SurroundColors = [Color.FromArgb(0, 94, 192, 232)]
             };
             brush.Blend = new Blend
             {
-                Factors = [1.0f, 0.22f, 0.0f],
+                Factors = [1.0f, 0.27f, 0.0f],
                 Positions = [0.0f, 0.5f, 1.0f]
             };
             g.FillPath(brush, path);
@@ -639,7 +667,7 @@ public sealed class AgentCursorOverlay
                     Positions = [0.0f, 0.53f, 1.0f]
                 }
             };
-            using var outline = new Pen(Color.White, 1.5f * scale) { LineJoin = LineJoin.Round };
+            using var outline = new Pen(Color.White, 2f * scale) { LineJoin = LineJoin.Round };
             g.FillPath(brush, path);
             g.DrawPath(outline, path);
         }
@@ -674,7 +702,58 @@ public sealed class AgentCursorOverlay
             return current + Math.Max(-maxStep, Math.Min(maxStep, diff));
         }
 
-        private static float CursorScale(Graphics g) => Math.Clamp(g.DpiX / 96f, 1f, 2.5f);
+        private float CurrentDpiScale()
+        {
+            var tip = TipPointFromVisualPosition(_current, Math.Max(1f, DeviceDpi / 96f));
+            return DpiScaleForPoint(
+                (int)Math.Round(tip.X + _virtualBounds.Left),
+                (int)Math.Round(tip.Y + _virtualBounds.Top));
+        }
+
+        private float DpiScaleForPoint(int screenX, int screenY)
+        {
+            try
+            {
+                var monitor = NativeMethods.MonitorFromPoint(new POINT(screenX, screenY), NativeMethods.MONITOR_DEFAULTTONEAREST);
+                if (monitor != IntPtr.Zero &&
+                    NativeMethods.GetDpiForMonitor(monitor, NativeMethods.MDT_EFFECTIVE_DPI, out var dpiX, out _) == 0 &&
+                    dpiX > 0)
+                {
+                    return Math.Clamp(dpiX / 96f, 1f, 2.5f);
+                }
+            }
+            catch
+            {
+                // Fall through to DeviceDpi for older Windows builds or unavailable shcore.
+            }
+
+            return Math.Clamp(DeviceDpi / 96f, 1f, 2.5f);
+        }
+
+        private static PointF VisualPositionForTip(PointF tip, float scale)
+        {
+            var offset = CursorTipOffset * scale;
+            return new PointF(
+                tip.X + (float)(Math.Cos(RestingHeadingRadians) * offset),
+                tip.Y + (float)(Math.Sin(RestingHeadingRadians) * offset));
+        }
+
+        private static PointF TipPointFromVisualPosition(PointF visualPosition, float scale)
+        {
+            var offset = CursorTipOffset * scale;
+            return new PointF(
+                visualPosition.X - (float)(Math.Cos(RestingHeadingRadians) * offset),
+                visualPosition.Y - (float)(Math.Sin(RestingHeadingRadians) * offset));
+        }
+
+        private static void ConfigureHighQuality(Graphics g)
+        {
+            g.CompositingMode = CompositingMode.SourceOver;
+            g.CompositingQuality = CompositingQuality.HighQuality;
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+        }
 
         private static void CloseSiblingOverlayWindows()
         {

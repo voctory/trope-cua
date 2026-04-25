@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Windows.Forms;
 using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win;
@@ -9,6 +10,7 @@ public static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         return MainAsync(args).GetAwaiter().GetResult();
     }
 

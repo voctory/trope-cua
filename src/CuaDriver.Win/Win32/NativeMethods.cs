@@ -80,6 +80,12 @@ internal static class NativeMethods
     public static extern uint GetDpiForWindow(IntPtr hwnd);
 
     [DllImport("user32.dll")]
+    public static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
+
+    [DllImport("shcore.dll")]
+    public static extern int GetDpiForMonitor(IntPtr hmonitor, int dpiType, out uint dpiX, out uint dpiY);
+
+    [DllImport("user32.dll")]
     public static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
 
     [DllImport("user32.dll")]
@@ -121,6 +127,8 @@ internal static class NativeMethods
     public const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
     public const uint GA_ROOT = 2;
     public const int GWL_EXSTYLE = -20;
+    public const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
+    public const int MDT_EFFECTIVE_DPI = 0;
 
     public const uint WM_CLOSE = 0x0010;
     public const uint WM_MOUSEMOVE = 0x0200;
