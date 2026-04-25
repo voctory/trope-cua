@@ -57,7 +57,7 @@ public static class Program
             var toolName = args[1];
             var toolArgs = ParseArgs(args.Length >= 3 ? args[2] : "{}");
             var daemon = new Mcp.NamedPipeDaemon(registry, context);
-            var result = await daemon.TryCallAsync(toolName, toolArgs, TimeSpan.FromMilliseconds(250), CancellationToken.None).ConfigureAwait(false)
+            var result = await daemon.TryCallAsync(toolName, toolArgs, TimeSpan.FromMinutes(5), CancellationToken.None).ConfigureAwait(false)
                          ?? await registry.InvokeAsync(toolName, toolArgs, context, CancellationToken.None).ConfigureAwait(false);
             PrintResult(result);
             return result.IsError ? 1 : 0;
