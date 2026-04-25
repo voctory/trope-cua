@@ -68,7 +68,9 @@ internal static class ToolDescriptions
     public const string TypeTextChars = """
         Compatibility surface for type_text. It accepts the same pid, window_id, element_index, text, and cdp_port arguments and routes through the same background-safe text insertion logic.
 
-        Use this name when a Mac-oriented caller expects type_text_chars for character-by-character entry; on Windows the implementation intentionally shares the safer type_text routing.
+        delay_ms spaces character delivery for native WM_CHAR fallback routes, matching the Mac pacing knob. Default is 30 ms, clamped to 0-200. CDP and UIA value routes may insert the full text at once because those APIs are already atomic.
+
+        Use this name when a Mac-oriented caller expects type_text_chars for character-by-character entry; on Windows the implementation intentionally shares the safer type_text routing where possible.
         """;
 
     public const string PressKey = """

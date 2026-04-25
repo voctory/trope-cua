@@ -13,11 +13,16 @@ public sealed class TypeTextCharsTool : IDriverTool
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
             ("element_index", JsonArgs.Prop("integer", "Optional element index.")),
             ("text", JsonArgs.Prop("string", "Text to type.")),
+            ("delay_ms", JsonArgs.Prop("integer", "Delay between characters in milliseconds, 0-200. Default 30.")),
             ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium debugging port."))),
         Destructive: true,
         Idempotent: false,
         OpenWorld: true);
 
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
-        => new TypeTextTool().InvokeAsync(args, context, cancellationToken);
+    {
+        if (!args.ContainsKey("delay_ms"))
+            args["delay_ms"] = 30;
+        return new TypeTextTool().InvokeAsync(args, context, cancellationToken);
+    }
 }

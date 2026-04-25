@@ -78,7 +78,7 @@ public static class WindowMessageInput
         }
     }
 
-    public static async Task<ActionReceipt> TypeTextAsync(IntPtr hwnd, string text, CancellationToken ct)
+    public static async Task<ActionReceipt> TypeTextAsync(IntPtr hwnd, string text, CancellationToken ct, int delayMs = 4)
     {
         var guard = NoRegressionGuard.Capture();
         try
@@ -86,7 +86,8 @@ public static class WindowMessageInput
             foreach (var ch in text)
             {
                 NativeMethods.PostMessageW(hwnd, NativeMethods.WM_CHAR, (UIntPtr)ch, IntPtr.Zero);
-                await Task.Delay(4, ct).ConfigureAwait(false);
+                if (delayMs > 0)
+                    await Task.Delay(delayMs, ct).ConfigureAwait(false);
             }
             return guard.Finish(ActionReceipt.Success("hwnd.wm_char"));
         }

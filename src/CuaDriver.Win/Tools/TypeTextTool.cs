@@ -28,6 +28,7 @@ public sealed class TypeTextTool : IDriverTool
         var text = JsonArgs.RequiredString(args, "text");
         var windowId = JsonArgs.OptionalLong(args, "window_id");
         var index = JsonArgs.OptionalInt(args, "element_index");
+        var delayMs = Math.Clamp(JsonArgs.OptionalInt(args, "delay_ms") ?? 4, 0, 200);
 
         ActionReceipt receipt;
         if (index is not null)
@@ -78,7 +79,7 @@ public sealed class TypeTextTool : IDriverTool
                     var target = context.State.LastTargetHwnd.TryGetValue((pid, windowId.Value), out var clickedTarget)
                         ? clickedTarget
                         : WindowMessageInput.FindTextInputTarget(window.Hwnd);
-                    receipt = await WindowMessageInput.TypeTextAsync(target, text, cancellationToken).ConfigureAwait(false);
+                    receipt = await WindowMessageInput.TypeTextAsync(target, text, cancellationToken, delayMs).ConfigureAwait(false);
                 }
             }
         }
