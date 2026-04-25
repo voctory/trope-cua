@@ -91,7 +91,7 @@ public sealed class NamedPipeDaemon
         }
         finally
         {
-            RemoveInstanceRecord(_instanceId);
+            DaemonRegistry.Remove(_instanceId);
         }
     }
 
@@ -207,7 +207,7 @@ public sealed class NamedPipeDaemon
         });
     }
 
-    public static IReadOnlyList<DaemonInstanceRecord> RegisteredInstances() => ReadInstanceRecords();
+    public static IReadOnlyList<DaemonInstanceRecord> RegisteredInstances() => DaemonRegistry.RegisteredInstances();
 
     private static string UserKey()
     {
@@ -227,67 +227,10 @@ public sealed class NamedPipeDaemon
             InstancePipeName,
             _startedAt.ToString("O"),
             Environment.ProcessPath ?? "");
-        var path = InstanceRecordPath(_instanceId);
-        AtomicFile.WriteAllText(path, JsonSerializer.Serialize(record, JsonUtil.SerializerOptions));
+        DaemonRegistry.Write(record);
     }
 
-    public static bool IsInstanceRunning(DaemonInstanceRecord record) => IsProcessRunning(record.Pid, record.ExePath);
+    public static bool IsInstanceRunning(DaemonInstanceRecord record) => DaemonRegistry.IsInstanceRunning(record);
 
-    public static bool RemoveInstanceRecord(string instanceId)
-    {
-        try
-        {
-            var path = InstanceRecordPath(instanceId);
-            if (File.Exists(path))
-                File.Delete(path);
-            return true;
-        }
-        catch
-        {
-            // Best-effort cleanup; daemon-list ignores stale dead pids.
-            return false;
-        }
-    }
-
-    private static DaemonInstanceRecord[] ReadInstanceRecords()
-    {
-        if (!Directory.Exists(DaemonRegistryDirectory))
-            return [];
-
-        var records = new List<DaemonInstanceRecord>();
-        foreach (var path in Directory.EnumerateFiles(DaemonRegistryDirectory, "*.json"))
-        {
-            try
-            {
-                var record = JsonSerializer.Deserialize<DaemonInstanceRecord>(File.ReadAllText(path), JsonUtil.SerializerOptions);
-                if (record is not null)
-                    records.Add(record);
-            }
-            catch
-            {
-                // Ignore corrupt/stale registry files.
-            }
-        }
-
-        return records.OrderBy(record => record.InstanceId, StringComparer.OrdinalIgnoreCase).ToArray();
-    }
-
-    private static bool IsProcessRunning(int pid, string exePath)
-    {
-        try
-        {
-            var process = Process.GetProcessById(pid);
-            if (string.IsNullOrWhiteSpace(exePath))
-                return !process.HasExited;
-            return !process.HasExited && string.Equals(process.MainModule?.FileName, exePath, StringComparison.OrdinalIgnoreCase);
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private static string DaemonRegistryDirectory => Path.Combine(DriverConfig.ConfigDirectory, "daemons");
-
-    private static string InstanceRecordPath(string instanceId) => Path.Combine(DaemonRegistryDirectory, $"{DriverInstance.Normalize(instanceId)}.json");
+    public static bool RemoveInstanceRecord(string instanceId) => DaemonRegistry.Remove(instanceId);
 }
