@@ -71,7 +71,6 @@ internal sealed record CursorSnapshot(bool Visible, int? ScreenX, int? ScreenY, 
 
 internal sealed class AgentCursorOverlay
 {
-    private const string OverlayWindowTitlePrefix = "CuaDriverWin.AgentCursorOverlay";
     private const double RestingHeadingRadians = AgentCursorGeometry.RestingHeadingRadians;
     private const float SurfaceHalfSize = 76f;
     private const double TurnRadius = 80;
@@ -94,7 +93,7 @@ internal sealed class AgentCursorOverlay
 
     public AgentCursorOverlay(string? instanceId = null)
     {
-        _overlayWindowTitle = OverlayWindowTitleFor(instanceId);
+        _overlayWindowTitle = AgentCursorWindowing.OverlayWindowTitleFor(instanceId);
     }
 
     public bool Enabled
@@ -310,12 +309,6 @@ internal sealed class AgentCursorOverlay
             return false;
         }
     }
-
-    private static bool IsDefaultOverlayTitle(string title) =>
-        title.Equals(OverlayWindowTitleFor(DriverInstance.DefaultId), StringComparison.Ordinal);
-
-    private static string OverlayWindowTitleFor(string? instanceId) =>
-        $"{OverlayWindowTitlePrefix}.{DriverInstance.Resolve(instanceId)}";
 
     private static POINT CurrentCursorPosition()
     {
@@ -725,7 +718,7 @@ internal sealed class AgentCursorOverlay
         private bool PinToTarget(IntPtr targetHwnd)
         {
             var requestedTarget = targetHwnd != IntPtr.Zero;
-            _pinnedTargetHwnd = NormalizeTargetHwnd(targetHwnd);
+            _pinnedTargetHwnd = AgentCursorWindowing.NormalizeTargetHwnd(targetHwnd);
             _lastPinAtMs = 0;
             if (requestedTarget && _pinnedTargetHwnd == IntPtr.Zero)
             {
@@ -755,7 +748,7 @@ internal sealed class AgentCursorOverlay
                         | NativeMethods.SWP_NOSENDCHANGING
                         | NativeMethods.SWP_SHOWWINDOW;
 
-            var target = NormalizeTargetHwnd(_pinnedTargetHwnd);
+            var target = AgentCursorWindowing.NormalizeTargetHwnd(_pinnedTargetHwnd);
             _pinnedTargetHwnd = target;
             if (target == IntPtr.Zero)
             {
@@ -764,53 +757,13 @@ internal sealed class AgentCursorOverlay
                 return;
             }
 
-            var targetTopmost = IsTopmostWindow(target);
+            var targetTopmost = AgentCursorWindowing.IsTopmostWindow(target);
             if (!targetTopmost)
                 NativeMethods.SetWindowPos(Handle, NativeMethods.HWND_NOTOPMOST, 0, 0, 0, 0, flags);
 
-            var insertAfter = WindowJustAboveTarget(target, Handle, targetTopmost);
+            var insertAfter = AgentCursorWindowing.WindowJustAboveTarget(target, Handle, targetTopmost);
             NativeMethods.SetWindowPos(Handle, insertAfter, 0, 0, 0, 0, flags);
             _layering = targetTopmost ? "target_pinned_topmost" : "target_pinned";
-        }
-
-        private static IntPtr WindowJustAboveTarget(IntPtr target, IntPtr overlay, bool targetTopmost)
-        {
-            var above = NativeMethods.GetWindow(target, NativeMethods.GW_HWNDPREV);
-            while (above != IntPtr.Zero)
-            {
-                if (above != overlay && !IsAgentCursorOverlayWindow(above))
-                {
-                    if (!targetTopmost && IsTopmostWindow(above))
-                        return NativeMethods.HWND_TOP;
-
-                    return above;
-                }
-
-                above = NativeMethods.GetWindow(above, NativeMethods.GW_HWNDPREV);
-            }
-
-            return targetTopmost ? NativeMethods.HWND_TOPMOST : NativeMethods.HWND_TOP;
-        }
-
-        private static IntPtr NormalizeTargetHwnd(IntPtr hwnd)
-        {
-            if (hwnd == IntPtr.Zero || !NativeMethods.IsWindow(hwnd))
-                return IntPtr.Zero;
-
-            var root = NativeMethods.GetAncestor(hwnd, NativeMethods.GA_ROOT);
-            hwnd = root == IntPtr.Zero ? hwnd : root;
-            return NativeMethods.IsWindow(hwnd) && NativeMethods.IsWindowVisible(hwnd) && !NativeMethods.IsIconic(hwnd)
-                ? hwnd
-                : IntPtr.Zero;
-        }
-
-        private static bool IsTopmostWindow(IntPtr hwnd)
-        {
-            if (hwnd == IntPtr.Zero)
-                return false;
-
-            var exStyle = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE).ToInt64();
-            return (exStyle & NativeMethods.WS_EX_TOPMOST) != 0;
         }
 
         private static long? WindowIdFor(IntPtr hwnd) => hwnd == IntPtr.Zero ? null : hwnd.ToInt64();
@@ -1031,18 +984,8 @@ internal sealed class AgentCursorOverlay
             if (title.Equals(_overlayWindowTitle, StringComparison.Ordinal))
                 return true;
 
-            return IsDefaultOverlayTitle(_overlayWindowTitle) &&
-                   title.Equals(OverlayWindowTitlePrefix, StringComparison.Ordinal);
-        }
-
-        private static bool IsAgentCursorOverlayWindow(IntPtr hwnd)
-        {
-            if (hwnd == IntPtr.Zero)
-                return false;
-
-            var title = NativeMethods.GetWindowText(hwnd);
-            return title.Equals(OverlayWindowTitlePrefix, StringComparison.Ordinal) ||
-                   title.StartsWith(OverlayWindowTitlePrefix + ".", StringComparison.Ordinal);
+            return AgentCursorWindowing.IsDefaultOverlayTitle(_overlayWindowTitle) &&
+                   title.Equals(AgentCursorWindowing.OverlayWindowTitlePrefix, StringComparison.Ordinal);
         }
 
         private static double Hypot(double x, double y) => Math.Sqrt(x * x + y * y);
