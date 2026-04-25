@@ -34,7 +34,7 @@ public sealed record AgentCursorMotion
     public double DwellAfterClickMs { get; init; } = 400;
 
     [JsonPropertyName("idle_hide_ms")]
-    public double IdleHideMs { get; init; } = 0;
+    public double IdleHideMs { get; init; } = 8000;
 
     [JsonPropertyName("press_duration_ms")]
     public double PressDurationMs { get; init; } = 650;
@@ -93,13 +93,7 @@ public sealed class AgentCursorOverlay
 
         if (enabled)
         {
-            EnsureThread();
-            var fallback = CurrentCursorPosition();
-            Post(form =>
-            {
-                form.SetEnabled(true);
-                form.EnsureVisibleAt(fallback.X, fallback.Y, Motion);
-            });
+            Post(form => form.SetEnabled(true));
             return;
         }
 
@@ -137,14 +131,7 @@ public sealed class AgentCursorOverlay
             _motion = next;
         }
 
-        var enabled = Enabled;
-        var fallback = CurrentCursorPosition();
-        Post(form =>
-        {
-            form.SetMotion(next);
-            if (enabled)
-                form.EnsureVisibleAt(fallback.X, fallback.Y, next);
-        });
+        Post(form => form.SetMotion(next));
         return next;
     }
 
