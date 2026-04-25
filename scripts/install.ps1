@@ -15,9 +15,9 @@ New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 $InstalledExe = Join-Path $InstallDir "cua-driver-win.exe"
 if (Test-Path $InstalledExe) {
   try {
-    & $InstalledExe daemon-stop --all | Out-Null
+    & $InstalledExe daemon-stop --all *> $null
   } catch {
-    try { & $InstalledExe daemon-stop | Out-Null } catch {}
+    try { & $InstalledExe daemon-stop *> $null } catch {}
   }
 }
 
