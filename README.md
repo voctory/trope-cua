@@ -62,6 +62,15 @@ cua-driver-win call get_window_state '{"pid":1234,"window_id":123456}'
 cua-driver-win call click '{"pid":1234,"window_id":123456,"element_index":14}'
 ```
 
+For isolated parallel agents, give each daemon its own instance id:
+
+```powershell
+cua-driver-win serve --instance agent-a
+cua-driver-win call --instance agent-a get_window_state '{"pid":1234,"window_id":123456}'
+```
+
+Set `CUA_DRIVER_CONFIG_DIR` when an agent or test run should use an isolated config and daemon registry directory instead of `%LOCALAPPDATA%\cua-driver-win`.
+
 ## Use as MCP
 
 Install a self-contained user-level build:
