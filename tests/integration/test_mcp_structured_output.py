@@ -55,3 +55,27 @@ def test_child_session_status_includes_structured_content():
     structured = response["result"]["structuredContent"]
     assert "child_sessions_supported_by_os" in structured
     assert "host" in structured
+
+
+def test_child_session_stop_includes_structured_content():
+    request = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "name": "child_session_stop",
+            "arguments": {},
+        },
+    }
+    proc = subprocess.run(
+        [EXE, "mcp"],
+        input=json.dumps(request) + "\n",
+        text=True,
+        capture_output=True,
+        timeout=30,
+    )
+
+    assert proc.returncode == 0
+    response = json.loads(proc.stdout.splitlines()[0])
+    assert response["result"]["structuredContent"]["ok"] is True
+    assert "host" in response["result"]["structuredContent"]

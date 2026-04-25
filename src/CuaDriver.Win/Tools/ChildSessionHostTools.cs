@@ -47,7 +47,7 @@ public sealed class ChildSessionStartTool : IDriverTool
         {
             lines.Add("requires_elevation=true");
             lines.Add("next_step=\"Run the driver once elevated to enable child sessions, then start the child-session host from the normal background daemon.\"");
-            return ToolResult.Text(string.Join(Environment.NewLine, lines), isError: true);
+            return ToolResult.Text(string.Join(Environment.NewLine, lines), StartStructured(false, "enable_child_sessions_failed", null, false, lines), isError: true);
         }
 
         var options = new ChildSessionHostOptions(
@@ -77,8 +77,23 @@ public sealed class ChildSessionStartTool : IDriverTool
         foreach (var logLine in result.Log)
             lines.Add($"log=\"{logLine}\"");
 
-        return ToolResult.Text(string.Join(Environment.NewLine, lines), isError: !result.Ok);
+        return ToolResult.Text(string.Join(Environment.NewLine, lines), StartStructured(result.Ok, result.Status, result.ChildSessionId, result.HostRunning, result.Log), isError: !result.Ok);
     }
+
+    private static JsonObject StartStructured(bool ok, string status, int? childSessionId, bool hostRunning, IEnumerable<string> log) => new()
+    {
+        ["ok"] = ok,
+        ["route"] = "rdp.activex.child_session",
+        ["lane"] = "child_session",
+        ["background_safe"] = true,
+        ["status"] = status,
+        ["host_running"] = hostRunning,
+        ["child_session_id"] = childSessionId,
+        ["parent_session_id"] = ChildSessionBroker.CurrentProcessSessionId(),
+        ["active_console_session_id"] = ChildSessionBroker.ActiveConsoleSessionId(),
+        ["child_sessions_enabled"] = ChildSessionBroker.IsEnabled(),
+        ["log"] = ToolJson.Array(log)
+    };
 }
 
 public sealed class ChildSessionStopTool : IDriverTool
@@ -100,6 +115,13 @@ public sealed class ChildSessionStopTool : IDriverTool
             ChildSessionHost.StatusText(),
             ChildSessionBroker.Status()
         };
-        return Task.FromResult(ToolResult.Text(string.Join(Environment.NewLine, lines), isError: !ok));
+        return Task.FromResult(ToolResult.Text(string.Join(Environment.NewLine, lines), new JsonObject
+        {
+            ["ok"] = ok,
+            ["message"] = message,
+            ["host"] = ChildSessionHost.StatusObject(),
+            ["child_session_id"] = ChildSessionBroker.GetChildSessionId(),
+            ["child_session_connected"] = ChildSessionBroker.GetChildSessionId() is not null
+        }, isError: !ok));
     }
 }
