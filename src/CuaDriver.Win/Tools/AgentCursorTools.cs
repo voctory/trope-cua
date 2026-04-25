@@ -22,7 +22,7 @@ public sealed class SetAgentCursorEnabledTool : IDriverTool
         };
         context.State.Config.Save();
         var structured = context.State.AgentCursor.StateObject();
-        return Task.FromResult(ToolResult.Text("✅ " + structured.ToJsonString(JsonUtil.SerializerOptions), structured));
+        return Task.FromResult(ToolResult.JsonText("✅ ", structured));
     }
 }
 
@@ -33,7 +33,7 @@ public sealed class GetAgentCursorStateTool : IDriverTool
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
         var structured = context.State.AgentCursor.StateObject();
-        return Task.FromResult(ToolResult.Text("✅ " + structured.ToJsonString(JsonUtil.SerializerOptions), structured));
+        return Task.FromResult(ToolResult.JsonText("✅ ", structured));
     }
 }
 
@@ -90,6 +90,6 @@ public sealed class SetAgentCursorMotionTool : IDriverTool
 
         var structured = JsonSerializer.SerializeToNode(motion, JsonUtil.SerializerOptions)?.AsObject()
                          ?? new JsonObject();
-        return Task.FromResult(ToolResult.Text("✅ " + structured.ToJsonString(JsonUtil.SerializerOptions), structured));
+        return Task.FromResult(ToolResult.JsonText("✅ ", structured));
     }
 }

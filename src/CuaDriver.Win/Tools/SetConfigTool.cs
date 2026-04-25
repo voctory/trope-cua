@@ -31,7 +31,7 @@ public sealed class SetConfigTool : IDriverTool
 
             var structured = JsonSerializer.SerializeToNode(next, JsonUtil.SerializerOptions)?.AsObject()
                              ?? new JsonObject();
-            return Task.FromResult(ToolResult.Text("✅ " + structured.ToJsonString(JsonUtil.SerializerOptions), structured));
+            return Task.FromResult(ToolResult.JsonText("✅ ", structured));
         }
         catch (Exception ex)
         {

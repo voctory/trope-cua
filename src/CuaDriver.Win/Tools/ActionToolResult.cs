@@ -9,7 +9,7 @@ internal static class ActionToolResult
     public static ToolResult FromReceipt(ActionReceipt receipt)
     {
         var structured = receipt.ToJsonObject();
-        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + structured.ToJsonString(JsonUtil.SerializerOptions), structured, !receipt.Ok);
+        return ToolResult.JsonText(receipt.Ok ? "✅ " : "❌ ", structured, !receipt.Ok);
     }
 
     public static ToolResult FromReceipt(ActionReceipt receipt, string routePrefix) =>

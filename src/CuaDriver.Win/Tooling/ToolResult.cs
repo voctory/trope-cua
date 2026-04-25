@@ -21,6 +21,9 @@ public sealed record ToolResult
     public static ToolResult Text(string text, JsonObject structuredContent, bool isError = false) =>
         new() { IsError = isError, Content = [ContentBlock.TextBlock(text)], StructuredContent = structuredContent };
 
+    public static ToolResult JsonText(string prefix, JsonObject structuredContent, bool isError = false) =>
+        Text(prefix + structuredContent.ToJsonString(JsonUtil.SerializerOptions), structuredContent, isError);
+
     public static ToolResult Error(string text) => Text("❌ " + text, true);
 
     public string ToCliText()
