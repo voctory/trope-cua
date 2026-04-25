@@ -1,6 +1,6 @@
 # Child-session / PiP lane
 
-The child-session lane is the intended production answer for surfaces that cannot be controlled by UIA, CDP, or classic `HWND` messages. The current Windows port includes the broker/host probe; it does not yet launch a full child-session action agent or route normal tool calls through that child process.
+The child-session lane is the intended production answer for surfaces that cannot be controlled by UIA, CDP, or classic `HWND` messages. The current Windows driver includes the broker/host probe; it does not yet launch a full child-session action agent or route normal tool calls through that child process.
 
 Shape:
 

@@ -1,6 +1,6 @@
 # cua-driver-win
 
-Windows source port of `cua-driver`: a background computer-use driver that gives agents an AX/UIA tree, a target-window image, and cursor-safe actions without stealing the user's foreground work.
+Windows background computer-use driver that gives agents an AX/UIA tree, a target-window image, and cursor-safe actions without stealing the user's foreground work.
 
 This source drop is organized around three computer-use modalities:
 

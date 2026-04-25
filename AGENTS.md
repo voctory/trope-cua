@@ -1,6 +1,6 @@
 # Repository Guidelines
 
-This repo is the Windows port of `cua-driver`: a .NET MCP/server driver for background-safe UI automation, target-window capture, and the visual agent cursor overlay.
+This repo is the Windows CUA driver: a .NET MCP/server driver for background-safe UI automation, target-window capture, and the visual agent cursor overlay.
 
 ## Collaboration & Git Safety
 

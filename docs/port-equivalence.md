@@ -1,4 +1,4 @@
-# Routing equivalence notes
+# Routing notes
 
 The Windows driver uses semantic UIA actions first and pixel routes second:
 
@@ -11,4 +11,4 @@ The Windows driver uses semantic UIA actions first and pixel routes second:
 7. Parent-session launches are refused by default; generic Windows launch APIs can foreground the target. Callers must pass `unsafe_allow_foreground=true` or use a child-session/AppBroadcast lane.
 8. Raw-input-only targets are escalated to the child-session lane.
 
-This is deliberately stricter than a naive Windows port. It avoids the common regressions: moving the user's cursor, changing the foreground window, switching desktops, or typing into the wrong app.
+This routing policy is deliberately strict. It avoids the common regressions: moving the user's cursor, changing the foreground window, switching desktops, or typing into the wrong app.
