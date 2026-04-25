@@ -137,6 +137,43 @@ def test_mcp_reports_invalid_request_for_non_string_method():
     assert "method" in response["error"]["message"]
 
 
+def test_mcp_reports_invalid_request_for_missing_method():
+    request = {
+        "jsonrpc": "2.0",
+        "id": 1,
+    }
+    proc = subprocess.run(
+        [EXE, "mcp"],
+        input=json.dumps(request) + "\n",
+        text=True,
+        capture_output=True,
+        timeout=30,
+    )
+
+    assert proc.returncode == 0
+    response = json.loads(proc.stdout.splitlines()[0])
+    assert response["id"] == 1
+    assert response["error"]["code"] == -32600
+    assert "method" in response["error"]["message"]
+
+
+def test_mcp_ignores_notifications_without_response():
+    request = {
+        "jsonrpc": "2.0",
+        "method": "notifications/initialized",
+    }
+    proc = subprocess.run(
+        [EXE, "mcp"],
+        input=json.dumps(request) + "\n",
+        text=True,
+        capture_output=True,
+        timeout=30,
+    )
+
+    assert proc.returncode == 0
+    assert proc.stdout == ""
+
+
 def test_mcp_reports_invalid_params_for_non_string_tool_name():
     request = {
         "jsonrpc": "2.0",
