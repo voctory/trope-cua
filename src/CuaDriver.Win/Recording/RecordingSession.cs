@@ -10,7 +10,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Recording;
 
-public sealed record RecordingState(bool Enabled, string? OutputDirectory, int NextTurn);
+public sealed record RecordingState(bool Enabled, string? OutputDirectory, int NextTurn, string? LastError);
 
 public sealed class RecordingSession
 {
@@ -20,11 +20,12 @@ public sealed class RecordingSession
     private int _nextTurn = 1;
     private long _sessionStartTimestamp;
     private DateTimeOffset _sessionStartWallClock;
+    private string? _lastError;
 
     public RecordingState CurrentState()
     {
         lock (_gate)
-            return new RecordingState(_enabled, _outputDirectory, _nextTurn);
+            return new RecordingState(_enabled, _outputDirectory, _nextTurn, _lastError);
     }
 
     public bool IsEnabled
@@ -48,6 +49,7 @@ public sealed class RecordingSession
                 _outputDirectory = null;
                 _nextTurn = 1;
                 _sessionStartTimestamp = 0;
+                _lastError = null;
                 return;
             }
 
@@ -61,6 +63,7 @@ public sealed class RecordingSession
             _nextTurn = 1;
             _sessionStartTimestamp = Stopwatch.GetTimestamp();
             _sessionStartWallClock = DateTimeOffset.UtcNow;
+            _lastError = null;
             WriteInitialSessionJsonLocked();
         }
     }
@@ -101,11 +104,20 @@ public sealed class RecordingSession
                 if (WriteScreenshotPng(screenshotPath, window, context) && clickPoint is not null)
                     WriteClickMarker(Path.Combine(turnDir, "click.png"), screenshotPath, clickPoint.Value, window);
             }
+
+            SetLastError(null);
         }
-        catch
+        catch (Exception ex)
         {
             // Recording must never poison the action path.
+            SetLastError($"{ex.GetType().Name}: {ex.Message}");
         }
+    }
+
+    private void SetLastError(string? lastError)
+    {
+        lock (_gate)
+            _lastError = lastError;
     }
 
     private static void WriteActionJson(

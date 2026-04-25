@@ -6,6 +6,7 @@ def test_recording_state_returns_structured_content():
     assert result["isError"] is False
     assert result["structuredContent"]["enabled"] is False
     assert result["structuredContent"]["next_turn"] == 1
+    assert result["structuredContent"]["last_error"] is None
 
 
 def test_set_recording_enable_returns_structured_content(tmp_path):
@@ -13,6 +14,7 @@ def test_set_recording_enable_returns_structured_content(tmp_path):
     assert result["isError"] is False
     assert result["structuredContent"]["enabled"] is True
     assert result["structuredContent"]["output_dir"]
+    assert result["structuredContent"]["last_error"] is None
 
 
 def test_set_recording_requires_boolean_enabled():

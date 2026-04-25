@@ -122,7 +122,8 @@ public sealed class SetRecordingTool : IDriverTool
     {
         ["enabled"] = state.Enabled,
         ["output_dir"] = state.OutputDirectory,
-        ["next_turn"] = state.NextTurn
+        ["next_turn"] = state.NextTurn,
+        ["last_error"] = state.LastError
     };
 }
 
