@@ -46,9 +46,7 @@ public sealed record ActionReceipt
     public static ActionReceipt Failure(string route, string reason, string lane = "same_session") =>
         new() { Ok = false, Route = route, Lane = lane, BackgroundSafe = false, Session = SessionForLane(lane), Reason = reason };
 
-    public JsonObject ToJsonObject() =>
-        JsonSerializer.SerializeToNode(this, JsonUtil.SerializerOptions)?.AsObject()
-        ?? new JsonObject();
+    public JsonObject ToJsonObject() => JsonUtil.ToJsonObject(this);
 
     public string ToJson() => ToJsonObject().ToJsonString(JsonUtil.SerializerOptions);
 

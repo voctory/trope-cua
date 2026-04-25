@@ -72,9 +72,7 @@ public sealed record DriverConfig
         AtomicFile.WriteAllText(ConfigPath, JsonSerializer.Serialize(this, JsonUtil.SerializerOptions));
     }
 
-    public JsonObject ToJsonObject() =>
-        JsonSerializer.SerializeToNode(this, JsonUtil.SerializerOptions)?.AsObject()
-        ?? new JsonObject();
+    public JsonObject ToJsonObject() => JsonUtil.ToJsonObject(this);
 
     public DriverConfig Normalize() => this with
     {
