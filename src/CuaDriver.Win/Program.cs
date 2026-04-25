@@ -29,13 +29,13 @@ public static class Program
 
     private static async Task<int> RunAsync(string[] args)
     {
-        var state = new DriverState();
-        var registry = ToolRegistry.CreateDefault(state);
-        var context = new ToolContext { State = state, Registry = registry };
         var parsed = ExtractInstanceArg(args);
         args = parsed.Args;
         var instanceId = parsed.InstanceId;
         var instanceSpecified = parsed.InstanceSpecified;
+        var state = new DriverState(instanceId);
+        var registry = ToolRegistry.CreateDefault(state);
+        var context = new ToolContext { State = state, Registry = registry };
 
         if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
         {

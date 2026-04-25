@@ -172,12 +172,13 @@ public sealed class DriverState
     public ConcurrentDictionary<int, ZoomContext> ZoomContexts { get; } = new();
     public ConcurrentDictionary<(int Pid, long WindowId), IntPtr> LastTargetHwnd { get; } = new();
     public ConcurrentDictionary<(int Pid, long WindowId), AutomationElement> LastUiaTextTarget { get; } = new();
-    public AgentCursorOverlay AgentCursor { get; } = new();
+    public AgentCursorOverlay AgentCursor { get; }
     public RecordingSession Recording { get; } = new();
     public DateTimeOffset StartedAt { get; } = DateTimeOffset.UtcNow;
 
-    public DriverState()
+    public DriverState(string? instanceId = null)
     {
+        AgentCursor = new AgentCursorOverlay(instanceId);
         var motion = Config.AgentCursor.Motion;
         AgentCursor.UpdateMotion(
             motion.StartHandle,

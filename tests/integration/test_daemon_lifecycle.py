@@ -88,6 +88,47 @@ def test_daemon_instances_are_isolated():
                 process.wait(timeout=5)
 
 
+def test_parallel_daemon_cursors_remain_isolated():
+    first = f"pytest-cursor-{uuid.uuid4().hex}-a"
+    second = f"pytest-cursor-{uuid.uuid4().hex}-b"
+    processes = []
+
+    try:
+        processes.append(start_daemon(first))
+        processes.append(start_daemon(second))
+        wait_for_status(first)
+        wait_for_status(second)
+        screen = call_instance(first, "get_screen_size")["structuredContent"]
+        first_x = screen["x"] + min(80, max(0, screen["width"] - 1))
+        first_y = screen["y"] + min(90, max(0, screen["height"] - 1))
+        second_x = screen["x"] + min(160, max(0, screen["width"] - 1))
+        second_y = screen["y"] + min(120, max(0, screen["height"] - 1))
+
+        first_move = call_instance(first, "move_cursor", {"x": first_x, "y": first_y})
+        assert first_move["isError"] is False
+        first_state = call_instance(first, "get_agent_cursor_state")
+        assert first_state["structuredContent"]["visible"] is True
+
+        second_move = call_instance(second, "move_cursor", {"x": second_x, "y": second_y})
+        assert second_move["isError"] is False
+        second_state = call_instance(second, "get_agent_cursor_state")
+        assert second_state["structuredContent"]["visible"] is True
+
+        first_after_second_move = call_instance(first, "get_agent_cursor_state")
+        assert first_after_second_move["structuredContent"]["visible"] is True
+        assert first_after_second_move["structuredContent"]["screen_x"] == first_x
+        assert first_after_second_move["structuredContent"]["screen_y"] == first_y
+    finally:
+        stop_daemon(first)
+        stop_daemon(second)
+        for process in processes:
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+
+
 def start_daemon(instance):
     return subprocess.Popen(
         [EXE, "serve", "--instance", instance],
@@ -96,6 +137,21 @@ def start_daemon(instance):
         stderr=subprocess.DEVNULL,
         text=True,
     )
+
+
+def call_instance(instance, tool, args=None):
+    env = os.environ.copy()
+    env["CUA_DRIVER_JSON"] = "1"
+    proc = subprocess.run(
+        [EXE, "call", "--instance", instance, tool, json.dumps(args or {})],
+        text=True,
+        capture_output=True,
+        env=env,
+        timeout=30,
+    )
+    if proc.returncode not in (0, 1):
+        raise RuntimeError(f"{tool} failed rc={proc.returncode}\nstdout={proc.stdout}\nstderr={proc.stderr}")
+    return json.loads(proc.stdout)
 
 
 def wait_for_status(instance):

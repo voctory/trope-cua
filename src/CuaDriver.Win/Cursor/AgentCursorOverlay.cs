@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -47,7 +48,8 @@ public sealed record CursorSnapshot(bool Visible, int? ScreenX, int? ScreenY, lo
 
 public sealed class AgentCursorOverlay
 {
-    private const string OverlayWindowTitle = "CuaDriverWin.AgentCursorOverlay";
+    private const string OverlayWindowTitlePrefix = "CuaDriverWin.AgentCursorOverlay";
+    private const string DefaultInstanceId = "default";
     private const double RestingHeadingRadians = Math.PI / 4;
     private const float CursorTipOffset = 16f;
     private const float SurfaceHalfSize = 76f;
@@ -73,6 +75,12 @@ public sealed class AgentCursorOverlay
     private ManualResetEventSlim? _threadReady;
     private bool _enabled = true;
     private AgentCursorMotion _motion = AgentCursorMotion.Default;
+    private readonly string _overlayWindowTitle;
+
+    public AgentCursorOverlay(string? instanceId = null)
+    {
+        _overlayWindowTitle = OverlayWindowTitleFor(instanceId);
+    }
 
     public bool Enabled
     {
@@ -236,7 +244,7 @@ public sealed class AgentCursorOverlay
                 {
                     Application.EnableVisualStyles();
                     Application.SetCompatibleTextRenderingDefault(false);
-                    var form = new OverlayForm();
+                    var form = new OverlayForm(_overlayWindowTitle);
                     form.SetMotion(Motion);
                     _ = form.Handle;
                     lock (_gate)
@@ -286,6 +294,26 @@ public sealed class AgentCursorOverlay
 
     private static double Clamp(double value, double min, double max) => Math.Min(max, Math.Max(min, value));
 
+    private static bool IsDefaultOverlayTitle(string title) =>
+        title.Equals(OverlayWindowTitleFor(DefaultInstanceId), StringComparison.Ordinal);
+
+    private static string OverlayWindowTitleFor(string? instanceId) =>
+        $"{OverlayWindowTitlePrefix}.{NormalizeInstanceId(instanceId)}";
+
+    private static string NormalizeInstanceId(string? instanceId)
+    {
+        var normalized = string.IsNullOrWhiteSpace(instanceId)
+            ? Environment.GetEnvironmentVariable("CUA_DRIVER_INSTANCE") ?? DefaultInstanceId
+            : instanceId.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+            normalized = DefaultInstanceId;
+
+        foreach (var ch in Path.GetInvalidFileNameChars().Concat(['\\', '/', ':', ';', ' ']))
+            normalized = normalized.Replace(ch, '_');
+
+        return normalized.Length > 64 ? normalized[..64] : normalized;
+    }
+
     private static POINT CurrentCursorPosition()
     {
         if (NativeMethods.GetCursorPos(out var point))
@@ -302,6 +330,7 @@ public sealed class AgentCursorOverlay
     {
         private readonly System.Windows.Forms.Timer _timer;
         private readonly Rectangle _virtualBounds;
+        private readonly string _overlayWindowTitle;
         private AgentCursorMotion _motion = AgentCursorMotion.Default;
         private PointF _current;
         private long _lastFrameTimestamp = Stopwatch.GetTimestamp();
@@ -326,8 +355,9 @@ public sealed class AgentCursorOverlay
         private string _layering = "normal";
         private readonly bool _timerResolutionRaised;
 
-        public OverlayForm()
+        public OverlayForm(string overlayWindowTitle)
         {
+            _overlayWindowTitle = overlayWindowTitle;
             _virtualBounds = new Rectangle(
                 NativeMethods.GetSystemMetrics(NativeMethods.SM_XVIRTUALSCREEN),
                 NativeMethods.GetSystemMetrics(NativeMethods.SM_YVIRTUALSCREEN),
@@ -338,7 +368,7 @@ public sealed class AgentCursorOverlay
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
             TopMost = false;
-            Text = OverlayWindowTitle;
+            Text = _overlayWindowTitle;
             StartPosition = FormStartPosition.Manual;
             _current = new PointF(InitialOffscreenPosition, InitialOffscreenPosition);
             _timerResolutionRaised = NativeMethods.timeBeginPeriod(1) == 0;
@@ -1408,51 +1438,40 @@ public sealed class AgentCursorOverlay
             }
         }
 
-        private static void CloseSiblingOverlayWindows()
+        private void CloseSiblingOverlayWindows()
         {
             var currentPid = (uint)Environment.ProcessId;
-            var currentProcessName = Process.GetCurrentProcess().ProcessName;
             NativeMethods.EnumWindows((hwnd, _) =>
             {
                 var threadId = NativeMethods.GetWindowThreadProcessId(hwnd, out var pid);
                 if (threadId == 0 || pid == 0 || pid == currentPid)
                     return true;
 
-                if (IsSiblingOverlayWindow(hwnd, pid, currentProcessName))
+                if (IsSiblingOverlayWindow(hwnd))
                     NativeMethods.PostMessageW(hwnd, NativeMethods.WM_CLOSE, UIntPtr.Zero, IntPtr.Zero);
 
                 return true;
             }, IntPtr.Zero);
         }
 
-        private static bool IsSiblingOverlayWindow(IntPtr hwnd, uint pid, string currentProcessName)
+        private bool IsSiblingOverlayWindow(IntPtr hwnd)
         {
-            if (IsAgentCursorOverlayWindow(hwnd))
+            var title = NativeMethods.GetWindowText(hwnd);
+            if (title.Equals(_overlayWindowTitle, StringComparison.Ordinal))
                 return true;
 
-            var exStyle = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE).ToInt64();
-            var overlayStyle = NativeMethods.WS_EX_TRANSPARENT
-                               | NativeMethods.WS_EX_LAYERED
-                               | NativeMethods.WS_EX_NOACTIVATE
-                               | NativeMethods.WS_EX_TOOLWINDOW;
-            if ((exStyle & overlayStyle) != overlayStyle)
-                return false;
-
-            try
-            {
-                using var process = Process.GetProcessById((int)pid);
-                return process.ProcessName.Equals(currentProcessName, StringComparison.OrdinalIgnoreCase);
-            }
-            catch
-            {
-                return false;
-            }
+            return IsDefaultOverlayTitle(_overlayWindowTitle) &&
+                   title.Equals(OverlayWindowTitlePrefix, StringComparison.Ordinal);
         }
 
         private static bool IsAgentCursorOverlayWindow(IntPtr hwnd)
         {
-            return hwnd != IntPtr.Zero &&
-                   NativeMethods.GetWindowText(hwnd).Equals(OverlayWindowTitle, StringComparison.Ordinal);
+            if (hwnd == IntPtr.Zero)
+                return false;
+
+            var title = NativeMethods.GetWindowText(hwnd);
+            return title.Equals(OverlayWindowTitlePrefix, StringComparison.Ordinal) ||
+                   title.StartsWith(OverlayWindowTitlePrefix + ".", StringComparison.Ordinal);
         }
 
         private static double Hypot(double x, double y) => Math.Sqrt(x * x + y * y);
