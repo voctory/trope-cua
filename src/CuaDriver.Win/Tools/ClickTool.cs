@@ -117,125 +117,78 @@ public sealed class ClickTool : IDriverTool
         }
         else
         {
-            WindowInfo window;
             if (windowId is null && fromZoom && context.State.ZoomContexts.TryGetValue(pid, out var zoomContext))
             {
-                if (!ToolWindows.TryFindForPid(pid, zoomContext.WindowId, out window, out var error))
+                if (!ToolWindows.TryFindForPid(pid, zoomContext.WindowId, out var zoomWindow, out var error))
                     return error!;
+                return await InvokePixelClickAsync(args, context, pid, x, y, count, action, fromZoom, debugImageOut, modifiers, zoomWindow, cancellationToken).ConfigureAwait(false);
             }
-            else if (!ToolWindows.TryFindMainOrForPid(pid, windowId, out window, out var error))
+
+            if (!ToolWindows.TryFindMainOrForPid(pid, windowId, out var resolvedWindow, out var resolvedError))
             {
-                return error!;
+                return resolvedError!;
             }
+            return await InvokePixelClickAsync(args, context, pid, x, y, count, action, fromZoom, debugImageOut, modifiers, resolvedWindow, cancellationToken).ConfigureAwait(false);
+        }
 
-            if (!string.IsNullOrWhiteSpace(debugImageOut))
+        return ActionToolResult.FromReceipt(receipt);
+    }
+
+    private static async Task<ToolResult> InvokePixelClickAsync(
+        JsonObject args,
+        ToolContext context,
+        int pid,
+        double? x,
+        double? y,
+        int count,
+        string action,
+        bool fromZoom,
+        string? debugImageOut,
+        string[] modifiers,
+        WindowInfo window,
+        CancellationToken cancellationToken)
+    {
+        ActionReceipt receipt;
+        if (!string.IsNullOrWhiteSpace(debugImageOut))
+        {
+            try
             {
-                try
-                {
-                    DebugCrosshair.WriteCrosshair(
-                        window,
-                        new System.Drawing.PointF((float)x!.Value, (float)y!.Value),
-                        context.State.Config.MaxImageDimension,
-                        debugImageOut);
-                }
-                catch (Exception ex)
-                {
-                    return ToolResult.Error($"debug_image_out write failed: {ex.Message}. Not dispatching click; fix the path and retry.");
-                }
+                DebugCrosshair.WriteCrosshair(
+                    window,
+                    new System.Drawing.PointF((float)x!.Value, (float)y!.Value),
+                    context.State.Config.MaxImageDimension,
+                    debugImageOut);
             }
-
-            double clickX;
-            double clickY;
-            if (fromZoom)
+            catch (Exception ex)
             {
-                if (!context.State.ZoomContexts.TryGetValue(pid, out var zoom))
-                    return ToolResult.Error($"from_zoom=true but no zoom context for pid {pid}. Call zoom first.");
-                if (zoom.WindowId != window.WindowId)
-                    return ToolResult.Error($"from_zoom context belongs to window_id {zoom.WindowId}, not {window.WindowId}.");
-                clickX = zoom.OriginX + x!.Value;
-                clickY = zoom.OriginY + y!.Value;
+                return ToolResult.Error($"debug_image_out write failed: {ex.Message}. Not dispatching click; fix the path and retry.");
             }
-            else
-            {
-                var ratio = context.State.ImageResizeRatio.TryGetValue((pid, window.WindowId), out var r) ? r : 1.0;
-                clickX = x!.Value * ratio;
-                clickY = y!.Value * ratio;
-            }
-            var resolved = WindowMessageInput.ResolvePointTarget(window.Hwnd, clickX, clickY);
+        }
 
-            var hit = UiAutomationTree.HitTest(pid, window.WindowId, resolved.ScreenPoint);
-            if (hit is { IsClickAction: true } && modifiers.Length == 0)
-            {
-                await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                if (BrowserWindowClassifier.IsLikelyBrowser(window))
-                {
-                    var msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, resolved.ScreenPoint);
-                    if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
-                    {
-                        if (msaaReceipt.Ok)
-                            await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                        return ActionToolResult.FromReceipt(msaaReceipt);
-                    }
+        double clickX;
+        double clickY;
+        if (fromZoom)
+        {
+            if (!context.State.ZoomContexts.TryGetValue(pid, out var zoom))
+                return ToolResult.Error($"from_zoom=true but no zoom context for pid {pid}. Call zoom first.");
+            if (zoom.WindowId != window.WindowId)
+                return ToolResult.Error($"from_zoom context belongs to window_id {zoom.WindowId}, not {window.WindowId}.");
+            clickX = zoom.OriginX + x!.Value;
+            clickY = zoom.OriginY + y!.Value;
+        }
+        else
+        {
+            var ratio = context.State.ImageResizeRatio.TryGetValue((pid, window.WindowId), out var r) ? r : 1.0;
+            clickX = x!.Value * ratio;
+            clickY = y!.Value * ratio;
+        }
+        var resolved = WindowMessageInput.ResolvePointTarget(window.Hwnd, clickX, clickY);
 
-                    var hitCdpPort = BrowserToolArgs.CdpPort(args, context);
-                    if (hitCdpPort is not null)
-                    {
-                        receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, hitCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
-                                  ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {hitCdpPort}.");
-                        if (receipt.Ok)
-                            await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                        return ActionToolResult.FromReceipt(receipt);
-                    }
-
-                    var navReceipt = BrowserNavigation.RefuseForegroundOnlyLinkRoute(UiAutomationActions.TryGetValue(hit.Element));
-                    if (navReceipt is not null)
-                    {
-                        receipt = navReceipt with { Route = "uia.hit_test." + navReceipt.Route };
-                        return ActionToolResult.FromReceipt(receipt);
-                    }
-
-                    receipt = ActionReceipt.Failure("requires_browser_semantic_route", "Browser UIA hit-test found an actionable element, but it did not expose a safe MSAA default action, URL value, or CDP route; refusing UIA Invoke because browser providers commonly raise/focus the window.");
-                    return ActionToolResult.FromReceipt(receipt);
-                }
-
-                var hitReceipt = await UiAutomationActions.InvokeElementAsync(hit.Element, action, cancellationToken).ConfigureAwait(false);
-                if (!hitReceipt.Ok && !hitReceipt.ForegroundChanged && !hitReceipt.CursorMoved)
-                {
-                    var msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, resolved.ScreenPoint);
-                    if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
-                        hitReceipt = msaaReceipt;
-                }
-                if (hitReceipt.Ok)
-                {
-                    receipt = hitReceipt with { Route = "uia.hit_test." + hitReceipt.Route };
-                    context.State.LastUiaTextTarget[(pid, window.WindowId)] = hit.Element;
-                    await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                    return ActionToolResult.FromReceipt(receipt);
-                }
-            }
-
-            if (hit is { IsTextInput: true } && BrowserWindowClassifier.IsLikelyBrowser(window))
-            {
-                await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                context.State.LastUiaTextTarget[(pid, window.WindowId)] = hit.Element;
-                var textCdpPort = BrowserToolArgs.CdpPort(args, context);
-                if (textCdpPort is not null)
-                {
-                    receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, textCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
-                              ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {textCdpPort}.");
-                    if (receipt.Ok)
-                        await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                    return ActionToolResult.FromReceipt(receipt);
-                }
-
-                receipt = ActionReceipt.Failure(
-                    "requires_cdp_or_element_text",
-                    "Browser text input target was cached for a following type_text call, but no background-safe click/focus route is available without cdp_port; refusing to report this as a delivered click.");
-                return ActionToolResult.FromReceipt(receipt);
-            }
-
+        var hit = UiAutomationTree.HitTest(pid, window.WindowId, resolved.ScreenPoint);
+        if (hit is { IsClickAction: true } && modifiers.Length == 0)
+        {
             await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-            if (BrowserWindowClassifier.IsLikelyBrowser(window) && modifiers.Length == 0)
+            if (BrowserWindowClassifier.IsLikelyBrowser(window))
             {
                 var msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, resolved.ScreenPoint);
                 if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
@@ -244,22 +197,88 @@ public sealed class ClickTool : IDriverTool
                         await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                     return ActionToolResult.FromReceipt(msaaReceipt);
                 }
+
+                var hitCdpPort = BrowserToolArgs.CdpPort(args, context);
+                if (hitCdpPort is not null)
+                {
+                    receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, hitCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
+                              ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {hitCdpPort}.");
+                    if (receipt.Ok)
+                        await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
+                    return ActionToolResult.FromReceipt(receipt);
+                }
+
+                var navReceipt = BrowserNavigation.RefuseForegroundOnlyLinkRoute(UiAutomationActions.TryGetValue(hit.Element));
+                if (navReceipt is not null)
+                {
+                    receipt = navReceipt with { Route = "uia.hit_test." + navReceipt.Route };
+                    return ActionToolResult.FromReceipt(receipt);
+                }
+
+                receipt = ActionReceipt.Failure("requires_browser_semantic_route", "Browser UIA hit-test found an actionable element, but it did not expose a safe MSAA default action, URL value, or CDP route; refusing UIA Invoke because browser providers commonly raise/focus the window.");
+                return ActionToolResult.FromReceipt(receipt);
             }
 
-            var cdpPort = BrowserToolArgs.CdpPort(args, context);
-            receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, cdpPort, cancellationToken, modifiers).ConfigureAwait(false)
-                      ?? (BrowserWindowClassifier.IsLikelyBrowser(window)
-                          ? ActionReceipt.Failure("requires_cdp_or_uia_hit_test", "Browser web content did not expose an actionable UIA target and no CDP port was configured; refusing to report a blind PostMessage click as delivered.")
-                          : (await WindowMessageInput.ClickAsync(window.Hwnd, clickX, clickY, count, rightButton: false, cancellationToken, modifiers).ConfigureAwait(false)).Receipt);
-
-            if (receipt.Ok)
+            var hitReceipt = await UiAutomationActions.InvokeElementAsync(hit.Element, action, cancellationToken).ConfigureAwait(false);
+            if (!hitReceipt.Ok && !hitReceipt.ForegroundChanged && !hitReceipt.CursorMoved)
             {
-                context.State.LastTargetHwnd[(pid, window.WindowId)] = resolved.TargetHwnd;
-                await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
+                var msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, resolved.ScreenPoint);
+                if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
+                    hitReceipt = msaaReceipt;
             }
+            if (hitReceipt.Ok)
+            {
+                receipt = hitReceipt with { Route = "uia.hit_test." + hitReceipt.Route };
+                context.State.LastUiaTextTarget[(pid, window.WindowId)] = hit.Element;
+                await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
+                return ActionToolResult.FromReceipt(receipt);
+            }
+        }
+
+        if (hit is { IsTextInput: true } && BrowserWindowClassifier.IsLikelyBrowser(window))
+        {
+            await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
+            context.State.LastUiaTextTarget[(pid, window.WindowId)] = hit.Element;
+            var textCdpPort = BrowserToolArgs.CdpPort(args, context);
+            if (textCdpPort is not null)
+            {
+                receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, textCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
+                          ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {textCdpPort}.");
+                if (receipt.Ok)
+                    await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
+                return ActionToolResult.FromReceipt(receipt);
+            }
+
+            receipt = ActionReceipt.Failure(
+                "requires_cdp_or_element_text",
+                "Browser text input target was cached for a following type_text call, but no background-safe click/focus route is available without cdp_port; refusing to report this as a delivered click.");
+            return ActionToolResult.FromReceipt(receipt);
+        }
+
+        await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
+        if (BrowserWindowClassifier.IsLikelyBrowser(window) && modifiers.Length == 0)
+        {
+            var msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, resolved.ScreenPoint);
+            if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
+            {
+                if (msaaReceipt.Ok)
+                    await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
+                return ActionToolResult.FromReceipt(msaaReceipt);
+            }
+        }
+
+        var cdpPort = BrowserToolArgs.CdpPort(args, context);
+        receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, cdpPort, cancellationToken, modifiers).ConfigureAwait(false)
+                  ?? (BrowserWindowClassifier.IsLikelyBrowser(window)
+                      ? ActionReceipt.Failure("requires_cdp_or_uia_hit_test", "Browser web content did not expose an actionable UIA target and no CDP port was configured; refusing to report a blind PostMessage click as delivered.")
+                      : (await WindowMessageInput.ClickAsync(window.Hwnd, clickX, clickY, count, rightButton: false, cancellationToken, modifiers).ConfigureAwait(false)).Receipt);
+
+        if (receipt.Ok)
+        {
+            context.State.LastTargetHwnd[(pid, window.WindowId)] = resolved.TargetHwnd;
+            await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
         }
 
         return ActionToolResult.FromReceipt(receipt);
     }
-
 }

@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Browser;
 using CuaDriver.Win.Tooling;
+using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
@@ -29,11 +30,20 @@ public sealed class BrowserEvalTool : IDriverTool
         var pid = JsonArgs.OptionalInt(args, "pid");
         if (windowId is not null)
         {
-            var found = pid is null
-                ? ToolWindows.TryFind(windowId.Value, out var window, out var error)
-                : ToolWindows.TryFindForPid(pid.Value, windowId.Value, out window, out error);
-            if (!found)
-                return error!;
+            WindowInfo window;
+            if (pid is null)
+            {
+                if (!ToolWindows.TryFind(windowId.Value, out var resolvedWindow, out var error))
+                    return error!;
+                window = resolvedWindow;
+            }
+            else
+            {
+                if (!ToolWindows.TryFindForPid(pid.Value, windowId.Value, out var resolvedWindow, out var error))
+                    return error!;
+                window = resolvedWindow;
+            }
+
             if (!BrowserWindowClassifier.IsLikelyChromium(window))
                 return ToolResult.Error($"window_id {windowId.Value} does not look like a Chromium browser window.");
         }

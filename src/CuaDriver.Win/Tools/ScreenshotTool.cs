@@ -32,11 +32,18 @@ public sealed class ScreenshotTool : IDriverTool
             CapturedImage capture;
             if (windowId is not null)
             {
-                var found = pid is null
-                    ? ToolWindows.TryFind(windowId.Value, out window, out var error)
-                    : ToolWindows.TryFindForPid(pid.Value, windowId.Value, out window, out error);
-                if (!found)
-                    return Task.FromResult(error!);
+                if (pid is null)
+                {
+                    if (!ToolWindows.TryFind(windowId.Value, out var resolvedWindow, out var error))
+                        return Task.FromResult(error!);
+                    window = resolvedWindow;
+                }
+                else
+                {
+                    if (!ToolWindows.TryFindForPid(pid.Value, windowId.Value, out var resolvedWindow, out var error))
+                        return Task.FromResult(error!);
+                    window = resolvedWindow;
+                }
 
                 capture = WindowCapture.Capture(new IntPtr(windowId.Value), context.State.Config.MaxImageDimension, quality, format);
                 context.State.ImageResizeRatio[(window.Pid, windowId.Value)] = capture.Width > 0
