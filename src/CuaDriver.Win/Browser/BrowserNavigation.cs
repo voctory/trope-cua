@@ -2,7 +2,7 @@ using CuaDriver.Win.Input;
 
 namespace CuaDriver.Win.Browser;
 
-public static class BrowserNavigation
+internal static class BrowserNavigation
 {
     public static ActionReceipt? RefuseForegroundOnlyLinkRoute(string? value)
     {

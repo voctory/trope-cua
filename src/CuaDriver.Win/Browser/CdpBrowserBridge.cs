@@ -9,7 +9,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Browser;
 
-public static class CdpBrowserBridge
+internal static class CdpBrowserBridge
 {
     private static readonly HttpClient PageDiscoveryClient = new(new SocketsHttpHandler
     {

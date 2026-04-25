@@ -2,7 +2,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Browser;
 
-public static class BrowserWindowClassifier
+internal static class BrowserWindowClassifier
 {
     public static bool IsLikelyBrowser(WindowInfo window)
     {
