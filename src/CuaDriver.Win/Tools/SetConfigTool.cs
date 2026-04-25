@@ -47,18 +47,26 @@ internal sealed class SetConfigTool : IDriverTool
             "chromium_debugging_port" => config with { ChromiumDebuggingPort = IsNullOrBlank(value) ? null : DriverConfig.ValidateTcpPort(IntValue(value)) },
             "allow_parent_sendinput" => config with { AllowParentSendInput = BoolValue(value) },
             "agent_cursor.enabled" => config with { AgentCursor = config.AgentCursor with { Enabled = BoolValue(value) } },
-            "agent_cursor.motion.start_handle" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { StartHandle = NumberValue(value) } } },
-            "agent_cursor.motion.end_handle" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { EndHandle = NumberValue(value) } } },
-            "agent_cursor.motion.arc_size" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { ArcSize = NumberValue(value) } } },
-            "agent_cursor.motion.arc_flow" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { ArcFlow = NumberValue(value) } } },
-            "agent_cursor.motion.spring" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { Spring = NumberValue(value) } } },
-            "agent_cursor.motion.glide_duration_ms" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { GlideDurationMs = NumberValue(value) } } },
-            "agent_cursor.motion.dwell_after_click_ms" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { DwellAfterClickMs = NumberValue(value) } } },
-            "agent_cursor.motion.idle_hide_ms" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { IdleHideMs = NumberValue(value) } } },
-            "agent_cursor.motion.press_duration_ms" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { PressDurationMs = NumberValue(value) } } },
+            "agent_cursor.motion.start_handle" => WithMotion(config, motion => motion with { StartHandle = NumberValue(value) }),
+            "agent_cursor.motion.end_handle" => WithMotion(config, motion => motion with { EndHandle = NumberValue(value) }),
+            "agent_cursor.motion.arc_size" => WithMotion(config, motion => motion with { ArcSize = NumberValue(value) }),
+            "agent_cursor.motion.arc_flow" => WithMotion(config, motion => motion with { ArcFlow = NumberValue(value) }),
+            "agent_cursor.motion.spring" => WithMotion(config, motion => motion with { Spring = NumberValue(value) }),
+            "agent_cursor.motion.glide_duration_ms" => WithMotion(config, motion => motion with { GlideDurationMs = NumberValue(value) }),
+            "agent_cursor.motion.dwell_after_click_ms" => WithMotion(config, motion => motion with { DwellAfterClickMs = NumberValue(value) }),
+            "agent_cursor.motion.idle_hide_ms" => WithMotion(config, motion => motion with { IdleHideMs = NumberValue(value) }),
+            "agent_cursor.motion.press_duration_ms" => WithMotion(config, motion => motion with { PressDurationMs = NumberValue(value) }),
             _ => throw new ArgumentException($"Unknown config key: {key}")
         };
     }
+
+    private static DriverConfig WithMotion(DriverConfig config, Func<AgentCursorMotionConfig, AgentCursorMotionConfig> update) => config with
+    {
+        AgentCursor = config.AgentCursor with
+        {
+            Motion = update(config.AgentCursor.Motion)
+        }
+    };
 
     private static bool IsNullOrBlank(JsonNode? value) =>
         value is null || value.GetValueKind() == JsonValueKind.Null || string.IsNullOrWhiteSpace(StringValue(value));
