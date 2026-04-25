@@ -91,8 +91,8 @@ internal sealed class ScrollTool : IDriverTool
         WindowMessageDispatch resolved;
         if (x is not null && y is not null)
         {
-            var ratio = context.State.ImageResizeRatio.TryGetValue((pid, window.WindowId), out var r) ? r : 1.0;
-            resolved = WindowMessageInput.ResolvePointTarget(window.Hwnd, x.Value * ratio, y.Value * ratio);
+            var native = ToolCoordinates.ToNativePoint(context, pid, window, x.Value, y.Value);
+            resolved = WindowMessageInput.ResolvePointTarget(window.Hwnd, native.X, native.Y);
         }
         else
         {

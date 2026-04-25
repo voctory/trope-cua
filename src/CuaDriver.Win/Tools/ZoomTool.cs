@@ -42,7 +42,7 @@ internal sealed class ZoomTool : IDriverTool
 
         try
         {
-            var ratio = context.State.ImageResizeRatio.TryGetValue((pid, window.WindowId), out var r) ? r : 1.0;
+            var ratio = ToolCoordinates.ResizeRatio(context, pid, window);
             var origX1 = (int)Math.Round(x1 * ratio);
             var origY1 = (int)Math.Round(y1 * ratio);
             var origX2 = (int)Math.Round(x2 * ratio);

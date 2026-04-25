@@ -66,8 +66,8 @@ internal sealed class ClickTool : IDriverTool
             await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
             if (BrowserWindowClassifier.IsLikelyBrowser(window))
             {
-                var rect = element.Current.BoundingRectangle;
-                if (!rect.IsEmpty)
+                var elementPoint = ToolCoordinates.ElementCenter(element, window);
+                if (elementPoint is not null)
                 {
                     var msaaReceipt = MsaaActions.DoDefaultActionAtElement(window.Hwnd, element);
                     if (msaaReceipt.ShouldStopFallback)
@@ -80,9 +80,7 @@ internal sealed class ClickTool : IDriverTool
                     var cdpPort = BrowserToolArgs.CdpPort(args, context);
                     if (cdpPort is not null)
                     {
-                        var localX = rect.X + rect.Width / 2 - window.Bounds.X;
-                        var localY = rect.Y + rect.Height / 2 - window.Bounds.Y;
-                        receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, count, rightButton: false, cdpPort, cancellationToken).ConfigureAwait(false)
+                        receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, elementPoint.LocalX, elementPoint.LocalY, count, rightButton: false, cdpPort, cancellationToken).ConfigureAwait(false)
                                   ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse", cdpPort.Value);
                         if (receipt.Ok)
                             await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
@@ -168,9 +166,9 @@ internal sealed class ClickTool : IDriverTool
         }
         else
         {
-            var ratio = context.State.ImageResizeRatio.TryGetValue((pid, window.WindowId), out var r) ? r : 1.0;
-            clickX = x!.Value * ratio;
-            clickY = y!.Value * ratio;
+            var native = ToolCoordinates.ToNativePoint(context, pid, window, x!.Value, y!.Value);
+            clickX = native.X;
+            clickY = native.Y;
         }
         var resolved = WindowMessageInput.ResolvePointTarget(window.Hwnd, clickX, clickY);
 

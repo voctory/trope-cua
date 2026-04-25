@@ -3,7 +3,6 @@ using CuaDriver.Win.Browser;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
 using CuaDriver.Win.Uia;
-using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
@@ -41,14 +40,11 @@ internal sealed class DoubleClickTool : IDriverTool
             return error!;
 
         var element = context.State.UiaTree.GetCachedElement(target.Pid, target.WindowId.Value, target.ElementIndex!.Value);
-        var rect = element.Current.BoundingRectangle;
-        if (rect.IsEmpty)
+        var elementPoint = ToolCoordinates.ElementCenter(element, window);
+        if (elementPoint is null)
             return ToolResult.Error($"Element {target.ElementIndex.Value} has no on-screen bounds; cannot double-click without a resolvable center.");
 
-        var localX = rect.X + rect.Width / 2 - window.Bounds.X;
-        var localY = rect.Y + rect.Height / 2 - window.Bounds.Y;
-        var screenPoint = new POINT((int)Math.Round(rect.X + rect.Width / 2), (int)Math.Round(rect.Y + rect.Height / 2));
-        await context.State.AgentCursor.MoveToAsync(screenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
+        await context.State.AgentCursor.MoveToAsync(elementPoint.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
 
         ActionReceipt receipt;
         if (BrowserWindowClassifier.IsLikelyBrowser(window))
@@ -57,7 +53,7 @@ internal sealed class DoubleClickTool : IDriverTool
             if (receipt.ShouldStopFallback)
             {
                 if (receipt.Ok)
-                    await context.State.AgentCursor.ClickPulseAsync(screenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
+                    await context.State.AgentCursor.ClickPulseAsync(elementPoint.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                 return ActionToolResult.FromReceipt(receipt);
             }
 
@@ -68,19 +64,19 @@ internal sealed class DoubleClickTool : IDriverTool
                 return ActionToolResult.FromReceipt(receipt);
             }
 
-            receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, 2, rightButton: false, cdpPort, cancellationToken, target.Modifiers).ConfigureAwait(false)
+            receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, elementPoint.LocalX, elementPoint.LocalY, 2, rightButton: false, cdpPort, cancellationToken, target.Modifiers).ConfigureAwait(false)
                       ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse.double", cdpPort.Value);
         }
         else
         {
-            var dispatch = await WindowMessageInput.ClickAsync(window.Hwnd, localX, localY, 2, rightButton: false, cancellationToken, target.Modifiers).ConfigureAwait(false);
+            var dispatch = await WindowMessageInput.ClickAsync(window.Hwnd, elementPoint.LocalX, elementPoint.LocalY, 2, rightButton: false, cancellationToken, target.Modifiers).ConfigureAwait(false);
             receipt = dispatch.Receipt;
             if (receipt.Ok)
                 context.State.LastTargetHwnd[(target.Pid, window.WindowId)] = dispatch.TargetHwnd;
         }
 
         if (receipt.Ok)
-            await context.State.AgentCursor.ClickPulseAsync(screenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
+            await context.State.AgentCursor.ClickPulseAsync(elementPoint.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
 
         return ActionToolResult.FromReceipt(receipt);
     }

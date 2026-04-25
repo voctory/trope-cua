@@ -39,13 +39,11 @@ internal sealed class RightClickTool : IDriverTool
             await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
             if (BrowserWindowClassifier.IsLikelyBrowser(window))
             {
-                var rect = element.Current.BoundingRectangle;
+                var elementPoint = ToolCoordinates.ElementCenter(element, window);
                 var cdpPort = BrowserToolArgs.CdpPort(args, context);
-                if (!rect.IsEmpty && cdpPort is not null)
+                if (elementPoint is not null && cdpPort is not null)
                 {
-                    var localX = rect.X + rect.Width / 2 - window.Bounds.X;
-                    var localY = rect.Y + rect.Height / 2 - window.Bounds.Y;
-                    receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, 1, rightButton: true, cdpPort, cancellationToken).ConfigureAwait(false)
+                    receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, elementPoint.LocalX, elementPoint.LocalY, 1, rightButton: true, cdpPort, cancellationToken).ConfigureAwait(false)
                               ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse.right", cdpPort.Value);
                     if (receipt.Ok)
                         await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
@@ -64,9 +62,9 @@ internal sealed class RightClickTool : IDriverTool
             if (!ToolWindows.TryFindMainOrForPid(target.Pid, target.WindowId, out var window, out var error))
                 return error!;
 
-            var ratio = context.State.ImageResizeRatio.TryGetValue((target.Pid, window.WindowId), out var r) ? r : 1.0;
-            var clickX = target.X!.Value * ratio;
-            var clickY = target.Y!.Value * ratio;
+            var native = ToolCoordinates.ToNativePoint(context, target.Pid, window, target.X!.Value, target.Y!.Value);
+            var clickX = native.X;
+            var clickY = native.Y;
             var resolved = WindowMessageInput.ResolvePointTarget(window.Hwnd, clickX, clickY);
 
             var hit = UiAutomationTree.HitTest(target.Pid, window.WindowId, resolved.ScreenPoint);
