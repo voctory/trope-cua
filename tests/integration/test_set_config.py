@@ -45,6 +45,18 @@ def test_set_config_persists_cursor_press_duration(tmp_path):
     assert loaded["structuredContent"]["agent_cursor"]["motion"]["press_duration_ms"] == 5000
 
 
+def test_set_agent_cursor_motion_persists_press_duration(tmp_path):
+    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+
+    result = call("set_agent_cursor_motion", {"press_duration_ms": 999999}, extra_env=env)
+
+    assert result["isError"] is False
+    assert result["structuredContent"]["press_duration_ms"] == 5000
+
+    loaded = call("get_config", extra_env=env)
+    assert loaded["structuredContent"]["agent_cursor"]["motion"]["press_duration_ms"] == 5000
+
+
 def test_set_config_bounds_max_image_dimension(tmp_path):
     env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
 
