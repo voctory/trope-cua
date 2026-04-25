@@ -36,6 +36,11 @@ public sealed class RightClickTool : IDriverTool
         if (modifiers.Length == 0)
             modifiers = JsonArgs.OptionalStringArray(args, "modifiers");
 
+        if (index is not null && (x is not null || y is not null))
+            return ToolResult.Error("Provide either element_index or x/y, not both.");
+        if (index is null && (x is null || y is null))
+            return ToolResult.Error("Provide element_index or both x and y.");
+
         ActionReceipt receipt;
         if (index is not null)
         {
@@ -72,8 +77,6 @@ public sealed class RightClickTool : IDriverTool
         }
         else
         {
-            if (x is null || y is null)
-                return ToolResult.Error("Provide element_index or both x and y.");
             if (windowId is null)
             {
                 var w = WindowEnumerator.MainWindowForPid(pid);
@@ -88,8 +91,8 @@ public sealed class RightClickTool : IDriverTool
                 return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
 
             var ratio = context.State.ImageResizeRatio.TryGetValue((pid, window.WindowId), out var r) ? r : 1.0;
-            var clickX = x.Value * ratio;
-            var clickY = y.Value * ratio;
+            var clickX = x!.Value * ratio;
+            var clickY = y!.Value * ratio;
             var resolved = WindowMessageInput.ResolvePointTarget(window.Hwnd, clickX, clickY);
 
             var hit = UiAutomationTree.HitTest(pid, window.WindowId, resolved.ScreenPoint);
