@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Tooling;
 
@@ -66,9 +65,7 @@ public sealed class SetAgentCursorMotionTool : IDriverTool
         };
         context.State.SaveConfig(next, "agent_cursor.motion");
 
-        var structured = JsonSerializer.SerializeToNode(context.State.AgentCursor.Motion, JsonUtil.SerializerOptions)?.AsObject()
-                         ?? new JsonObject();
-        return Task.FromResult(ToolResult.JsonText(ToolText.OkPrefix, structured));
+        return Task.FromResult(ToolResult.JsonText(ToolText.OkPrefix, context.State.AgentCursor.Motion.ToJsonObject()));
     }
 
     private static AgentCursorMotionConfig UpdatedMotion(AgentCursorMotionConfig current, JsonObject args) =>

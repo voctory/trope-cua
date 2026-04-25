@@ -42,6 +42,10 @@ public sealed record AgentCursorMotion
     public double PressDurationMs { get; init; } = 650;
 
     public static AgentCursorMotion Default { get; } = new();
+
+    public JsonObject ToJsonObject() =>
+        JsonSerializer.SerializeToNode(this, JsonUtil.SerializerOptions)?.AsObject()
+        ?? new JsonObject();
 }
 
 public sealed record CursorSnapshot(bool Visible, int? ScreenX, int? ScreenY, long? TargetWindowId, string Layering);
