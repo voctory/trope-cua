@@ -24,18 +24,21 @@ public sealed class McpServer
             if (string.IsNullOrWhiteSpace(line))
                 continue;
 
-            JsonObject? request = null;
+            JsonObject request;
+            JsonNode? idNode = null;
             try
             {
-                request = JsonNode.Parse(line) as JsonObject;
-                if (request is null)
-                    continue;
+                request = JsonNode.Parse(line) as JsonObject
+                          ?? throw new McpRequestException(-32600, "Invalid request: expected a JSON object.");
 
                 var method = request["method"]?.GetValue<string>() ?? "";
-                var idNode = request["id"]?.DeepClone();
+                idNode = request["id"]?.DeepClone();
 
                 if (method.StartsWith("notifications/", StringComparison.Ordinal))
                     continue;
+
+                if (string.IsNullOrWhiteSpace(method))
+                    throw new McpRequestException(-32600, "Invalid request: missing method.");
 
                 var response = method switch
                 {
@@ -48,9 +51,18 @@ public sealed class McpServer
                 Console.WriteLine(response.ToJsonString(JsonUtil.LineSerializerOptions));
                 await Console.Out.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
+            catch (JsonException ex)
+            {
+                Console.WriteLine(Error(null, -32700, $"Parse error: {ex.Message}").ToJsonString(JsonUtil.LineSerializerOptions));
+                await Console.Out.FlushAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (McpRequestException ex)
+            {
+                Console.WriteLine(Error(idNode, ex.Code, ex.Message).ToJsonString(JsonUtil.LineSerializerOptions));
+                await Console.Out.FlushAsync(cancellationToken).ConfigureAwait(false);
+            }
             catch (Exception ex)
             {
-                var idNode = request?["id"]?.DeepClone();
                 Console.WriteLine(Error(idNode, -32603, $"{ex.GetType().Name}: {ex.Message}").ToJsonString(JsonUtil.LineSerializerOptions));
                 await Console.Out.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
@@ -90,7 +102,7 @@ public sealed class McpServer
     private async Task<JsonObject> ToolsCallAsync(JsonObject request, CancellationToken ct)
     {
         var p = request["params"] as JsonObject ?? new JsonObject();
-        var name = p["name"]?.GetValue<string>() ?? throw new ArgumentException("tools/call missing params.name");
+        var name = p["name"]?.GetValue<string>() ?? throw new McpRequestException(-32602, "tools/call missing params.name");
         var args = p["arguments"] as JsonObject ?? new JsonObject();
         var result = await _registry.InvokeAsync(name, args, _context, ct).ConfigureAwait(false);
 
@@ -147,5 +159,10 @@ public sealed class McpServer
         };
         if (id is not null) obj["id"] = id;
         return obj;
+    }
+
+    private sealed class McpRequestException(int code, string message) : Exception(message)
+    {
+        public int Code { get; } = code;
     }
 }

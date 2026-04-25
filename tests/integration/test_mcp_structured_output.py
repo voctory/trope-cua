@@ -79,3 +79,38 @@ def test_child_session_stop_includes_structured_content():
     response = json.loads(proc.stdout.splitlines()[0])
     assert response["result"]["structuredContent"]["ok"] is True
     assert "host" in response["result"]["structuredContent"]
+
+
+def test_mcp_reports_parse_error_for_invalid_json():
+    proc = subprocess.run(
+        [EXE, "mcp"],
+        input="{not-json}\n",
+        text=True,
+        capture_output=True,
+        timeout=30,
+    )
+
+    assert proc.returncode == 0
+    response = json.loads(proc.stdout.splitlines()[0])
+    assert response["error"]["code"] == -32700
+
+
+def test_mcp_reports_invalid_params_for_missing_tool_name():
+    request = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {},
+    }
+    proc = subprocess.run(
+        [EXE, "mcp"],
+        input=json.dumps(request) + "\n",
+        text=True,
+        capture_output=True,
+        timeout=30,
+    )
+
+    assert proc.returncode == 0
+    response = json.loads(proc.stdout.splitlines()[0])
+    assert response["id"] == 1
+    assert response["error"]["code"] == -32602
