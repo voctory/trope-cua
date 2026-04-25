@@ -184,9 +184,6 @@ public sealed class AgentCursorOverlay
             await Task.Delay(TimeSpan.FromMilliseconds(delayMs), ct).ConfigureAwait(false);
     }
 
-    public string StateJson()
-        => StateObject().ToJsonString(JsonUtil.SerializerOptions);
-
     public JsonObject StateObject()
     {
         bool enabled;
