@@ -5,14 +5,14 @@ using System.Text.Json.Serialization;
 
 namespace CuaDriver.Win;
 
-public enum CaptureMode
+internal enum CaptureMode
 {
     Som,
     Ax,
     Vision
 }
 
-public sealed record DriverConfig
+internal sealed record DriverConfig
 {
     private const string ConfigDirectoryEnvironmentVariable = "CUA_DRIVER_CONFIG_DIR";
     internal const int MinImageDimension = 0;
@@ -104,7 +104,7 @@ public sealed record DriverConfig
         port is >= MinTcpPort and <= MaxTcpPort ? port : null;
 }
 
-public sealed record AgentCursorConfig
+internal sealed record AgentCursorConfig
 {
     [JsonPropertyName("enabled")]
     public bool Enabled { get; init; } = true;
@@ -118,7 +118,7 @@ public sealed record AgentCursorConfig
     };
 }
 
-public sealed record AgentCursorMotionConfig
+internal sealed record AgentCursorMotionConfig
 {
     [JsonPropertyName("start_handle")]
     public double StartHandle { get; init; } = 0.3;

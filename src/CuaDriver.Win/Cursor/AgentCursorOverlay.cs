@@ -11,7 +11,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Cursor;
 
-public sealed record AgentCursorMotion
+internal sealed record AgentCursorMotion
 {
     [JsonPropertyName("start_handle")]
     public double StartHandle { get; init; } = 0.3;
@@ -45,9 +45,9 @@ public sealed record AgentCursorMotion
     public JsonObject ToJsonObject() => JsonUtil.ToJsonObject(this);
 }
 
-public sealed record CursorSnapshot(bool Visible, int? ScreenX, int? ScreenY, long? TargetWindowId, string Layering);
+internal sealed record CursorSnapshot(bool Visible, int? ScreenX, int? ScreenY, long? TargetWindowId, string Layering);
 
-public sealed class AgentCursorOverlay
+internal sealed class AgentCursorOverlay
 {
     private const string OverlayWindowTitlePrefix = "CuaDriverWin.AgentCursorOverlay";
     private const double RestingHeadingRadians = Math.PI / 4;
