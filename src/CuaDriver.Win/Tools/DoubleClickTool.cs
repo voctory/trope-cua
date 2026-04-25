@@ -27,33 +27,23 @@ public sealed class DoubleClickTool : IDriverTool
 
     public async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
-        var pid = JsonArgs.RequiredInt(args, "pid");
-        var windowId = JsonArgs.OptionalLong(args, "window_id");
-        var index = JsonArgs.OptionalInt(args, "element_index");
-        var x = JsonArgs.OptionalDouble(args, "x");
-        var y = JsonArgs.OptionalDouble(args, "y");
-        var modifiers = JsonArgs.OptionalStringArray(args, "modifier", "modifiers");
+        var parseError = ClickTargetArgs.TryParse(args, "double_click", out var target);
+        if (parseError is not null)
+            return parseError;
 
-        if (index is not null && (x is not null || y is not null))
-            return ToolResult.Error("Provide either element_index or x/y, not both.");
-        if (index is null && (x is null || y is null))
-            return ToolResult.Error("Provide element_index or both x and y.");
-        if (index is not null && windowId is null)
-            return ToolResult.Error("window_id is required for element_index double_click.");
-
-        if (index is null)
+        if (!target.HasElement)
         {
             args["count"] = 2;
             return await new ClickTool().InvokeAsync(args, context, cancellationToken).ConfigureAwait(false);
         }
 
-        if (!ToolWindows.TryFindForPid(pid, windowId!.Value, out var window, out var error))
+        if (!ToolWindows.TryFindForPid(target.Pid, target.WindowId!.Value, out var window, out var error))
             return error!;
 
-        var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
+        var element = context.State.UiaTree.GetCachedElement(target.Pid, target.WindowId.Value, target.ElementIndex!.Value);
         var rect = element.Current.BoundingRectangle;
         if (rect.IsEmpty)
-            return ToolResult.Error($"Element {index.Value} has no on-screen bounds; cannot double-click without a resolvable center.");
+            return ToolResult.Error($"Element {target.ElementIndex.Value} has no on-screen bounds; cannot double-click without a resolvable center.");
 
         var localX = rect.X + rect.Width / 2 - window.Bounds.X;
         var localY = rect.Y + rect.Height / 2 - window.Bounds.Y;
@@ -78,15 +68,15 @@ public sealed class DoubleClickTool : IDriverTool
                 return ActionToolResult.FromReceipt(receipt);
             }
 
-            receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, 2, rightButton: false, cdpPort, cancellationToken, modifiers).ConfigureAwait(false)
+            receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, 2, rightButton: false, cdpPort, cancellationToken, target.Modifiers).ConfigureAwait(false)
                       ?? ActionReceipt.Failure("cdp.input.dispatch_mouse.double", $"No page tab found on CDP port {cdpPort}.");
         }
         else
         {
-            var dispatch = await WindowMessageInput.ClickAsync(window.Hwnd, localX, localY, 2, rightButton: false, cancellationToken, modifiers).ConfigureAwait(false);
+            var dispatch = await WindowMessageInput.ClickAsync(window.Hwnd, localX, localY, 2, rightButton: false, cancellationToken, target.Modifiers).ConfigureAwait(false);
             receipt = dispatch.Receipt;
             if (receipt.Ok)
-                context.State.LastTargetHwnd[(pid, window.WindowId)] = dispatch.TargetHwnd;
+                context.State.LastTargetHwnd[(target.Pid, window.WindowId)] = dispatch.TargetHwnd;
         }
 
         if (receipt.Ok)

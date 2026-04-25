@@ -26,26 +26,16 @@ public sealed class RightClickTool : IDriverTool
 
     public async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
-        var pid = JsonArgs.RequiredInt(args, "pid");
-        var windowId = JsonArgs.OptionalLong(args, "window_id");
-        var index = JsonArgs.OptionalInt(args, "element_index");
-        var x = JsonArgs.OptionalDouble(args, "x");
-        var y = JsonArgs.OptionalDouble(args, "y");
-        var modifiers = JsonArgs.OptionalStringArray(args, "modifier", "modifiers");
-
-        if (index is not null && (x is not null || y is not null))
-            return ToolResult.Error("Provide either element_index or x/y, not both.");
-        if (index is null && (x is null || y is null))
-            return ToolResult.Error("Provide element_index or both x and y.");
+        var parseError = ClickTargetArgs.TryParse(args, "right_click", out var target);
+        if (parseError is not null)
+            return parseError;
 
         ActionReceipt receipt;
-        if (index is not null)
+        if (target.HasElement)
         {
-            if (windowId is null)
-                return ToolResult.Error("window_id is required for element_index right_click.");
-            if (!ToolWindows.TryFindForPid(pid, windowId.Value, out var window, out var error))
+            if (!ToolWindows.TryFindForPid(target.Pid, target.WindowId!.Value, out var window, out var error))
                 return error!;
-            var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
+            var element = context.State.UiaTree.GetCachedElement(target.Pid, target.WindowId.Value, target.ElementIndex!.Value);
             await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
             if (BrowserWindowClassifier.IsLikelyBrowser(window))
             {
@@ -71,16 +61,16 @@ public sealed class RightClickTool : IDriverTool
         }
         else
         {
-            if (!ToolWindows.TryFindMainOrForPid(pid, windowId, out var window, out var error))
+            if (!ToolWindows.TryFindMainOrForPid(target.Pid, target.WindowId, out var window, out var error))
                 return error!;
 
-            var ratio = context.State.ImageResizeRatio.TryGetValue((pid, window.WindowId), out var r) ? r : 1.0;
-            var clickX = x!.Value * ratio;
-            var clickY = y!.Value * ratio;
+            var ratio = context.State.ImageResizeRatio.TryGetValue((target.Pid, window.WindowId), out var r) ? r : 1.0;
+            var clickX = target.X!.Value * ratio;
+            var clickY = target.Y!.Value * ratio;
             var resolved = WindowMessageInput.ResolvePointTarget(window.Hwnd, clickX, clickY);
 
-            var hit = UiAutomationTree.HitTest(pid, window.WindowId, resolved.ScreenPoint);
-            if (hit is { IsClickAction: true } && modifiers.Length == 0)
+            var hit = UiAutomationTree.HitTest(target.Pid, window.WindowId, resolved.ScreenPoint);
+            if (hit is { IsClickAction: true } && target.Modifiers.Length == 0)
             {
                 await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                 if (BrowserWindowClassifier.IsLikelyBrowser(window))
@@ -88,7 +78,7 @@ public sealed class RightClickTool : IDriverTool
                     var hitCdpPort = BrowserToolArgs.CdpPort(args, context);
                     if (hitCdpPort is not null)
                     {
-                        receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, 1, rightButton: true, hitCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
+                        receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, 1, rightButton: true, hitCdpPort, cancellationToken, target.Modifiers).ConfigureAwait(false)
                                   ?? ActionReceipt.Failure("cdp.input.dispatch_mouse.right", $"No page tab found on CDP port {hitCdpPort}.");
                         if (receipt.Ok)
                             await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
@@ -110,14 +100,14 @@ public sealed class RightClickTool : IDriverTool
 
             var cdpPort = BrowserToolArgs.CdpPort(args, context);
             await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-            receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, 1, rightButton: true, cdpPort, cancellationToken, modifiers).ConfigureAwait(false)
+            receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, 1, rightButton: true, cdpPort, cancellationToken, target.Modifiers).ConfigureAwait(false)
                       ?? (BrowserWindowClassifier.IsLikelyBrowser(window)
                           ? ActionReceipt.Failure("requires_cdp_or_uia_hit_test", "Browser web content did not expose an actionable UIA target and no CDP port was configured; refusing to report a blind PostMessage right-click as delivered.")
-                          : (await WindowMessageInput.ClickAsync(window.Hwnd, clickX, clickY, 1, rightButton: true, cancellationToken, modifiers).ConfigureAwait(false)).Receipt);
+                          : (await WindowMessageInput.ClickAsync(window.Hwnd, clickX, clickY, 1, rightButton: true, cancellationToken, target.Modifiers).ConfigureAwait(false)).Receipt);
 
             if (receipt.Ok)
             {
-                context.State.LastTargetHwnd[(pid, window.WindowId)] = resolved.TargetHwnd;
+                context.State.LastTargetHwnd[(target.Pid, window.WindowId)] = resolved.TargetHwnd;
                 await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
             }
         }

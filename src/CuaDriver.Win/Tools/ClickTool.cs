@@ -34,43 +34,35 @@ public sealed class ClickTool : IDriverTool
 
     public async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
-        var pid = JsonArgs.RequiredInt(args, "pid");
-        var windowId = JsonArgs.OptionalLong(args, "window_id");
-        var index = JsonArgs.OptionalInt(args, "element_index");
-        var x = JsonArgs.OptionalDouble(args, "x");
-        var y = JsonArgs.OptionalDouble(args, "y");
+        var parseError = ClickTargetArgs.TryParse(args, "clicks", out var target);
+        if (parseError is not null)
+            return parseError;
+
         var count = JsonArgs.OptionalInt(args, "count") ?? 1;
         var action = JsonArgs.OptionalString(args, "action") ?? "press";
         var fromZoom = JsonArgs.OptionalBool(args, "from_zoom");
         var debugImageOut = JsonArgs.OptionalString(args, "debug_image_out");
-        var modifiers = JsonArgs.OptionalStringArray(args, "modifier", "modifiers");
 
-        if (index is not null && (x is not null || y is not null))
-            return ToolResult.Error("Provide either element_index or x/y, not both.");
-        if (index is null && (x is null || y is null))
-            return ToolResult.Error("Provide element_index or both x and y.");
-        if (index is not null && fromZoom)
+        if (target.HasElement && fromZoom)
             return ToolResult.Error("from_zoom only applies to pixel clicks.");
-        if (index is not null && windowId is null)
-            return ToolResult.Error("window_id is required for element_index clicks.");
         if (!string.IsNullOrWhiteSpace(debugImageOut))
         {
-            if (index is not null)
+            if (target.HasElement)
                 return ToolResult.Error("debug_image_out only applies to pixel clicks (x, y); element_index clicks do not have a coordinate to verify.");
             if (fromZoom)
                 return ToolResult.Error("debug_image_out is incompatible with from_zoom because the received x/y are in zoom-crop space, not window-local screenshot space.");
-            if (windowId is null)
+            if (target.WindowId is null)
                 return ToolResult.Error("debug_image_out requires window_id so the tool can capture the window for the crosshair overlay.");
         }
 
         ActionReceipt receipt;
 
-        if (index is not null)
+        if (target.HasElement)
         {
-            if (!ToolWindows.TryFindForPid(pid, windowId!.Value, out var window, out var error))
+            if (!ToolWindows.TryFindForPid(target.Pid, target.WindowId!.Value, out var window, out var error))
                 return error!;
 
-            var element = context.State.UiaTree.GetCachedElement(pid, window.WindowId, index.Value);
+            var element = context.State.UiaTree.GetCachedElement(target.Pid, window.WindowId, target.ElementIndex!.Value);
             await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
             if (BrowserWindowClassifier.IsLikelyBrowser(window))
             {
@@ -110,23 +102,23 @@ public sealed class ClickTool : IDriverTool
                 if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
                     receipt = msaaReceipt;
             }
-            context.State.LastUiaTextTarget[(pid, windowId.Value)] = element;
+            context.State.LastUiaTextTarget[(target.Pid, target.WindowId.Value)] = element;
             await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
         }
         else
         {
-            if (windowId is null && fromZoom && context.State.ZoomContexts.TryGetValue(pid, out var zoomContext))
+            if (target.WindowId is null && fromZoom && context.State.ZoomContexts.TryGetValue(target.Pid, out var zoomContext))
             {
-                if (!ToolWindows.TryFindForPid(pid, zoomContext.WindowId, out var zoomWindow, out var error))
+                if (!ToolWindows.TryFindForPid(target.Pid, zoomContext.WindowId, out var zoomWindow, out var error))
                     return error!;
-                return await InvokePixelClickAsync(args, context, pid, x, y, count, action, fromZoom, debugImageOut, modifiers, zoomWindow, cancellationToken).ConfigureAwait(false);
+                return await InvokePixelClickAsync(args, context, target.Pid, target.X, target.Y, count, action, fromZoom, debugImageOut, target.Modifiers, zoomWindow, cancellationToken).ConfigureAwait(false);
             }
 
-            if (!ToolWindows.TryFindMainOrForPid(pid, windowId, out var resolvedWindow, out var resolvedError))
+            if (!ToolWindows.TryFindMainOrForPid(target.Pid, target.WindowId, out var resolvedWindow, out var resolvedError))
             {
                 return resolvedError!;
             }
-            return await InvokePixelClickAsync(args, context, pid, x, y, count, action, fromZoom, debugImageOut, modifiers, resolvedWindow, cancellationToken).ConfigureAwait(false);
+            return await InvokePixelClickAsync(args, context, target.Pid, target.X, target.Y, count, action, fromZoom, debugImageOut, target.Modifiers, resolvedWindow, cancellationToken).ConfigureAwait(false);
         }
 
         return ActionToolResult.FromReceipt(receipt);
