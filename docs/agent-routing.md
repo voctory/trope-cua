@@ -26,4 +26,5 @@ Cursor rules:
 
 - The visual agent cursor is an overlay that communicates intent.
 - It must not be treated as the Windows hardware cursor.
+- Each daemon instance owns its own overlay, so parallel agents should use separate `--instance` values.
 - `move_cursor` is for display only unless a human explicitly authorizes `allow_parent_cursor`.
