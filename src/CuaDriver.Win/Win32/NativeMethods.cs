@@ -262,7 +262,7 @@ internal static class NativeMethods
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public struct RECT
+internal struct RECT
 {
     public int Left;
     public int Top;
@@ -277,7 +277,7 @@ public struct RECT
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public struct POINT
+internal struct POINT
 {
     public int X;
     public int Y;
@@ -292,7 +292,7 @@ public struct POINT
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public struct SIZE
+internal struct SIZE
 {
     public int Cx;
     public int Cy;
@@ -305,7 +305,7 @@ public struct SIZE
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
-public struct BLENDFUNCTION
+internal struct BLENDFUNCTION
 {
     public byte BlendOp;
     public byte BlendFlags;
