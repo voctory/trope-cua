@@ -118,7 +118,7 @@ public sealed class ScreenshotTool : IDriverTool
             "jpg" => "jpeg",
             "jpeg" => "jpeg",
             "png" => "png",
-            _ => "png"
+            _ => throw new ArgumentException("format must be one of png, jpeg, or jpg.")
         };
     }
 
