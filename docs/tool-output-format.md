@@ -10,8 +10,23 @@ MCP responses follow the normal `tools/call` shape:
     {"type": "text", "text": "..."},
     {"type": "image", "data": "base64...", "mimeType": "image/jpeg"}
   ],
-  "isError": false
+  "isError": false,
+  "structuredContent": {}
 }
 ```
 
-Mutating actions include an action receipt in the first text block.
+Tools should return `structuredContent` whenever the caller needs to make a routing or safety decision. Mutating actions expose the same action receipt in text and structured form:
+
+```json
+{
+  "ok": true,
+  "route": "uia.invoke",
+  "lane": "same_session",
+  "background_safe": true,
+  "cursor_moved": false,
+  "foreground_changed": false,
+  "session": "parent"
+}
+```
+
+When a tool cannot safely act, `structuredContent.route` should name the missing or refused lane, such as `requires_cdp_or_child_session`, `requires_child_session_or_appbroadcast`, or `requires_background_launch_lane`.
