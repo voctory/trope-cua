@@ -32,6 +32,14 @@ public sealed class GetWindowStateTool : IDriverTool
         var mode = context.State.Config.CaptureMode;
         var content = new List<ContentBlock>();
         var sb = new StringBuilder();
+        var structured = new JsonObject
+        {
+            ["pid"] = pid,
+            ["window_id"] = windowId,
+            ["window"] = ToolJson.Window(window),
+            ["capture_mode"] = mode.ToString().ToLowerInvariant(),
+            ["query"] = query
+        };
 
         if (mode != CaptureMode.Ax)
         {
@@ -40,10 +48,13 @@ public sealed class GetWindowStateTool : IDriverTool
                 var capture = context.State.Capture.Capture(new IntPtr(windowId), context.State.Config.MaxImageDimension);
                 context.State.ImageResizeRatio[(pid, windowId)] = capture.Width > 0 ? capture.OriginalWidth / (double)capture.Width : 1.0;
                 content.Add(ContentBlock.ImageBlock(capture.Data, capture.MimeType));
+                structured["capture"] = ToolJson.Capture(capture);
+                structured["image_resize_ratio"] = context.State.ImageResizeRatio[(pid, windowId)];
                 sb.AppendLine($"✅ screenshot route={capture.Route} width={capture.Width} height={capture.Height} original_width={capture.OriginalWidth} original_height={capture.OriginalHeight} scale_factor={capture.ScaleFactor:0.###} image_resize_ratio={context.State.ImageResizeRatio[(pid, windowId)]:0.###}");
             }
             catch (Exception ex)
             {
+                structured["capture_error"] = ex.Message;
                 sb.AppendLine($"⚠️ screenshot failed: {ex.Message}");
             }
         }
@@ -53,6 +64,13 @@ public sealed class GetWindowStateTool : IDriverTool
             try
             {
                 var snapshot = context.State.UiaTree.Snapshot(pid, windowId, query);
+                structured["uia"] = new JsonObject
+                {
+                    ["turn_id"] = snapshot.TurnId,
+                    ["element_count"] = snapshot.ElementCount,
+                    ["tree_markdown"] = snapshot.TreeMarkdown,
+                    ["elements"] = ToolJson.Array(snapshot.Elements, ToolJson.Element)
+                };
                 sb.AppendLine($"✅ {window.AppName} — {snapshot.ElementCount} elements, turn {snapshot.TurnId} [uia/{mode.ToString().ToLowerInvariant()} mode]");
                 if (snapshot.ElementCount <= 15)
                     sb.AppendLine("⚠️ Small UIA tree — target may be custom-rendered. Use CDP, HWND-message pixel route, or child-session lane for raw surfaces.");
@@ -61,11 +79,12 @@ public sealed class GetWindowStateTool : IDriverTool
             }
             catch (Exception ex)
             {
+                structured["uia_error"] = ex.Message;
                 sb.AppendLine($"⚠️ UIA snapshot failed: {ex.Message}");
             }
         }
 
         content.Add(ContentBlock.TextBlock(sb.ToString().TrimEnd()));
-        return Task.FromResult(new ToolResult { Content = content, IsError = false });
+        return Task.FromResult(new ToolResult { Content = content, IsError = false, StructuredContent = structured });
     }
 }

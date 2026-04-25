@@ -32,6 +32,19 @@ public sealed class ListAppsTool : IDriverTool
             sb.AppendLine();
         }
 
-        return Task.FromResult(ToolResult.Text(sb.ToString().TrimEnd()));
+        return Task.FromResult(ToolResult.Text(sb.ToString().TrimEnd(), new JsonObject
+        {
+            ["running_count"] = apps.Count,
+            ["start_menu_shortcut_count"] = shortcuts.Count,
+            ["apps"] = ToolJson.Array(apps, app => new JsonObject
+            {
+                ["name"] = app.Name,
+                ["pid"] = app.Pid,
+                ["running"] = app.Running,
+                ["path"] = app.Path,
+                ["main_window_id"] = app.MainWindowId,
+                ["window_count"] = app.WindowCount
+            })
+        }));
     }
 }

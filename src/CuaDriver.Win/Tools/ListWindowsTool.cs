@@ -1,5 +1,4 @@
 using System.Text;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Tooling;
 using CuaDriver.Win.Win32;
@@ -39,6 +38,12 @@ public sealed class ListWindowsTool : IDriverTool
               .Append(" title=\"").Append(w.Title.Replace("\"", "\\\"")).AppendLine("\"");
         }
 
-        return Task.FromResult(ToolResult.Text(sb.ToString().TrimEnd()));
+        return Task.FromResult(ToolResult.Text(sb.ToString().TrimEnd(), new JsonObject
+        {
+            ["count"] = windows.Count,
+            ["pid_filter"] = pid,
+            ["on_screen_only"] = visibleOnly,
+            ["windows"] = ToolJson.Array(windows, ToolJson.Window)
+        }));
     }
 }

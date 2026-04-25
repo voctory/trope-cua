@@ -66,6 +66,35 @@ public sealed class ZoomTool : IDriverTool
             using var cropped = full.Clone(new Rectangle(cropX, cropY, cropW, cropH), full.PixelFormat);
             var data = EncodeJpeg(cropped, 90);
             context.State.ZoomContexts[pid] = new ZoomContext(cropX, cropY, cropW, cropH, ratio, window.WindowId);
+            var structured = new JsonObject
+            {
+                ["pid"] = pid,
+                ["window"] = ToolJson.Window(window),
+                ["capture"] = ToolJson.Capture(capture),
+                ["image_resize_ratio"] = ratio,
+                ["input_region"] = new JsonObject
+                {
+                    ["x1"] = x1,
+                    ["y1"] = y1,
+                    ["x2"] = x2,
+                    ["y2"] = y2
+                },
+                ["native_region"] = new JsonObject
+                {
+                    ["x1"] = origX1,
+                    ["y1"] = origY1,
+                    ["x2"] = origX2,
+                    ["y2"] = origY2
+                },
+                ["zoom_context"] = new JsonObject
+                {
+                    ["origin_x"] = cropX,
+                    ["origin_y"] = cropY,
+                    ["width"] = cropW,
+                    ["height"] = cropH,
+                    ["window_id"] = window.WindowId
+                }
+            };
 
             return Task.FromResult(new ToolResult
             {
@@ -74,7 +103,8 @@ public sealed class ZoomTool : IDriverTool
                     ContentBlock.ImageBlock(data, "image/jpeg"),
                     ContentBlock.TextBlock("✅ Zoomed region captured at native resolution. To click a target in this image, use click(pid, window_id, x, y, from_zoom=true) where x,y are pixel coordinates in this zoomed image.")
                 ],
-                IsError = false
+                IsError = false,
+                StructuredContent = structured
             });
         }
         catch (Exception ex)

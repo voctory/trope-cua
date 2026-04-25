@@ -62,16 +62,31 @@ public sealed class ScreenshotTool : IDriverTool
                 ? ""
                 : $" image_resize_ratio={context.State.ImageResizeRatio[(window.Pid, window.WindowId)]:0.###}";
             var targetText = window is null ? "desktop" : $"window_id={window.WindowId} pid={window.Pid}";
+            var structured = new JsonObject
+            {
+                ["target"] = window is null ? "desktop" : "window",
+                ["window"] = window is null ? null : ToolJson.Window(window),
+                ["capture"] = ToolJson.Capture(capture),
+                ["format"] = format,
+                ["out"] = outPath
+            };
+            if (window is not null)
+                structured["image_resize_ratio"] = context.State.ImageResizeRatio[(window.Pid, window.WindowId)];
+
             var text = $"✅ screenshot target={targetText} route={capture.Route} width={capture.Width} height={capture.Height} original_width={capture.OriginalWidth} original_height={capture.OriginalHeight} format={format}{ratioText}"
                        + (string.IsNullOrWhiteSpace(outPath) ? "" : $" wrote=\"{outPath}\"");
 
             if (window is null)
+            {
+                structured["visible_windows"] = ToolJson.Array(WindowEnumerator.AllWindows(visibleOnly: true).Take(20), ToolJson.Window);
                 text += VisibleWindowsHint();
+            }
 
             return Task.FromResult(new ToolResult
             {
                 Content = [ContentBlock.ImageBlock(capture.Data, capture.MimeType), ContentBlock.TextBlock(text)],
-                IsError = false
+                IsError = false,
+                StructuredContent = structured
             });
         }
         catch (Exception ex)
