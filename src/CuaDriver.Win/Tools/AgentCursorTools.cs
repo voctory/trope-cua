@@ -69,16 +69,14 @@ internal sealed class SetAgentCursorMotionTool : IDriverTool
     }
 
     private static AgentCursorMotionConfig UpdatedMotion(AgentCursorMotionConfig current, JsonObject args) =>
-        (current with
-        {
-            StartHandle = JsonArgs.OptionalDouble(args, "start_handle") ?? current.StartHandle,
-            EndHandle = JsonArgs.OptionalDouble(args, "end_handle") ?? current.EndHandle,
-            ArcSize = JsonArgs.OptionalDouble(args, "arc_size") ?? current.ArcSize,
-            ArcFlow = JsonArgs.OptionalDouble(args, "arc_flow") ?? current.ArcFlow,
-            Spring = JsonArgs.OptionalDouble(args, "spring") ?? current.Spring,
-            GlideDurationMs = JsonArgs.OptionalDouble(args, "glide_duration_ms") ?? current.GlideDurationMs,
-            DwellAfterClickMs = JsonArgs.OptionalDouble(args, "dwell_after_click_ms") ?? current.DwellAfterClickMs,
-            IdleHideMs = JsonArgs.OptionalDouble(args, "idle_hide_ms") ?? current.IdleHideMs,
-            PressDurationMs = JsonArgs.OptionalDouble(args, "press_duration_ms") ?? current.PressDurationMs
-        }).Normalize();
+        current.WithOverrides(
+            JsonArgs.OptionalDouble(args, "start_handle"),
+            JsonArgs.OptionalDouble(args, "end_handle"),
+            JsonArgs.OptionalDouble(args, "arc_size"),
+            JsonArgs.OptionalDouble(args, "arc_flow"),
+            JsonArgs.OptionalDouble(args, "spring"),
+            JsonArgs.OptionalDouble(args, "glide_duration_ms"),
+            JsonArgs.OptionalDouble(args, "dwell_after_click_ms"),
+            JsonArgs.OptionalDouble(args, "idle_hide_ms"),
+            JsonArgs.OptionalDouble(args, "press_duration_ms"));
 }

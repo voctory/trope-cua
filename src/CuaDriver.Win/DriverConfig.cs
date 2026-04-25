@@ -160,6 +160,28 @@ internal sealed record AgentCursorMotionConfig
         PressDurationMs = Clamp(PressDurationMs, 0, 5000)
     };
 
+    public AgentCursorMotionConfig WithOverrides(
+        double? startHandle,
+        double? endHandle,
+        double? arcSize,
+        double? arcFlow,
+        double? spring,
+        double? glideDurationMs,
+        double? dwellAfterClickMs,
+        double? idleHideMs,
+        double? pressDurationMs) => (this with
+        {
+            StartHandle = startHandle ?? StartHandle,
+            EndHandle = endHandle ?? EndHandle,
+            ArcSize = arcSize ?? ArcSize,
+            ArcFlow = arcFlow ?? ArcFlow,
+            Spring = spring ?? Spring,
+            GlideDurationMs = glideDurationMs ?? GlideDurationMs,
+            DwellAfterClickMs = dwellAfterClickMs ?? DwellAfterClickMs,
+            IdleHideMs = idleHideMs ?? IdleHideMs,
+            PressDurationMs = pressDurationMs ?? PressDurationMs
+        }).Normalize();
+
     private static double Clamp(double value, double min, double max) =>
         double.IsFinite(value) ? Math.Min(max, Math.Max(min, value)) : min;
 }
