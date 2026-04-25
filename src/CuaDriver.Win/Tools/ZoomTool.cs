@@ -96,16 +96,11 @@ public sealed class ZoomTool : IDriverTool
                 }
             };
 
-            return Task.FromResult(new ToolResult
-            {
-                Content =
-                [
-                    ContentBlock.ImageBlock(data, "image/jpeg"),
-                    ContentBlock.TextBlock(ToolText.OkPrefix + "Zoomed region captured at native resolution. To click a target in this image, use click(pid, window_id, x, y, from_zoom=true) where x,y are pixel coordinates in this zoomed image.")
-                ],
-                IsError = false,
-                StructuredContent = structured
-            });
+            return Task.FromResult(ToolResult.ImageText(
+                data,
+                "image/jpeg",
+                ToolText.OkPrefix + "Zoomed region captured at native resolution. To click a target in this image, use click(pid, window_id, x, y, from_zoom=true) where x,y are pixel coordinates in this zoomed image.",
+                structured));
         }
         catch (Exception ex)
         {

@@ -21,6 +21,14 @@ public sealed record ToolResult
     public static ToolResult Text(string text, JsonObject structuredContent, bool isError = false) =>
         new() { IsError = isError, Content = [ContentBlock.TextBlock(text)], StructuredContent = structuredContent };
 
+    public static ToolResult ImageText(byte[] data, string mimeType, string text, JsonObject structuredContent, bool isError = false) =>
+        new()
+        {
+            IsError = isError,
+            Content = [ContentBlock.ImageBlock(data, mimeType), ContentBlock.TextBlock(text)],
+            StructuredContent = structuredContent
+        };
+
     public static ToolResult JsonText(string prefix, JsonObject structuredContent, bool isError = false) =>
         Text(prefix + structuredContent.ToJsonString(JsonUtil.SerializerOptions), structuredContent, isError);
 

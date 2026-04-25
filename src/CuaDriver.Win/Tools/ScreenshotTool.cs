@@ -86,12 +86,7 @@ public sealed class ScreenshotTool : IDriverTool
                 text += VisibleWindowsHint(visibleWindows);
             }
 
-            return Task.FromResult(new ToolResult
-            {
-                Content = [ContentBlock.ImageBlock(capture.Data, capture.MimeType), ContentBlock.TextBlock(text)],
-                IsError = false,
-                StructuredContent = structured
-            });
+            return Task.FromResult(ToolResult.ImageText(capture.Data, capture.MimeType, text, structured));
         }
         catch (Exception ex)
         {
