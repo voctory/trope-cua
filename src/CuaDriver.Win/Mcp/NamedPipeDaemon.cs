@@ -21,6 +21,7 @@ public sealed class NamedPipeDaemon
     private readonly ToolContext _context;
     private readonly string _instanceId;
     private readonly DateTimeOffset _startedAt = DateTimeOffset.UtcNow;
+    private readonly long _startedTimestamp = Stopwatch.GetTimestamp();
 
     public NamedPipeDaemon(ToolRegistry registry, ToolContext context, string? instanceId = null)
     {
@@ -175,7 +176,7 @@ public sealed class NamedPipeDaemon
         ["pid"] = Environment.ProcessId,
         ["pipe_name"] = InstancePipeName,
         ["started_at"] = _startedAt.ToString("O"),
-        ["uptime_ms"] = (long)(DateTimeOffset.UtcNow - _startedAt).TotalMilliseconds
+        ["uptime_ms"] = (long)Stopwatch.GetElapsedTime(_startedTimestamp).TotalMilliseconds
     };
 
     public static string PipeNameFor(string? instanceId) => $"cua-driver-win-{UserKey()}-{DriverInstance.Normalize(instanceId)}";
