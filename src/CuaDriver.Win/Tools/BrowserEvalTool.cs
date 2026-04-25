@@ -22,7 +22,7 @@ public sealed class BrowserEvalTool : IDriverTool
     public async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
         var expression = JsonArgs.RequiredString(args, "expression");
-        var port = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
+        var port = BrowserToolArgs.CdpPort(args, context);
         if (port is null)
             return ToolResult.Error("browser_eval requires cdp_port or config chromium_debugging_port.");
 

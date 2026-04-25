@@ -46,7 +46,7 @@ public sealed class TypeTextTool : IDriverTool
             if (window.Pid != pid)
                 return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
 
-            var cdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
+            var cdpPort = BrowserToolArgs.CdpPort(args, context);
             if (BrowserWindowClassifier.IsLikelyChromium(window) && cdpPort is null)
             {
                 var refused = ActionReceipt.Failure(
@@ -84,7 +84,7 @@ public sealed class TypeTextTool : IDriverTool
             if (context.State.LastUiaTextTarget.TryGetValue((pid, windowId.Value), out var textElement))
             {
                 await AgentCursorTooling.MoveToElementAsync(context, textElement, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                var targetCdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
+                var targetCdpPort = BrowserToolArgs.CdpPort(args, context);
                 if (BrowserWindowClassifier.IsLikelyChromium(window) && targetCdpPort is not null)
                 {
                     var browserReceipt = await TypeViaBrowserCdpAsync(context, window, textElement, text, delayMs, targetCdpPort.Value, cancellationToken).ConfigureAwait(false);
@@ -97,7 +97,7 @@ public sealed class TypeTextTool : IDriverTool
                     return ToolResult.Text("✅ " + (setReceipt with { Route = "uia.last_text_target." + setReceipt.Route }).ToJson());
             }
 
-            var cdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
+            var cdpPort = BrowserToolArgs.CdpPort(args, context);
             var cdpReceipt = await CdpBrowserBridge.TryTypeTextAsync(cdpPort, window.WindowId, text, delayMs, cancellationToken).ConfigureAwait(false);
             if (cdpReceipt is not null)
             {

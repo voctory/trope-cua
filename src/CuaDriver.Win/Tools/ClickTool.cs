@@ -90,7 +90,7 @@ public sealed class ClickTool : IDriverTool
                         return ToolResult.Text((msaaReceipt.Ok ? "✅ " : "❌ ") + msaaReceipt.ToJson(), !msaaReceipt.Ok);
                     }
 
-                    var cdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
+                    var cdpPort = BrowserToolArgs.CdpPort(args, context);
                     if (cdpPort is not null)
                     {
                         var localX = rect.X + rect.Width / 2 - window.Bounds.X;
@@ -185,7 +185,7 @@ public sealed class ClickTool : IDriverTool
                         return ToolResult.Text((msaaReceipt.Ok ? "✅ " : "❌ ") + msaaReceipt.ToJson(), !msaaReceipt.Ok);
                     }
 
-                    var hitCdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
+                    var hitCdpPort = BrowserToolArgs.CdpPort(args, context);
                     if (hitCdpPort is not null)
                     {
                         receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, hitCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
@@ -226,7 +226,7 @@ public sealed class ClickTool : IDriverTool
             {
                 await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                 context.State.LastUiaTextTarget[(pid, window.WindowId)] = hit.Element;
-                var textCdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
+                var textCdpPort = BrowserToolArgs.CdpPort(args, context);
                 if (textCdpPort is not null)
                 {
                     receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, textCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
@@ -254,7 +254,7 @@ public sealed class ClickTool : IDriverTool
                 }
             }
 
-            var cdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
+            var cdpPort = BrowserToolArgs.CdpPort(args, context);
             receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, cdpPort, cancellationToken, modifiers).ConfigureAwait(false)
                       ?? (BrowserWindowClassifier.IsLikelyBrowser(window)
                           ? ActionReceipt.Failure("requires_cdp_or_uia_hit_test", "Browser web content did not expose an actionable UIA target and no CDP port was configured; refusing to report a blind PostMessage click as delivered.")

@@ -51,7 +51,7 @@ public sealed class RightClickTool : IDriverTool
             if (BrowserWindowClassifier.IsLikelyBrowser(window))
             {
                 var rect = element.Current.BoundingRectangle;
-                var cdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
+                var cdpPort = BrowserToolArgs.CdpPort(args, context);
                 if (!rect.IsEmpty && cdpPort is not null)
                 {
                     var localX = rect.X + rect.Width / 2 - window.Bounds.X;
@@ -98,7 +98,7 @@ public sealed class RightClickTool : IDriverTool
                 await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                 if (BrowserWindowClassifier.IsLikelyBrowser(window))
                 {
-                    var hitCdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
+                    var hitCdpPort = BrowserToolArgs.CdpPort(args, context);
                     if (hitCdpPort is not null)
                     {
                         receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, 1, rightButton: true, hitCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
@@ -121,7 +121,7 @@ public sealed class RightClickTool : IDriverTool
                 }
             }
 
-            var cdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
+            var cdpPort = BrowserToolArgs.CdpPort(args, context);
             await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
             receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, 1, rightButton: true, cdpPort, cancellationToken, modifiers).ConfigureAwait(false)
                       ?? (BrowserWindowClassifier.IsLikelyBrowser(window)

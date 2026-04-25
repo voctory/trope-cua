@@ -14,3 +14,10 @@ def test_legacy_allow_foreground_flag_is_refused():
     assert result["structuredContent"]["ok"] is False
     assert result["structuredContent"]["route"] == "foreground_launch_not_background_safe"
     assert "unsafe_allow_foreground" in result["structuredContent"]["reason"]
+
+
+def test_explicit_cdp_port_is_range_checked():
+    result = call("browser_eval", {"expression": "1 + 1", "cdp_port": 70000})
+
+    assert result["isError"] is True
+    assert "TCP port must be between" in result["content"][0]["text"]
