@@ -85,6 +85,8 @@ public sealed class RightClickTool : IDriverTool
             var window = WindowEnumerator.Find(windowId.Value);
             if (window is null)
                 return ToolResult.Error($"No window with window_id {windowId.Value}.");
+            if (window.Pid != pid)
+                return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
 
             var ratio = context.State.ImageResizeRatio.TryGetValue((pid, window.WindowId), out var r) ? r : 1.0;
             var clickX = x.Value * ratio;
@@ -103,6 +105,8 @@ public sealed class RightClickTool : IDriverTool
                         var hitCdp = new CdpBrowserBridge(context.State.UiaTree);
                         receipt = await hitCdp.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, 1, rightButton: true, hitCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
                                   ?? ActionReceipt.Failure("cdp.input.dispatch_mouse.right", $"No page tab found on CDP port {hitCdpPort}.");
+                        if (receipt.Ok)
+                            await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                         return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
                     }
 

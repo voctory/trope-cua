@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Browser;
 using CuaDriver.Win.Input;
@@ -26,6 +25,9 @@ public sealed class TypeTextTool : IDriverTool
         OpenWorld: true);
 
     public async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
+        => await InvokeAsync(args, context, cancellationToken, streamCharacters: false).ConfigureAwait(false);
+
+    internal async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken, bool streamCharacters)
     {
         var pid = JsonArgs.RequiredInt(args, "pid");
         var text = JsonArgs.RequiredString(args, "text");
@@ -55,7 +57,7 @@ public sealed class TypeTextTool : IDriverTool
 
             var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
             await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
-            receipt = await TypeViaElementAsync(context, window.Hwnd, element, text, delayMs, cancellationToken).ConfigureAwait(false);
+            receipt = await TypeViaElementAsync(context, window.Hwnd, element, text, delayMs, streamCharacters, cancellationToken).ConfigureAwait(false);
         }
         else
         {
@@ -76,7 +78,7 @@ public sealed class TypeTextTool : IDriverTool
             if (context.State.LastUiaTextTarget.TryGetValue((pid, windowId.Value), out var textElement))
             {
                 await AgentCursorTooling.MoveToElementAsync(context, textElement, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                var setReceipt = await TypeViaElementAsync(context, window.Hwnd, textElement, text, delayMs, cancellationToken).ConfigureAwait(false);
+                var setReceipt = await TypeViaElementAsync(context, window.Hwnd, textElement, text, delayMs, streamCharacters, cancellationToken).ConfigureAwait(false);
                 if (setReceipt.Ok)
                     return ToolResult.Text("✅ " + (setReceipt with { Route = "uia.last_text_target." + setReceipt.Route }).ToJson());
             }
@@ -113,18 +115,70 @@ public sealed class TypeTextTool : IDriverTool
         System.Windows.Automation.AutomationElement element,
         string text,
         int delayMs,
+        bool streamCharacters,
         CancellationToken cancellationToken)
     {
         var units = TextElements(text);
         if (delayMs <= 0 || units.Count <= 1)
-            return SetElementText(rootHwnd, element, text);
+            return InsertElementText(rootHwnd, element, text);
 
+        var insertReceipt = await StreamInsertionAsync(context, rootHwnd, element, units, delayMs, cancellationToken).ConfigureAwait(false);
+        if (insertReceipt.Ok)
+            return insertReceipt with { Route = $"{insertReceipt.Route}.{(streamCharacters ? "chars" : "stream")}" };
+
+        return await StreamReplacementAsync(context, rootHwnd, element, text, units, delayMs, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static ActionReceipt InsertElementText(IntPtr rootHwnd, System.Windows.Automation.AutomationElement element, string text)
+    {
+        var receipt = MsaaActions.InsertEditableTextAtElement(rootHwnd, element, text);
+        if (!receipt.Ok)
+        {
+            var replacement = SetElementText(rootHwnd, element, text);
+            receipt = replacement with { Route = "fallback_replace." + replacement.Route };
+        }
+        return receipt;
+    }
+
+    private static async Task<ActionReceipt> StreamInsertionAsync(
+        ToolContext context,
+        IntPtr rootHwnd,
+        System.Windows.Automation.AutomationElement element,
+        IReadOnlyList<string> units,
+        int delayMs,
+        CancellationToken cancellationToken)
+    {
         ActionReceipt? last = null;
-        var prefix = new StringBuilder(text.Length);
         for (var i = 0; i < units.Count; i++)
         {
-            prefix.Append(units[i]);
-            var receipt = SetElementText(rootHwnd, element, prefix.ToString());
+            var receipt = MsaaActions.InsertEditableTextAtElement(rootHwnd, element, units[i]);
+            if (!receipt.Ok)
+                return receipt;
+
+            last = receipt;
+            context.State.AgentCursor.KeepAlive();
+            if (i + 1 < units.Count)
+                await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
+        }
+
+        return last ?? ActionReceipt.Failure("ia2.editable_text.insert", "No text units to insert.");
+    }
+
+    private static async Task<ActionReceipt> StreamReplacementAsync(
+        ToolContext context,
+        IntPtr rootHwnd,
+        System.Windows.Automation.AutomationElement element,
+        string text,
+        IReadOnlyList<string> units,
+        int delayMs,
+        CancellationToken cancellationToken)
+    {
+        ActionReceipt? last = null;
+        var offset = 0;
+        for (var i = 0; i < units.Count; i++)
+        {
+            offset += units[i].Length;
+            var receipt = SetElementText(rootHwnd, element, text[..offset]);
             if (!receipt.Ok)
             {
                 if (last is null)
@@ -144,7 +198,7 @@ public sealed class TypeTextTool : IDriverTool
 
         return (last ?? SetElementText(rootHwnd, element, text)) with
         {
-            Route = $"{(last?.Route ?? "uia.value.set")}.stream"
+            Route = $"{(last?.Route ?? "uia.value.set")}.stream_replace"
         };
     }
 

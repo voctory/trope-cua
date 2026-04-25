@@ -229,9 +229,21 @@ public sealed class ClickTool : IDriverTool
             {
                 await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                 context.State.LastUiaTextTarget[(pid, window.WindowId)] = hit.Element;
-                receipt = ActionReceipt.Success("uia.hit_test.text_target");
-                await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                return ToolResult.Text("✅ " + receipt.ToJson(), false);
+                var textCdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
+                if (textCdpPort is not null)
+                {
+                    var textCdp = new CdpBrowserBridge(context.State.UiaTree);
+                    receipt = await textCdp.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, textCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
+                              ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {textCdpPort}.");
+                    if (receipt.Ok)
+                        await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
+                    return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+                }
+
+                receipt = ActionReceipt.Failure(
+                    "requires_cdp_or_element_text",
+                    "Browser text input target was cached for a following type_text call, but no background-safe click/focus route is available without cdp_port; refusing to report this as a delivered click.");
+                return ToolResult.Text("❌ " + receipt.ToJson(), true);
             }
 
             await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
