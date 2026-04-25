@@ -3,7 +3,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Win32;
 
-public sealed record WindowInfo(
+internal sealed record WindowInfo(
     long WindowId,
     int Pid,
     string AppName,
@@ -18,7 +18,7 @@ public sealed record WindowInfo(
     public IntPtr Hwnd => new(WindowId);
 }
 
-public static class WindowEnumerator
+internal static class WindowEnumerator
 {
     public static IReadOnlyList<WindowInfo> AllWindows(int? pidFilter = null, bool visibleOnly = false)
     {

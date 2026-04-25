@@ -313,7 +313,7 @@ public struct BLENDFUNCTION
     public byte AlphaFormat;
 }
 
-public sealed record RectDto(int X, int Y, int Width, int Height)
+internal sealed record RectDto(int X, int Y, int Width, int Height)
 {
     public static RectDto From(RECT r) => new(r.Left, r.Top, r.Width, r.Height);
     public override string ToString() => $"x={X} y={Y} width={Width} height={Height}";

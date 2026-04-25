@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace CuaDriver.Win.Win32;
 
-public sealed record AppInfo
+internal sealed record AppInfo
 {
     [JsonPropertyName("name")]
     public string Name { get; init; } = "";
@@ -25,7 +25,7 @@ public sealed record AppInfo
     public int WindowCount { get; init; }
 }
 
-public static class AppEnumerator
+internal static class AppEnumerator
 {
     public static IReadOnlyList<AppInfo> RunningApps()
     {
