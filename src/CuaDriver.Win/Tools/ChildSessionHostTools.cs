@@ -27,7 +27,7 @@ public sealed class ChildSessionStartTool : IDriverTool
         var timeoutMs = JsonArgs.OptionalInt(args, "timeout_ms") ?? 15_000;
         var visible = JsonArgs.OptionalBool(args, "visible", true);
 
-        NativeMethods.GetCursorPos(out var cursorBefore);
+        var cursorBeforeKnown = NativeMethods.GetCursorPos(out var cursorBefore);
         var foregroundBefore = NativeMethods.GetForegroundWindow();
 
         var lines = new List<string>
@@ -59,11 +59,15 @@ public sealed class ChildSessionStartTool : IDriverTool
 
         var result = await ChildSessionHost.StartAsync(options, cancellationToken).ConfigureAwait(false);
 
-        NativeMethods.GetCursorPos(out var cursorAfter);
+        var cursorAfterKnown = NativeMethods.GetCursorPos(out var cursorAfter);
         var foregroundAfter = NativeMethods.GetForegroundWindow();
         var foregroundChanged = foregroundBefore != IntPtr.Zero && foregroundAfter != foregroundBefore;
+        var foregroundRestored = false;
         if (foregroundChanged)
-            NativeMethods.SetForegroundWindow(foregroundBefore);
+        {
+            foregroundRestored = NativeMethods.SetForegroundWindow(foregroundBefore)
+                                 && SpinWait.SpinUntil(() => NativeMethods.GetForegroundWindow() == foregroundBefore, TimeSpan.FromMilliseconds(50));
+        }
 
         lines.Add($"ok={result.Ok}");
         lines.Add("route=rdp.activex.child_session");
@@ -72,9 +76,9 @@ public sealed class ChildSessionStartTool : IDriverTool
         lines.Add($"host_running={result.HostRunning}");
         lines.Add($"child_session_id={(result.ChildSessionId?.ToString(CultureInfo.InvariantCulture) ?? "none")}");
         lines.Add($"status=\"{result.Status}\"");
-        lines.Add($"cursor_moved={(cursorBefore.X != cursorAfter.X || cursorBefore.Y != cursorAfter.Y)}");
+        lines.Add($"cursor_moved={(cursorBeforeKnown && cursorAfterKnown && (cursorBefore.X != cursorAfter.X || cursorBefore.Y != cursorAfter.Y))}");
         lines.Add($"foreground_changed={foregroundChanged}");
-        lines.Add($"foreground_restored={foregroundChanged}");
+        lines.Add($"foreground_restored={foregroundRestored}");
         foreach (var logLine in result.Log)
             lines.Add($"log=\"{logLine}\"");
 
