@@ -28,7 +28,7 @@ public sealed class CdpBrowserBridge
 
         try
         {
-            var wsUrl = await FirstPageWebSocketUrlAsync(port.Value, ct).ConfigureAwait(false);
+            var wsUrl = await PageWebSocketUrlAsync(port.Value, windowId, ct).ConfigureAwait(false);
             if (wsUrl is null)
                 return null;
 
@@ -76,6 +76,9 @@ public sealed class CdpBrowserBridge
     }
 
     public async Task<ActionReceipt?> TryTypeTextAsync(int? port, string text, int delayMs, CancellationToken ct)
+        => await TryTypeTextAsync(port, null, text, delayMs, ct).ConfigureAwait(false);
+
+    public async Task<ActionReceipt?> TryTypeTextAsync(int? port, long? windowId, string text, int delayMs, CancellationToken ct)
     {
         if (port is null)
             return null;
@@ -83,7 +86,7 @@ public sealed class CdpBrowserBridge
         var guard = NoRegressionGuard.Capture();
         try
         {
-            var wsUrl = await FirstPageWebSocketUrlAsync(port.Value, ct).ConfigureAwait(false);
+            var wsUrl = await PageWebSocketUrlAsync(port.Value, windowId, ct).ConfigureAwait(false);
             if (wsUrl is null)
                 return null;
 
@@ -116,7 +119,7 @@ public sealed class CdpBrowserBridge
         var guard = NoRegressionGuard.Capture();
         try
         {
-            var wsUrl = await FirstPageWebSocketUrlAsync(port, ct).ConfigureAwait(false)
+            var wsUrl = await PageWebSocketUrlAsync(port, null, ct).ConfigureAwait(false)
                         ?? throw new InvalidOperationException($"No page tab found on CDP port {port}.");
 
             using var client = new ClientWebSocket();
@@ -135,7 +138,7 @@ public sealed class CdpBrowserBridge
         }
     }
 
-    private async Task<string?> FirstPageWebSocketUrlAsync(int port, CancellationToken ct)
+    private static async Task<string?> PageWebSocketUrlAsync(int port, long? windowId, CancellationToken ct)
     {
         using var http = new HttpClient();
         var json = await http.GetStringAsync($"http://127.0.0.1:{port}/json", ct).ConfigureAwait(false);
@@ -143,14 +146,84 @@ public sealed class CdpBrowserBridge
         if (arr is null)
             return null;
 
-        foreach (var node in arr.OfType<JsonObject>())
+        var pages = arr
+            .OfType<JsonObject>()
+            .Where(node => node["type"]?.GetValue<string>() == "page"
+                           && !string.IsNullOrWhiteSpace(node["webSocketDebuggerUrl"]?.GetValue<string>()))
+            .ToArray();
+        if (pages.Length == 0)
+            return null;
+        if (pages.Length == 1 || windowId is null)
+            return pages[0]["webSocketDebuggerUrl"]!.GetValue<string>();
+
+        var windowTitle = WindowEnumerator.Find(windowId.Value)?.Title;
+        var normalizedWindowTitle = NormalizeBrowserTitle(windowTitle);
+        if (!string.IsNullOrWhiteSpace(normalizedWindowTitle))
         {
-            var type = node["type"]?.GetValue<string>();
-            var ws = node["webSocketDebuggerUrl"]?.GetValue<string>();
-            if (type == "page" && !string.IsNullOrWhiteSpace(ws))
-                return ws;
+            var best = pages
+                .Select(page => new
+                {
+                    Page = page,
+                    Score = TargetScore(normalizedWindowTitle, page["title"]?.GetValue<string>(), page["url"]?.GetValue<string>())
+                })
+                .OrderByDescending(item => item.Score)
+                .FirstOrDefault();
+            if (best is not null && best.Score > 0)
+                return best.Page["webSocketDebuggerUrl"]!.GetValue<string>();
         }
-        return null;
+
+        return pages[0]["webSocketDebuggerUrl"]!.GetValue<string>();
+    }
+
+    private static int TargetScore(string normalizedWindowTitle, string? pageTitle, string? pageUrl)
+    {
+        var title = NormalizeTitle(pageTitle);
+        var url = NormalizeTitle(pageUrl);
+        if (!string.IsNullOrWhiteSpace(title))
+        {
+            if (normalizedWindowTitle.Equals(title, StringComparison.OrdinalIgnoreCase))
+                return 100;
+            if (normalizedWindowTitle.Contains(title, StringComparison.OrdinalIgnoreCase))
+                return 80;
+            if (title.Contains(normalizedWindowTitle, StringComparison.OrdinalIgnoreCase))
+                return 60;
+        }
+
+        if (!string.IsNullOrWhiteSpace(url) && normalizedWindowTitle.Contains(url, StringComparison.OrdinalIgnoreCase))
+            return 20;
+
+        return 0;
+    }
+
+    private static string NormalizeBrowserTitle(string? title)
+    {
+        var normalized = NormalizeTitle(title);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return normalized;
+
+        string[] suffixes =
+        [
+            " - Google Chrome",
+            " - Microsoft Edge",
+            " - Brave",
+            " - Opera",
+            " - Vivaldi"
+        ];
+
+        foreach (var suffix in suffixes)
+        {
+            if (normalized.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                return normalized[..^suffix.Length].Trim();
+        }
+
+        return normalized;
+    }
+
+    private static string NormalizeTitle(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "";
+        return string.Join(" ", value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).Trim();
     }
 
     private (double X, double Y) WindowPointToViewport(long windowId, IntPtr hwnd, double x, double y)

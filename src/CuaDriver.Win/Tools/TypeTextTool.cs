@@ -57,6 +57,12 @@ public sealed class TypeTextTool : IDriverTool
 
             var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
             await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
+            if (BrowserWindowClassifier.IsLikelyChromium(window) && cdpPort is not null)
+            {
+                receipt = await TypeViaBrowserCdpAsync(context, window, element, text, delayMs, cdpPort.Value, cancellationToken).ConfigureAwait(false);
+                return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+            }
+
             receipt = await TypeViaElementAsync(context, window.Hwnd, element, text, delayMs, streamCharacters, cancellationToken).ConfigureAwait(false);
         }
         else
@@ -78,6 +84,14 @@ public sealed class TypeTextTool : IDriverTool
             if (context.State.LastUiaTextTarget.TryGetValue((pid, windowId.Value), out var textElement))
             {
                 await AgentCursorTooling.MoveToElementAsync(context, textElement, window.Hwnd, cancellationToken).ConfigureAwait(false);
+                var targetCdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
+                if (BrowserWindowClassifier.IsLikelyChromium(window) && targetCdpPort is not null)
+                {
+                    var browserReceipt = await TypeViaBrowserCdpAsync(context, window, textElement, text, delayMs, targetCdpPort.Value, cancellationToken).ConfigureAwait(false);
+                    if (browserReceipt.Ok)
+                        return ToolResult.Text("✅ " + (browserReceipt with { Route = "uia.last_text_target." + browserReceipt.Route }).ToJson());
+                }
+
                 var setReceipt = await TypeViaElementAsync(context, window.Hwnd, textElement, text, delayMs, streamCharacters, cancellationToken).ConfigureAwait(false);
                 if (setReceipt.Ok)
                     return ToolResult.Text("✅ " + (setReceipt with { Route = "uia.last_text_target." + setReceipt.Route }).ToJson());
@@ -85,7 +99,7 @@ public sealed class TypeTextTool : IDriverTool
 
             var cdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
             var cdp = new CdpBrowserBridge(context.State.UiaTree);
-            var cdpReceipt = await cdp.TryTypeTextAsync(cdpPort, text, delayMs, cancellationToken).ConfigureAwait(false);
+            var cdpReceipt = await cdp.TryTypeTextAsync(cdpPort, window.WindowId, text, delayMs, cancellationToken).ConfigureAwait(false);
             if (cdpReceipt is not null)
             {
                 receipt = cdpReceipt;
@@ -107,6 +121,31 @@ public sealed class TypeTextTool : IDriverTool
         }
 
         return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+    }
+
+    private static async Task<ActionReceipt> TypeViaBrowserCdpAsync(
+        ToolContext context,
+        WindowInfo window,
+        System.Windows.Automation.AutomationElement element,
+        string text,
+        int delayMs,
+        int cdpPort,
+        CancellationToken cancellationToken)
+    {
+        var point = AgentCursorTooling.ElementCenter(element);
+        if (point is null)
+            return ActionReceipt.Failure("cdp.input.insert_text", "Element has no resolvable screen point for browser CDP focus.");
+
+        var localX = point.Value.X - window.Bounds.X;
+        var localY = point.Value.Y - window.Bounds.Y;
+        var cdp = new CdpBrowserBridge(context.State.UiaTree);
+        var clickReceipt = await cdp.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, 1, rightButton: false, cdpPort, cancellationToken).ConfigureAwait(false)
+                           ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {cdpPort}.");
+        if (!clickReceipt.Ok)
+            return clickReceipt;
+
+        return await cdp.TryTypeTextAsync(cdpPort, window.WindowId, text, delayMs, cancellationToken).ConfigureAwait(false)
+               ?? ActionReceipt.Failure("cdp.input.insert_text", $"No page tab found on CDP port {cdpPort}.");
     }
 
     private static async Task<ActionReceipt> TypeViaElementAsync(
