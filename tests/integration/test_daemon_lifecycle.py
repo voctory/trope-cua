@@ -163,6 +163,73 @@ def test_agent_cursor_idle_hide_lifecycle(tmp_path):
                 process.wait(timeout=5)
 
 
+def test_agent_cursor_disable_hides_live_overlay(tmp_path):
+    instance = f"pytest-cursor-disable-{uuid.uuid4().hex}"
+    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    process = None
+
+    try:
+        process = start_daemon(instance, env)
+        wait_for_status(instance, env)
+        screen = call_instance(instance, "get_screen_size", extra_env=env)["structuredContent"]
+        x = screen["x"] + min(100, max(0, screen["width"] - 1))
+        y = screen["y"] + min(110, max(0, screen["height"] - 1))
+
+        moved = call_instance(instance, "move_cursor", {"x": x, "y": y}, extra_env=env)
+        assert moved["isError"] is False
+        visible = wait_for_cursor_state(instance, env, visible=True)
+        assert_near(visible["screen_x"], x)
+        assert_near(visible["screen_y"], y)
+
+        disabled = call_instance(instance, "set_agent_cursor_enabled", {"enabled": False}, extra_env=env)
+        assert disabled["isError"] is False
+        hidden = wait_for_cursor_state(instance, env, visible=False)
+        assert hidden["enabled"] is False
+        assert hidden["layering"] == "hidden"
+    finally:
+        stop_daemon(instance, env)
+        if process is not None:
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+
+
+def test_agent_cursor_repeated_same_target_stays_stable(tmp_path):
+    instance = f"pytest-cursor-same-target-{uuid.uuid4().hex}"
+    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    process = None
+
+    try:
+        process = start_daemon(instance, env)
+        wait_for_status(instance, env)
+        screen = call_instance(instance, "get_screen_size", extra_env=env)["structuredContent"]
+        x = screen["x"] + min(140, max(0, screen["width"] - 1))
+        y = screen["y"] + min(150, max(0, screen["height"] - 1))
+
+        first = call_instance(instance, "move_cursor", {"x": x, "y": y}, extra_env=env)
+        assert first["isError"] is False
+        first_state = wait_for_cursor_state(instance, env, visible=True)
+        assert_near(first_state["screen_x"], x)
+        assert_near(first_state["screen_y"], y)
+
+        second = call_instance(instance, "move_cursor", {"x": x, "y": y}, extra_env=env)
+        assert second["isError"] is False
+        second_state = wait_for_cursor_state(instance, env, visible=True)
+        assert_near(second_state["screen_x"], x)
+        assert_near(second_state["screen_y"], y)
+        assert distance_from(second_state, x, y) <= distance_from(first_state, x, y)
+    finally:
+        stop_daemon(instance, env)
+        if process is not None:
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+
+
 def start_daemon(instance, extra_env=None):
     env = os.environ.copy()
     if extra_env:
@@ -218,6 +285,28 @@ def wait_for_status(instance, extra_env=None):
         time.sleep(0.1)
 
     raise AssertionError(f"daemon {instance} did not start\nstdout={last_stdout}\nstderr={last_stderr}")
+
+
+def wait_for_cursor_state(instance, extra_env=None, visible=None):
+    last_state = None
+    for _ in range(50):
+        result = call_instance(instance, "get_agent_cursor_state", extra_env=extra_env)
+        assert result["isError"] is False
+        state = result["structuredContent"]
+        last_state = state
+        if visible is None or state["visible"] is visible:
+            return state
+        time.sleep(0.1)
+
+    raise AssertionError(f"cursor state did not reach visible={visible}: {last_state}")
+
+
+def assert_near(actual, expected, tolerance=8):
+    assert abs(actual - expected) <= tolerance
+
+
+def distance_from(state, x, y):
+    return abs(state["screen_x"] - x) + abs(state["screen_y"] - y)
 
 
 def stop_daemon(instance, extra_env=None):
