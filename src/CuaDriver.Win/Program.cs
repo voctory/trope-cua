@@ -39,7 +39,7 @@ public static class Program
 
         if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
         {
-            PrintHelp(registry);
+            CliOutput.PrintHelp(registry);
             return 0;
         }
 
@@ -61,14 +61,14 @@ public static class Program
             var daemon = new Mcp.NamedPipeDaemon(registry, context, instanceId);
             var result = await daemon.TryStatusAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false)
                          ?? ToolResult.Error($"daemon not running on named pipe {daemon.InstancePipeName}");
-            PrintResult(result);
+            CliOutput.PrintResult(result);
             return result.IsError ? 1 : 0;
         }
 
         if (command == "daemon-list")
         {
             var result = Mcp.NamedPipeDaemon.ListInstances();
-            PrintResult(result);
+            CliOutput.PrintResult(result);
             return 0;
         }
 
@@ -77,21 +77,20 @@ public static class Program
             if (args.Any(arg => arg.Equals("--all", StringComparison.OrdinalIgnoreCase)))
             {
                 var stopAllResult = await StopAllDaemonsAsync(registry, context).ConfigureAwait(false);
-                PrintResult(stopAllResult);
+                CliOutput.PrintResult(stopAllResult);
                 return stopAllResult.IsError ? 1 : 0;
             }
 
             var daemon = new Mcp.NamedPipeDaemon(registry, context, instanceId);
             var stopResult = await daemon.TryShutdownAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false)
                          ?? ToolResult.Error($"daemon not running on named pipe {daemon.InstancePipeName}");
-            PrintResult(stopResult);
+            CliOutput.PrintResult(stopResult);
             return stopResult.IsError ? 1 : 0;
         }
 
         if (command == "tools")
         {
-            foreach (var tool in registry.Tools)
-                Console.WriteLine($"{tool.Definition.Name}\t{FirstLine(tool.Definition.Description)}");
+            CliOutput.PrintTools(registry);
             return 0;
         }
 
@@ -114,34 +113,16 @@ public static class Program
                     : await registry.InvokeAsync(toolName, toolArgs, context, CancellationToken.None).ConfigureAwait(false);
             }
 
-            PrintResult(result);
+            CliOutput.PrintResult(result);
             return result.IsError ? 1 : 0;
         }
 
         var directToolName = args[0];
         var directArgs = CliArguments.ParseToolArguments(args.Length >= 2 ? args[1] : "{}");
         var directResult = await registry.InvokeAsync(directToolName, directArgs, context, CancellationToken.None).ConfigureAwait(false);
-        PrintResult(directResult);
+        CliOutput.PrintResult(directResult);
         return directResult.IsError ? 1 : 0;
     }
-
-    private static void PrintHelp(ToolRegistry registry)
-    {
-        Console.WriteLine("cua-driver-win <tool> [json]");
-        Console.WriteLine("cua-driver-win mcp");
-        Console.WriteLine("cua-driver-win serve [--instance <id>]");
-        Console.WriteLine("cua-driver-win daemon-status [--instance <id>]");
-        Console.WriteLine("cua-driver-win daemon-list");
-        Console.WriteLine("cua-driver-win daemon-stop [--instance <id>|--all]");
-        Console.WriteLine("cua-driver-win call [--instance <id>] <tool> [json]");
-        Console.WriteLine();
-        Console.WriteLine("Tools:");
-        foreach (var tool in registry.Tools)
-            Console.WriteLine($"  {tool.Definition.Name,-28} {FirstLine(tool.Definition.Description)}");
-    }
-
-    private static string FirstLine(string text)
-        => text.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim() ?? "";
 
     private static async Task<ToolResult> StopAllDaemonsAsync(ToolRegistry registry, ToolContext context)
     {
@@ -192,13 +173,4 @@ public static class Program
         }, failed > 0);
     }
 
-    private static void PrintResult(ToolResult result)
-    {
-        if (Environment.GetEnvironmentVariable("CUA_DRIVER_JSON") == "1")
-        {
-            Console.WriteLine(JsonSerializer.Serialize(result, JsonUtil.SerializerOptions));
-            return;
-        }
-        Console.WriteLine(result.ToCliText());
-    }
 }
