@@ -49,7 +49,7 @@ public sealed class AgentCursorOverlay
     private const string OverlayWindowTitle = "CuaDriverWin.AgentCursorOverlay";
     private const double RestingHeadingRadians = Math.PI / 4;
     private const float CursorTipOffset = 16f;
-    private const float SurfaceHalfSize = 38f;
+    private const float SurfaceHalfSize = 52f;
     private const int Supersample = 3;
     private const double TurnRadius = 80;
     private const double PeakSpeed = 900;
@@ -809,22 +809,47 @@ public sealed class AgentCursorOverlay
 
         private static void DrawBloom(Graphics g, PointF p, float scale, double breath)
         {
-            var radius = (float)((22 + 2 * breath) * scale);
+            DrawRadialGlow(
+                g,
+                p,
+                (float)((34 + 3 * breath) * scale),
+                Color.FromArgb(164, 222, 245),
+                centerAlpha: (int)Math.Round(44 + 12 * breath),
+                factors: [1.0f, 0.46f, 0.16f, 0.04f, 0.0f],
+                positions: [0.0f, 0.18f, 0.46f, 0.76f, 1.0f]);
+
+            DrawRadialGlow(
+                g,
+                p,
+                (float)((18 + breath) * scale),
+                Color.FromArgb(219, 238, 255),
+                centerAlpha: (int)Math.Round(22 + 8 * breath),
+                factors: [1.0f, 0.55f, 0.18f, 0.0f],
+                positions: [0.0f, 0.28f, 0.62f, 1.0f]);
+        }
+
+        private static void DrawRadialGlow(
+            Graphics g,
+            PointF p,
+            float radius,
+            Color color,
+            int centerAlpha,
+            float[] factors,
+            float[] positions)
+        {
             var bounds = new RectangleF(p.X - radius, p.Y - radius, radius * 2, radius * 2);
             using var path = new GraphicsPath();
             path.AddEllipse(bounds);
-            var centerAlpha = (int)Math.Round(140 + 51 * breath);
-            var midFactor = (float)(0.27 + 0.06 * breath);
             using var brush = new PathGradientBrush(path)
             {
                 CenterPoint = p,
-                CenterColor = Color.FromArgb(centerAlpha, 94, 192, 232),
-                SurroundColors = [Color.FromArgb(0, 94, 192, 232)]
+                CenterColor = Color.FromArgb(centerAlpha, color),
+                SurroundColors = [Color.FromArgb(0, color)]
             };
             brush.Blend = new Blend
             {
-                Factors = [1.0f, midFactor, 0.0f],
-                Positions = [0.0f, 0.5f, 1.0f]
+                Factors = factors,
+                Positions = positions
             };
             g.FillPath(brush, path);
         }
@@ -862,7 +887,7 @@ public sealed class AgentCursorOverlay
                     Positions = [0.0f, 0.53f, 1.0f]
                 }
             };
-            using var outline = new Pen(Color.White, 2f * scale) { LineJoin = LineJoin.Round };
+            using var outline = new Pen(Color.White, 1.5f * scale) { LineJoin = LineJoin.Round };
             g.FillPath(brush, path);
             g.DrawPath(outline, path);
         }
