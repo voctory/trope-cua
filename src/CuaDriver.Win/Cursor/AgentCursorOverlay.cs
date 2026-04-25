@@ -61,6 +61,7 @@ public sealed class AgentCursorOverlay
     private const double IdleBreathPeriodSeconds = 1.8;
     private const double IdleRotationPeriodSeconds = 2.4;
     private const double IdleRotationAmplitudeRadians = 0.10;
+    private const double VisualHeadingCatchUpRadiansPerSecond = 18;
     private const double SameTargetTipTolerance = 3.0;
     private const double DefaultGlideDurationMs = 750;
     private const float InitialOffscreenPosition = -200f;
@@ -300,6 +301,7 @@ public sealed class AgentCursorOverlay
         private PointF _current;
         private long _lastFrameTimestamp = Stopwatch.GetTimestamp();
         private double _heading = RestingHeadingRadians;
+        private double _displayHeading = RestingHeadingRadians;
         private PlannedPath? _path;
         private Trip? _trip;
         private SpringState? _spring;
@@ -383,6 +385,7 @@ public sealed class AgentCursorOverlay
             {
                 _current = VisualPositionForTip(ToLocal(screenX, screenY), DpiScaleForPoint(screenX, screenY));
                 _heading = RestingHeadingRadians;
+                _displayHeading = _heading;
                 _hasPosition = true;
             }
 
@@ -429,10 +432,15 @@ public sealed class AgentCursorOverlay
             {
                 _current = InitialPosition(scale);
                 _heading = RestingHeadingRadians;
+                _displayHeading = _heading;
                 _hasPosition = true;
             }
             else
             {
+                var visiblePose = RenderPose(scale);
+                _current = visiblePose.Center;
+                _heading = visiblePose.Heading;
+
                 var currentTip = TipPointFromVisualPosition(_current, scale, _heading);
                 if (Hypot(currentTip.X - targetTip.X, currentTip.Y - targetTip.Y) <= SameTargetTipTolerance * scale)
                 {
@@ -597,6 +605,8 @@ public sealed class AgentCursorOverlay
 
                 changed = true;
             }
+
+            changed = UpdateDisplayHeading(dt) || changed;
 
             if (_pulseStartedMs > 0 && Environment.TickCount64 - _pulseStartedMs > Math.Max(1, _motion.PressDurationMs))
             {
@@ -940,12 +950,9 @@ public sealed class AgentCursorOverlay
 
         private (PointF Center, double Heading) RenderPose(float scale)
         {
-            if (!IsThinkingIdle())
-                return (_current, _heading);
-
-            var heading = RestingHeadingRadians + IdleRotation();
-            var tip = TipPointFromVisualPosition(_current, scale, RestingHeadingRadians);
-            return (VisualPositionForTip(tip, scale, heading), heading);
+            var anchorHeading = IsThinkingIdle() ? RestingHeadingRadians : _heading;
+            var tip = TipPointFromVisualPosition(_current, scale, anchorHeading);
+            return (VisualPositionForTip(tip, scale, _displayHeading), _displayHeading);
         }
 
         private bool IsThinkingIdle()
@@ -965,12 +972,33 @@ public sealed class AgentCursorOverlay
             return Math.Sin(seconds / IdleRotationPeriodSeconds * Math.PI * 2) * IdleRotationAmplitudeRadians;
         }
 
+        private bool UpdateDisplayHeading(double dt)
+        {
+            var previous = _displayHeading;
+            _displayHeading = RotateToward(
+                _displayHeading,
+                DesiredDisplayHeading(),
+                VisualHeadingCatchUpRadiansPerSecond * dt);
+            return Math.Abs(AngularDifference(previous, _displayHeading)) > 0.0001;
+        }
+
+        private double DesiredDisplayHeading()
+        {
+            return IsThinkingIdle() ? RestingHeadingRadians + IdleRotation() : _heading;
+        }
+
         private static double RotateToward(double current, double desired, double maxStep)
+        {
+            var diff = AngularDifference(current, desired);
+            return current + Math.Max(-maxStep, Math.Min(maxStep, diff));
+        }
+
+        private static double AngularDifference(double current, double desired)
         {
             var diff = desired - current;
             while (diff > Math.PI) diff -= 2 * Math.PI;
             while (diff < -Math.PI) diff += 2 * Math.PI;
-            return current + Math.Max(-maxStep, Math.Min(maxStep, diff));
+            return diff;
         }
 
         private float CurrentDpiScale()
