@@ -31,6 +31,12 @@ public sealed record ActionReceipt
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Reason { get; init; }
 
+    [JsonIgnore]
+    public bool ShouldStopFallback => Ok || ForegroundChanged || CursorMoved;
+
+    [JsonIgnore]
+    public bool CanTryFallback => !ShouldStopFallback;
+
     public static ActionReceipt Success(string route, string lane = "same_session") =>
         new() { Ok = true, Route = route, Lane = lane, BackgroundSafe = true, Session = SessionForLane(lane) };
 

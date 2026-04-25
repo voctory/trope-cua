@@ -54,7 +54,7 @@ public sealed class DoubleClickTool : IDriverTool
         if (BrowserWindowClassifier.IsLikelyBrowser(window))
         {
             receipt = MsaaActions.DoDefaultActionAtElement(window.Hwnd, element);
-            if (receipt.Ok || receipt.ForegroundChanged || receipt.CursorMoved)
+            if (receipt.ShouldStopFallback)
             {
                 if (receipt.Ok)
                     await context.State.AgentCursor.ClickPulseAsync(screenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);

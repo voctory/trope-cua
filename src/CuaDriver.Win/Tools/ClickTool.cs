@@ -70,7 +70,7 @@ public sealed class ClickTool : IDriverTool
                 if (!rect.IsEmpty)
                 {
                     var msaaReceipt = MsaaActions.DoDefaultActionAtElement(window.Hwnd, element);
-                    if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
+                    if (msaaReceipt.ShouldStopFallback)
                     {
                         if (msaaReceipt.Ok)
                             await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
@@ -96,10 +96,10 @@ public sealed class ClickTool : IDriverTool
             }
 
             receipt = await UiAutomationActions.InvokeElementAsync(element, action, cancellationToken).ConfigureAwait(false);
-            if (!receipt.Ok && !receipt.ForegroundChanged && !receipt.CursorMoved)
+            if (receipt.CanTryFallback)
             {
                 var msaaReceipt = MsaaActions.DoDefaultActionAtElement(window.Hwnd, element);
-                if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
+                if (msaaReceipt.ShouldStopFallback)
                     receipt = msaaReceipt;
             }
             context.State.LastUiaTextTarget[(target.Pid, target.WindowId.Value)] = element;
@@ -181,7 +181,7 @@ public sealed class ClickTool : IDriverTool
             if (BrowserWindowClassifier.IsLikelyBrowser(window))
             {
                 var msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, resolved.ScreenPoint);
-                if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
+                if (msaaReceipt.ShouldStopFallback)
                 {
                     if (msaaReceipt.Ok)
                         await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
@@ -210,10 +210,10 @@ public sealed class ClickTool : IDriverTool
             }
 
             var hitReceipt = await UiAutomationActions.InvokeElementAsync(hit.Element, action, cancellationToken).ConfigureAwait(false);
-            if (!hitReceipt.Ok && !hitReceipt.ForegroundChanged && !hitReceipt.CursorMoved)
+            if (hitReceipt.CanTryFallback)
             {
                 var msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, resolved.ScreenPoint);
-                if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
+                if (msaaReceipt.ShouldStopFallback)
                     hitReceipt = msaaReceipt;
             }
             if (hitReceipt.Ok)
@@ -249,7 +249,7 @@ public sealed class ClickTool : IDriverTool
         if (BrowserWindowClassifier.IsLikelyBrowser(window) && modifiers.Length == 0)
         {
             var msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, resolved.ScreenPoint);
-            if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
+            if (msaaReceipt.ShouldStopFallback)
             {
                 if (msaaReceipt.Ok)
                     await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
