@@ -747,24 +747,14 @@ internal sealed class AgentCursorOverlay
             var top = (int)Math.Floor(screenCenter.Y - halfSize);
             var localCenter = new PointF(screenCenter.X - left, screenCenter.Y - top);
 
-            using var high = new Bitmap(width * AgentCursorRenderer.Supersample, height * AgentCursorRenderer.Supersample, PixelFormat.Format32bppPArgb);
-            high.SetResolution(96 * AgentCursorRenderer.Supersample, 96 * AgentCursorRenderer.Supersample);
-            using (var g = Graphics.FromImage(high))
-            {
-                g.Clear(Color.Transparent);
-                AgentCursorRenderer.ConfigureHighQuality(g);
-                g.ScaleTransform(AgentCursorRenderer.Supersample, AgentCursorRenderer.Supersample);
-                AgentCursorRenderer.DrawBloom(g, localCenter, scale, BloomBreath());
-                AgentCursorRenderer.DrawCursor(g, localCenter, renderPose.Heading, scale);
-            }
-
             using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
             bitmap.SetResolution(96, 96);
             using (var g = Graphics.FromImage(bitmap))
             {
                 g.Clear(Color.Transparent);
                 AgentCursorRenderer.ConfigureHighQuality(g);
-                g.DrawImage(high, new Rectangle(0, 0, width, height), 0, 0, high.Width, high.Height, GraphicsUnit.Pixel);
+                AgentCursorRenderer.DrawBloom(g, localCenter, scale, BloomBreath());
+                AgentCursorRenderer.DrawCursor(g, localCenter, renderPose.Heading, scale);
             }
 
             var screenDc = NativeMethods.GetDC(IntPtr.Zero);
