@@ -51,6 +51,9 @@ def test_get_agent_cursor_state_returns_structured_content():
     assert structured["route"] == "winforms.click_through_overlay"
     assert "motion" in structured
     assert "enabled" in structured
+    assert "render_fps" in structured
+    assert "render_ms" in structured
+    assert "render_frame_count" in structured
 
 
 def test_set_agent_cursor_enabled_requires_boolean():

@@ -145,6 +145,9 @@ internal sealed class AgentCursorOverlay
         int? screenY = null;
         long? targetWindowId = null;
         var layering = "uninitialized";
+        double? renderFps = null;
+        double? renderMs = null;
+        long renderFrameCount = 0;
         AgentCursorMotion motion;
         lock (_gate)
         {
@@ -161,6 +164,9 @@ internal sealed class AgentCursorOverlay
                 screenY = snapshot.ScreenY;
                 targetWindowId = snapshot.TargetWindowId;
                 layering = snapshot.Layering;
+                renderFps = snapshot.RenderFps;
+                renderMs = snapshot.RenderMs;
+                renderFrameCount = snapshot.RenderFrameCount;
             }
         }
 
@@ -174,6 +180,9 @@ internal sealed class AgentCursorOverlay
             ["screen_y"] = screenY,
             ["target_window_id"] = targetWindowId,
             ["layering"] = layering,
+            ["render_fps"] = renderFps,
+            ["render_ms"] = renderMs,
+            ["render_frame_count"] = renderFrameCount,
             ["persistent"] = motion.IdleHideMs <= 0,
             ["motion"] = motion.ToJsonObject()
         };
@@ -289,6 +298,10 @@ internal sealed class AgentCursorOverlay
         private bool _isFadingOut;
         private string _layering = "normal";
         private readonly bool _timerResolutionRaised;
+        private long _lastRenderedFrameTimestamp;
+        private long _renderFrameCount;
+        private double? _renderFps;
+        private double? _renderMs;
 
         public OverlayForm(string overlayWindowTitle)
         {
@@ -632,16 +645,23 @@ internal sealed class AgentCursorOverlay
         public CursorSnapshot Snapshot()
         {
             if (!_hasPosition)
-                return new CursorSnapshot(_visibleCursor, null, null, WindowIdFor(_pinnedTargetHwnd), _layering);
+                return SnapshotFor(null, null);
 
             var tip = AgentCursorGeometry.TipPointFromVisualPosition(_current, CurrentDpiScale());
-            return new CursorSnapshot(
-                _visibleCursor,
+            return SnapshotFor(
                 (int)Math.Round(tip.X + _virtualBounds.Left),
-                (int)Math.Round(tip.Y + _virtualBounds.Top),
-                WindowIdFor(_pinnedTargetHwnd),
-                _layering);
+                (int)Math.Round(tip.Y + _virtualBounds.Top));
         }
+
+        private CursorSnapshot SnapshotFor(int? screenX, int? screenY) => new(
+            _visibleCursor,
+            screenX,
+            screenY,
+            WindowIdFor(_pinnedTargetHwnd),
+            _layering,
+            _renderFps,
+            _renderMs,
+            _renderFrameCount);
 
         private PointF ToLocal(int screenX, int screenY) => new(screenX - _virtualBounds.Left, screenY - _virtualBounds.Top);
 
@@ -712,6 +732,7 @@ internal sealed class AgentCursorOverlay
             if (!_enabled || !_visibleCursor || !IsHandleCreated || IsDisposed)
                 return;
 
+            var renderStarted = Stopwatch.GetTimestamp();
             var opacity = FadeOpacity();
             if (opacity <= 0)
                 return;
@@ -772,6 +793,7 @@ internal sealed class AgentCursorOverlay
                     AlphaFormat = NativeMethods.AC_SRC_ALPHA
                 };
                 NativeMethods.UpdateLayeredWindow(Handle, screenDc, ref dst, ref size, memDc, ref src, 0, ref blend, NativeMethods.ULW_ALPHA);
+                RecordRenderedFrame(renderStarted);
             }
             finally
             {
@@ -783,6 +805,26 @@ internal sealed class AgentCursorOverlay
                     NativeMethods.DeleteDC(memDc);
                 _ = NativeMethods.ReleaseDC(IntPtr.Zero, screenDc);
             }
+        }
+
+        private void RecordRenderedFrame(long renderStarted)
+        {
+            var renderedAt = Stopwatch.GetTimestamp();
+            var renderMs = Stopwatch.GetElapsedTime(renderStarted, renderedAt).TotalMilliseconds;
+            _renderMs = _renderMs is null ? renderMs : _renderMs.Value * 0.85 + renderMs * 0.15;
+
+            if (_lastRenderedFrameTimestamp > 0)
+            {
+                var elapsed = (renderedAt - _lastRenderedFrameTimestamp) / (double)Stopwatch.Frequency;
+                if (elapsed > 0)
+                {
+                    var fps = 1 / elapsed;
+                    _renderFps = _renderFps is null ? fps : _renderFps.Value * 0.85 + fps * 0.15;
+                }
+            }
+
+            _lastRenderedFrameTimestamp = renderedAt;
+            _renderFrameCount++;
         }
 
         private double BloomBreath()
