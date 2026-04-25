@@ -43,6 +43,30 @@ internal sealed record AgentCursorMotion
     public static AgentCursorMotion Default { get; } = new();
 
     public JsonObject ToJsonObject() => JsonUtil.ToJsonObject(this);
+
+    public AgentCursorMotion WithOverrides(
+        double? startHandle,
+        double? endHandle,
+        double? arcSize,
+        double? arcFlow,
+        double? spring,
+        double? glideDurationMs,
+        double? dwellAfterClickMs,
+        double? idleHideMs,
+        double? pressDurationMs) => this with
+        {
+            StartHandle = Clamp(startHandle ?? StartHandle, 0, 1),
+            EndHandle = Clamp(endHandle ?? EndHandle, 0, 1),
+            ArcSize = Clamp(arcSize ?? ArcSize, 0, 1),
+            ArcFlow = Clamp(arcFlow ?? ArcFlow, -1, 1),
+            Spring = Clamp(spring ?? Spring, 0.3, 1),
+            GlideDurationMs = Clamp(glideDurationMs ?? GlideDurationMs, 50, 5000),
+            DwellAfterClickMs = Clamp(dwellAfterClickMs ?? DwellAfterClickMs, 0, 5000),
+            IdleHideMs = Clamp(idleHideMs ?? IdleHideMs, 0, 60000),
+            PressDurationMs = Clamp(pressDurationMs ?? PressDurationMs, 0, 5000),
+        };
+
+    private static double Clamp(double value, double min, double max) => Math.Min(max, Math.Max(min, value));
 }
 
 internal sealed record CursorSnapshot(bool Visible, int? ScreenX, int? ScreenY, long? TargetWindowId, string Layering);
@@ -132,18 +156,16 @@ internal sealed class AgentCursorOverlay
         AgentCursorMotion next;
         lock (_gate)
         {
-            next = _motion with
-            {
-                StartHandle = Clamp(startHandle ?? _motion.StartHandle, 0, 1),
-                EndHandle = Clamp(endHandle ?? _motion.EndHandle, 0, 1),
-                ArcSize = Clamp(arcSize ?? _motion.ArcSize, 0, 1),
-                ArcFlow = Clamp(arcFlow ?? _motion.ArcFlow, -1, 1),
-                Spring = Clamp(spring ?? _motion.Spring, 0.3, 1),
-                GlideDurationMs = Clamp(glideDurationMs ?? _motion.GlideDurationMs, 50, 5000),
-                DwellAfterClickMs = Clamp(dwellAfterClickMs ?? _motion.DwellAfterClickMs, 0, 5000),
-                IdleHideMs = Clamp(idleHideMs ?? _motion.IdleHideMs, 0, 60000),
-                PressDurationMs = Clamp(pressDurationMs ?? _motion.PressDurationMs, 0, 5000),
-            };
+            next = _motion.WithOverrides(
+                startHandle,
+                endHandle,
+                arcSize,
+                arcFlow,
+                spring,
+                glideDurationMs,
+                dwellAfterClickMs,
+                idleHideMs,
+                pressDurationMs);
             _motion = next;
         }
 
@@ -297,8 +319,6 @@ internal sealed class AgentCursorOverlay
             return false;
         }
     }
-
-    private static double Clamp(double value, double min, double max) => Math.Min(max, Math.Max(min, value));
 
     private static bool IsDefaultOverlayTitle(string title) =>
         title.Equals(OverlayWindowTitleFor(DriverInstance.DefaultId), StringComparison.Ordinal);
