@@ -1,5 +1,7 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -44,6 +46,8 @@ public sealed record CursorSnapshot(bool Visible, int? ScreenX, int? ScreenY);
 
 public sealed class AgentCursorOverlay
 {
+    private const string OverlayWindowTitle = "CuaDriverWin.AgentCursorOverlay";
+
     private readonly object _gate = new();
     private OverlayForm? _form;
     private Thread? _thread;
@@ -302,9 +306,7 @@ public sealed class AgentCursorOverlay
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
             TopMost = true;
-            BackColor = Color.Magenta;
-            TransparencyKey = Color.Magenta;
-            DoubleBuffered = true;
+            Text = OverlayWindowTitle;
             StartPosition = FormStartPosition.Manual;
             _current = new PointF(-180, -180);
             _start = _current;
@@ -316,9 +318,9 @@ public sealed class AgentCursorOverlay
             _timer.Tick += (_, _) =>
             {
                 StepAnimation();
-                Invalidate();
             };
             _timer.Start();
+            FormClosed += (_, _) => Application.ExitThread();
         }
 
         protected override bool ShowWithoutActivation => true;
@@ -327,12 +329,11 @@ public sealed class AgentCursorOverlay
         {
             get
             {
-                const int wsExTransparent = 0x00000020;
-                const int wsExLayered = 0x00080000;
-                const int wsExNoActivate = 0x08000000;
-                const int wsExToolWindow = 0x00000080;
                 var cp = base.CreateParams;
-                cp.ExStyle |= wsExTransparent | wsExLayered | wsExNoActivate | wsExToolWindow;
+                cp.ExStyle |= NativeMethods.WS_EX_TRANSPARENT
+                              | NativeMethods.WS_EX_LAYERED
+                              | NativeMethods.WS_EX_NOACTIVATE
+                              | NativeMethods.WS_EX_TOOLWINDOW;
                 return cp;
             }
         }
@@ -364,10 +365,7 @@ public sealed class AgentCursorOverlay
 
             _visibleCursor = true;
             _lastActivityAt = DateTime.UtcNow;
-            if (!Visible)
-                Show();
-            TopMost = true;
-            Invalidate();
+            ShowOverlay();
         }
 
         public void HideCursor()
@@ -417,10 +415,7 @@ public sealed class AgentCursorOverlay
                 _isGliding = true;
             }
 
-            if (!Visible)
-                Show();
-            TopMost = true;
-            Invalidate();
+            ShowOverlay();
         }
 
         public void StartPress(AgentCursorMotion motion)
@@ -432,26 +427,22 @@ public sealed class AgentCursorOverlay
             _lastActivityAt = DateTime.UtcNow;
             _pulseStartedMs = Environment.TickCount64;
             _visibleCursor = true;
-            if (!Visible)
-                Show();
-            TopMost = true;
-            Invalidate();
+            ShowOverlay();
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            base.OnPaint(e);
-            if (!_enabled || !_visibleCursor)
-                return;
+            // Rendering is handled by UpdateLayeredWindow so the glow gets real per-pixel alpha.
+        }
 
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            var scale = CursorScale(e.Graphics);
-            DrawCursor(e.Graphics, _current, _heading, scale);
-            DrawBloom(e.Graphics, _current, scale);
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            // Suppress the normal WinForms background paint; this window is a per-pixel alpha surface.
         }
 
         private void StepAnimation()
         {
+            var changed = false;
             if (!_visibleCursor)
                 return;
 
@@ -467,6 +458,7 @@ public sealed class AgentCursorOverlay
                 _current = Bezier(_start, _control1, _control2, _target, eased);
                 var tangent = BezierTangentRadians(_start, _control1, _control2, _target, eased);
                 _heading = RotateToward(_heading, tangent + Math.PI, 14 * dt);
+                changed = true;
                 if (t >= 1)
                 {
                     _current = _target;
@@ -489,6 +481,9 @@ public sealed class AgentCursorOverlay
                 if (_motion.IdleHideMs > 0 && idleMs >= _motion.IdleHideMs)
                     HideCursor();
             }
+
+            if (changed)
+                RenderFrame();
         }
 
         public CursorSnapshot Snapshot()
@@ -499,6 +494,69 @@ public sealed class AgentCursorOverlay
         }
 
         private PointF ToLocal(int screenX, int screenY) => new(screenX - _virtualBounds.Left, screenY - _virtualBounds.Top);
+
+        private void ShowOverlay()
+        {
+            CloseSiblingOverlayWindows();
+            if (!Visible)
+                Show();
+            TopMost = true;
+            RenderFrame();
+        }
+
+        private void RenderFrame()
+        {
+            if (!_enabled || !_visibleCursor || !IsHandleCreated || IsDisposed)
+                return;
+
+            using var bitmap = new Bitmap(_virtualBounds.Width, _virtualBounds.Height, PixelFormat.Format32bppPArgb);
+            using (var g = Graphics.FromImage(bitmap))
+            {
+                g.Clear(Color.Transparent);
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                var scale = CursorScale(g);
+                DrawBloom(g, _current, scale);
+                DrawCursor(g, _current, _heading, scale);
+            }
+
+            var screenDc = NativeMethods.GetDC(IntPtr.Zero);
+            if (screenDc == IntPtr.Zero)
+                return;
+
+            var memDc = IntPtr.Zero;
+            var hBitmap = IntPtr.Zero;
+            var oldBitmap = IntPtr.Zero;
+            try
+            {
+                memDc = NativeMethods.CreateCompatibleDC(screenDc);
+                if (memDc == IntPtr.Zero)
+                    return;
+
+                hBitmap = bitmap.GetHbitmap(Color.FromArgb(0));
+                oldBitmap = NativeMethods.SelectObject(memDc, hBitmap);
+                var dst = new POINT(_virtualBounds.Left, _virtualBounds.Top);
+                var size = new SIZE(_virtualBounds.Width, _virtualBounds.Height);
+                var src = new POINT(0, 0);
+                var blend = new BLENDFUNCTION
+                {
+                    BlendOp = NativeMethods.AC_SRC_OVER,
+                    BlendFlags = 0,
+                    SourceConstantAlpha = 255,
+                    AlphaFormat = NativeMethods.AC_SRC_ALPHA
+                };
+                NativeMethods.UpdateLayeredWindow(Handle, screenDc, ref dst, ref size, memDc, ref src, 0, ref blend, NativeMethods.ULW_ALPHA);
+            }
+            finally
+            {
+                if (oldBitmap != IntPtr.Zero && memDc != IntPtr.Zero)
+                    NativeMethods.SelectObject(memDc, oldBitmap);
+                if (hBitmap != IntPtr.Zero)
+                    NativeMethods.DeleteObject(hBitmap);
+                if (memDc != IntPtr.Zero)
+                    NativeMethods.DeleteDC(memDc);
+                NativeMethods.ReleaseDC(IntPtr.Zero, screenDc);
+            }
+        }
 
         private static PointF InitialPosition(PointF target)
         {
@@ -617,6 +675,47 @@ public sealed class AgentCursorOverlay
         }
 
         private static float CursorScale(Graphics g) => Math.Clamp(g.DpiX / 96f, 1f, 2.5f);
+
+        private static void CloseSiblingOverlayWindows()
+        {
+            var currentPid = (uint)Environment.ProcessId;
+            var currentProcessName = Process.GetCurrentProcess().ProcessName;
+            NativeMethods.EnumWindows((hwnd, _) =>
+            {
+                NativeMethods.GetWindowThreadProcessId(hwnd, out var pid);
+                if (pid == 0 || pid == currentPid)
+                    return true;
+
+                if (IsSiblingOverlayWindow(hwnd, pid, currentProcessName))
+                    NativeMethods.PostMessageW(hwnd, NativeMethods.WM_CLOSE, UIntPtr.Zero, IntPtr.Zero);
+
+                return true;
+            }, IntPtr.Zero);
+        }
+
+        private static bool IsSiblingOverlayWindow(IntPtr hwnd, uint pid, string currentProcessName)
+        {
+            if (NativeMethods.GetWindowText(hwnd).Equals(OverlayWindowTitle, StringComparison.Ordinal))
+                return true;
+
+            var exStyle = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE).ToInt64();
+            var overlayStyle = NativeMethods.WS_EX_TRANSPARENT
+                               | NativeMethods.WS_EX_LAYERED
+                               | NativeMethods.WS_EX_NOACTIVATE
+                               | NativeMethods.WS_EX_TOOLWINDOW;
+            if ((exStyle & overlayStyle) != overlayStyle)
+                return false;
+
+            try
+            {
+                using var process = Process.GetProcessById((int)pid);
+                return process.ProcessName.Equals(currentProcessName, StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
 
         private static double Distance(PointF a, PointF b)
         {

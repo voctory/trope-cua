@@ -52,6 +52,9 @@ internal static class NativeMethods
     [DllImport("user32.dll", SetLastError = true)]
     public static extern IntPtr SendMessageW(IntPtr hWnd, uint msg, UIntPtr wParam, IntPtr lParam);
 
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
+    public static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);
+
     [DllImport("user32.dll")]
     public static extern IntPtr WindowFromPoint(POINT point);
 
@@ -85,9 +88,41 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
 
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr GetDC(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+    [DllImport("gdi32.dll", SetLastError = true)]
+    public static extern IntPtr CreateCompatibleDC(IntPtr hdc);
+
+    [DllImport("gdi32.dll", SetLastError = true)]
+    public static extern bool DeleteDC(IntPtr hdc);
+
+    [DllImport("gdi32.dll", SetLastError = true)]
+    public static extern IntPtr SelectObject(IntPtr hdc, IntPtr hgdiobj);
+
+    [DllImport("gdi32.dll", SetLastError = true)]
+    public static extern bool DeleteObject(IntPtr hObject);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool UpdateLayeredWindow(
+        IntPtr hwnd,
+        IntPtr hdcDst,
+        ref POINT pptDst,
+        ref SIZE psize,
+        IntPtr hdcSrc,
+        ref POINT pptSrc,
+        int crKey,
+        ref BLENDFUNCTION pblend,
+        int dwFlags);
+
     public const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
     public const uint GA_ROOT = 2;
+    public const int GWL_EXSTYLE = -20;
 
+    public const uint WM_CLOSE = 0x0010;
     public const uint WM_MOUSEMOVE = 0x0200;
     public const uint WM_LBUTTONDOWN = 0x0201;
     public const uint WM_LBUTTONUP = 0x0202;
@@ -114,6 +149,15 @@ internal static class NativeMethods
 
     public const uint PW_CLIENTONLY = 0x00000001;
     public const uint PW_RENDERFULLCONTENT = 0x00000002;
+
+    public const int WS_EX_TRANSPARENT = 0x00000020;
+    public const int WS_EX_LAYERED = 0x00080000;
+    public const int WS_EX_NOACTIVATE = 0x08000000;
+    public const int WS_EX_TOOLWINDOW = 0x00000080;
+
+    public const byte AC_SRC_OVER = 0x00;
+    public const byte AC_SRC_ALPHA = 0x01;
+    public const int ULW_ALPHA = 0x00000002;
 
     public static string GetWindowText(IntPtr hwnd)
     {
@@ -185,6 +229,28 @@ public struct POINT
     }
 
     public override string ToString() => $"({X},{Y})";
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct SIZE
+{
+    public int Cx;
+    public int Cy;
+
+    public SIZE(int cx, int cy)
+    {
+        Cx = cx;
+        Cy = cy;
+    }
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct BLENDFUNCTION
+{
+    public byte BlendOp;
+    public byte BlendFlags;
+    public byte SourceConstantAlpha;
+    public byte AlphaFormat;
 }
 
 public sealed record RectDto(int X, int Y, int Width, int Height)
