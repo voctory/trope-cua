@@ -1,6 +1,7 @@
 using System.IO;
 using System.IO.Pipes;
 using System.Security.Principal;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Tooling;
@@ -73,8 +74,8 @@ public sealed class NamedPipeDaemon
         {
             await using var pipe = new NamedPipeClientStream(".", PipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
             await pipe.ConnectAsync(cts.Token).ConfigureAwait(false);
-            await using var writer = new StreamWriter(pipe) { AutoFlush = true };
-            using var reader = new StreamReader(pipe);
+            await using var writer = new StreamWriter(pipe, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
+            using var reader = new StreamReader(pipe, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, 1024, leaveOpen: true);
 
             var request = new DaemonRequest("call", name, args);
             await writer.WriteLineAsync(JsonSerializer.Serialize(request, JsonUtil.LineSerializerOptions)).ConfigureAwait(false);
