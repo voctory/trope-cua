@@ -48,6 +48,35 @@ public sealed record ToolResult
 
     public static ToolResult Error(string text) => Text("❌ " + text, true);
 
+    public ToolResult WithInferredStructuredContent()
+    {
+        if (StructuredContent is not null)
+            return this;
+
+        var structured = TryExtractStructuredContent();
+        return structured is null ? this : this with { StructuredContent = structured };
+    }
+
+    private JsonObject? TryExtractStructuredContent()
+    {
+        var text = Content.FirstOrDefault(block => block.Type == "text")?.Text;
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+
+        var jsonStart = text.IndexOf('{');
+        if (jsonStart < 0)
+            return null;
+
+        try
+        {
+            return JsonNode.Parse(text[jsonStart..]) as JsonObject;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public string ToCliText()
     {
         var parts = new List<string>();
@@ -138,6 +167,8 @@ public sealed class ToolRegistry
         {
             result = ToolResult.Error($"{ex.GetType().Name}: {ex.Message}");
         }
+
+        result = result.WithInferredStructuredContent();
 
         if (shouldRecord && recordedArgs is not null && context.State.Recording.IsEnabled)
             context.State.Recording.Record(tool.Definition.Name, recordedArgs, result, context, actionStartTimestamp);
