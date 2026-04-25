@@ -10,16 +10,16 @@ using Microsoft.Win32;
 
 namespace CuaDriver.Win.HardCases;
 
-public sealed record ChildSessionHostOptions(int Width, int Height, int TimeoutMs, bool Visible);
+internal sealed record ChildSessionHostOptions(int Width, int Height, int TimeoutMs, bool Visible);
 
-public sealed record ChildSessionHostStartResult(
+internal sealed record ChildSessionHostStartResult(
     bool Ok,
     string Status,
     int? ChildSessionId,
     bool HostRunning,
     string[] Log);
 
-public static class ChildSessionHost
+internal static class ChildSessionHost
 {
     private static readonly object Gate = new();
     private static HostInstance? _host;

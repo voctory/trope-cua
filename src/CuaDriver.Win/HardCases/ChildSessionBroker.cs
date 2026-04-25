@@ -9,7 +9,7 @@ namespace CuaDriver.Win.HardCases;
 /// A complete PiP implementation still needs an RDP ActiveX host with
 /// IMsRdpExtendedSettings["ConnectToChildSession"] = true.
 /// </summary>
-public static class ChildSessionBroker
+internal static class ChildSessionBroker
 {
     public static bool IsSupportedByOs() => OperatingSystem.IsWindowsVersionAtLeast(10);
 

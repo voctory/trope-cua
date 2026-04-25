@@ -11,9 +11,9 @@ namespace CuaDriver.Win.HardCases;
 /// The API can be present/callable on some desktop builds, but it injects
 /// parent-session input and is not a pid-addressed background lane by itself.
 /// </summary>
-public static class AppBroadcastInputInjector
+internal static class AppBroadcastInputInjector
 {
-    public sealed record ProbeResult(string Text, JsonObject StructuredContent, bool IsError);
+    internal sealed record ProbeResult(string Text, JsonObject StructuredContent, bool IsError);
 
     public static string Status()
     {
