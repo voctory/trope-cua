@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Nodes;
 
 namespace CuaDriver.Win.Tooling;
@@ -26,7 +27,7 @@ public sealed class ToolRegistry
 
     public IReadOnlyCollection<IDriverTool> Tools => _tools.Values.OrderBy(t => t.Definition.Name, StringComparer.OrdinalIgnoreCase).ToArray();
 
-    public bool TryGet(string name, out IDriverTool tool)
+    public bool TryGet(string name, [NotNullWhen(true)] out IDriverTool? tool)
     {
         if (_tools.TryGetValue(name, out var found))
         {
@@ -34,7 +35,7 @@ public sealed class ToolRegistry
             return true;
         }
 
-        tool = null!;
+        tool = null;
         return false;
     }
 

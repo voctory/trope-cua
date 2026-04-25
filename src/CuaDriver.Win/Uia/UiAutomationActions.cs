@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Windows.Automation;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Win32;
@@ -169,7 +170,7 @@ public static class UiAutomationActions
         return null;
     }
 
-    private static bool TryPattern<T>(AutomationElement element, AutomationPattern pattern, out T value) where T : class
+    private static bool TryPattern<T>(AutomationElement element, AutomationPattern pattern, [NotNullWhen(true)] out T? value) where T : class
     {
         if (element.TryGetCurrentPattern(pattern, out var raw) && raw is T typed)
         {
@@ -177,7 +178,7 @@ public static class UiAutomationActions
             return true;
         }
 
-        value = null!;
+        value = null;
         return false;
     }
 
