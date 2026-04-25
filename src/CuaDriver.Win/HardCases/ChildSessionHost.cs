@@ -513,8 +513,8 @@ public static class ChildSessionHost
                 }
                 finally
                 {
-                    VariantClear(args);
-                    VariantClear(IntPtr.Add(args, variantSize));
+                    _ = VariantClear(args);
+                    _ = VariantClear(IntPtr.Add(args, variantSize));
                     Marshal.FreeCoTaskMem(args);
                     Marshal.FreeCoTaskMem(namedArgs);
                 }

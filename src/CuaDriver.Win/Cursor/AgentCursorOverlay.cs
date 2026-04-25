@@ -350,7 +350,7 @@ public sealed class AgentCursorOverlay
             FormClosed += (_, _) =>
             {
                 if (_timerResolutionRaised)
-                    NativeMethods.timeEndPeriod(1);
+                    _ = NativeMethods.timeEndPeriod(1);
                 Application.ExitThread();
             };
         }
@@ -856,7 +856,7 @@ public sealed class AgentCursorOverlay
                     NativeMethods.DeleteObject(hBitmap);
                 if (memDc != IntPtr.Zero)
                     NativeMethods.DeleteDC(memDc);
-                NativeMethods.ReleaseDC(IntPtr.Zero, screenDc);
+                _ = NativeMethods.ReleaseDC(IntPtr.Zero, screenDc);
             }
         }
 
@@ -1412,8 +1412,8 @@ public sealed class AgentCursorOverlay
             var currentProcessName = Process.GetCurrentProcess().ProcessName;
             NativeMethods.EnumWindows((hwnd, _) =>
             {
-                NativeMethods.GetWindowThreadProcessId(hwnd, out var pid);
-                if (pid == 0 || pid == currentPid)
+                var threadId = NativeMethods.GetWindowThreadProcessId(hwnd, out var pid);
+                if (threadId == 0 || pid == 0 || pid == currentPid)
                     return true;
 
                 if (IsSiblingOverlayWindow(hwnd, pid, currentProcessName))

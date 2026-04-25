@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace CuaDriver.Win.Win32;
 
@@ -17,10 +16,10 @@ internal static class NativeMethods
     public static extern int GetWindowTextLengthW(IntPtr hWnd);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    public static extern int GetWindowTextW(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+    public static extern int GetWindowTextW(IntPtr hWnd, [Out] char[] lpString, int nMaxCount);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    public static extern int GetClassNameW(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+    public static extern int GetClassNameW(IntPtr hWnd, [Out] char[] lpClassName, int nMaxCount);
 
     [DllImport("user32.dll")]
     public static extern bool IsWindowVisible(IntPtr hWnd);
@@ -223,16 +222,16 @@ internal static class NativeMethods
     public static string GetWindowText(IntPtr hwnd)
     {
         var len = Math.Max(1, GetWindowTextLengthW(hwnd));
-        var sb = new StringBuilder(len + 1);
-        GetWindowTextW(hwnd, sb, sb.Capacity);
-        return sb.ToString();
+        var buffer = new char[len + 1];
+        var copied = GetWindowTextW(hwnd, buffer, buffer.Length);
+        return copied <= 0 ? "" : new string(buffer, 0, copied);
     }
 
     public static string GetClassName(IntPtr hwnd)
     {
-        var sb = new StringBuilder(256);
-        GetClassNameW(hwnd, sb, sb.Capacity);
-        return sb.ToString();
+        var buffer = new char[256];
+        var copied = GetClassNameW(hwnd, buffer, buffer.Length);
+        return copied <= 0 ? "" : new string(buffer, 0, copied);
     }
 
     public static RECT GetBestWindowRect(IntPtr hwnd)

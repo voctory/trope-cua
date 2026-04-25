@@ -29,7 +29,10 @@ public static class WindowEnumerator
         {
             try
             {
-                NativeMethods.GetWindowThreadProcessId(hwnd, out var rawPid);
+                var threadId = NativeMethods.GetWindowThreadProcessId(hwnd, out var rawPid);
+                if (threadId == 0)
+                    return true;
+
                 var pid = unchecked((int)rawPid);
                 if (pidFilter is not null && pid != pidFilter.Value)
                     return true;
@@ -77,7 +80,10 @@ public static class WindowEnumerator
         => AllWindows().FirstOrDefault(w => w.WindowId == windowId);
 
     public static WindowInfo? MainWindowForPid(int pid)
-        => AllWindows(pid, visibleOnly: false).FirstOrDefault(w => !w.IsMinimized) ?? AllWindows(pid, visibleOnly: false).FirstOrDefault();
+    {
+        var windows = AllWindows(pid, visibleOnly: false);
+        return windows.FirstOrDefault(w => !w.IsMinimized) ?? (windows.Count > 0 ? windows[0] : null);
+    }
 
     private static bool IsNoiseClass(string className)
     {
