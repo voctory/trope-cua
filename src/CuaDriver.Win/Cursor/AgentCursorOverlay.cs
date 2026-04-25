@@ -3,7 +3,6 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -225,7 +224,7 @@ public sealed class AgentCursorOverlay
             ["target_window_id"] = targetWindowId,
             ["layering"] = layering,
             ["persistent"] = motion.IdleHideMs <= 0,
-            ["motion"] = JsonSerializer.SerializeToNode(motion, JsonUtil.SerializerOptions)
+            ["motion"] = motion.ToJsonObject()
         };
     }
 
