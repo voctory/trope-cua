@@ -69,13 +69,10 @@ public sealed class ClickTool : IDriverTool
 
         if (index is not null)
         {
-            var window = WindowEnumerator.Find(windowId!.Value);
-            if (window is null)
-                return ToolResult.Error($"No window with window_id {windowId.Value}.");
-            if (window.Pid != pid)
-                return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
+            if (!ToolWindows.TryFindForPid(pid, windowId!.Value, out var window, out var error))
+                return error!;
 
-            var element = context.State.UiaTree.GetCachedElement(pid, windowId!.Value, index.Value);
+            var element = context.State.UiaTree.GetCachedElement(pid, window.WindowId, index.Value);
             await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
             if (BrowserWindowClassifier.IsLikelyBrowser(window))
             {
@@ -120,21 +117,16 @@ public sealed class ClickTool : IDriverTool
         }
         else
         {
-            if (windowId is null)
+            WindowInfo window;
+            if (windowId is null && fromZoom && context.State.ZoomContexts.TryGetValue(pid, out var zoomContext))
             {
-                var w = fromZoom && context.State.ZoomContexts.TryGetValue(pid, out var zoom)
-                    ? WindowEnumerator.Find(zoom.WindowId)
-                    : WindowEnumerator.MainWindowForPid(pid);
-                if (w is null)
-                    return ToolResult.Error($"No window found for pid {pid}.");
-                windowId = w.WindowId;
+                if (!ToolWindows.TryFindForPid(pid, zoomContext.WindowId, out window, out var error))
+                    return error!;
             }
-
-            var window = WindowEnumerator.Find(windowId.Value);
-            if (window is null)
-                return ToolResult.Error($"No window with window_id {windowId.Value}.");
-            if (window.Pid != pid)
-                return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
+            else if (!ToolWindows.TryFindMainOrForPid(pid, windowId, out window, out var error))
+            {
+                return error!;
+            }
 
             if (!string.IsNullOrWhiteSpace(debugImageOut))
             {
