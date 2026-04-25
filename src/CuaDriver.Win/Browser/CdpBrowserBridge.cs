@@ -248,22 +248,18 @@ public static class CdpBrowserBridge
         var mask = 0;
         foreach (var modifier in modifiers)
         {
-            switch (modifier.Trim().ToLowerInvariant())
+            switch (ModifierKeys.Normalize(modifier))
             {
-                case "alt":
-                case "option":
+                case ModifierKey.Alt:
                     mask |= 1;
                     break;
-                case "ctrl":
-                case "control":
+                case ModifierKey.Control:
                     mask |= 2;
                     break;
-                case "cmd":
-                case "meta":
-                case "win":
+                case ModifierKey.Meta:
                     mask |= 4;
                     break;
-                case "shift":
+                case ModifierKey.Shift:
                     mask |= 8;
                     break;
             }

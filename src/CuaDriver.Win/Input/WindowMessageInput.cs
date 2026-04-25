@@ -254,12 +254,20 @@ public static class WindowMessageInput
 
     private static int VirtualKey(string key)
     {
+        switch (ModifierKeys.Normalize(key))
+        {
+            case ModifierKey.Control:
+                return 0x11;
+            case ModifierKey.Shift:
+                return 0x10;
+            case ModifierKey.Alt:
+                return 0x12;
+            case ModifierKey.Meta:
+                return 0x5B;
+        }
+
         return key.Trim().ToLowerInvariant() switch
         {
-            "ctrl" or "control" => 0x11,
-            "shift" => 0x10,
-            "alt" or "option" => 0x12,
-            "win" or "meta" or "cmd" => 0x5B,
             "enter" or "return" => 0x0D,
             "escape" or "esc" => 0x1B,
             "tab" => 0x09,
@@ -285,13 +293,12 @@ public static class WindowMessageInput
         var flags = 0;
         foreach (var modifier in modifiers)
         {
-            switch (modifier.Trim().ToLowerInvariant())
+            switch (ModifierKeys.Normalize(modifier))
             {
-                case "ctrl":
-                case "control":
+                case ModifierKey.Control:
                     flags |= 0x0008;
                     break;
-                case "shift":
+                case ModifierKey.Shift:
                     flags |= 0x0004;
                     break;
             }
