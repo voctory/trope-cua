@@ -2,12 +2,14 @@ param(
   [string]$InstallDir = "$env:LOCALAPPDATA\Programs\CuaDriverWin",
   [string]$Configuration = "Release",
   [string]$Runtime = "win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())",
-  [switch]$SelfContained
+  [switch]$SelfContained,
+  [switch]$FrameworkDependent
 )
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
-& (Join-Path $PSScriptRoot "build.ps1") -Configuration $Configuration -Runtime $Runtime -SelfContained:$SelfContained
+$InstallSelfContained = $SelfContained -or -not $FrameworkDependent
+& (Join-Path $PSScriptRoot "build.ps1") -Configuration $Configuration -Runtime $Runtime -SelfContained:$InstallSelfContained
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 $InstalledExe = Join-Path $InstallDir "cua-driver-win.exe"

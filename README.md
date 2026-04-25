@@ -37,7 +37,7 @@ cd cua-driver-win
 .\scripts\build.ps1
 ```
 
-The scripts default to the current Windows architecture, for example `win-arm64` on Windows on ARM. Use `-SelfContained` when the MCP host should not depend on the user's `DOTNET_ROOT` or installed runtime layout.
+The build script defaults to the current Windows architecture, for example `win-arm64` on Windows on ARM. Use `-SelfContained` when the published executable should not depend on the user's `DOTNET_ROOT` or installed runtime layout. The install script defaults to self-contained output for daemon reliability; pass `-FrameworkDependent` only when the target runtime layout is intentionally managed outside the repo.
 
 The published executable is written to:
 
@@ -76,7 +76,7 @@ Set `CUA_DRIVER_CONFIG_DIR` when an agent or test run should use an isolated con
 Install a self-contained user-level build:
 
 ```powershell
-.\scripts\install.ps1 -SelfContained
+.\scripts\install.ps1
 ```
 
 Then register it with Codex:
