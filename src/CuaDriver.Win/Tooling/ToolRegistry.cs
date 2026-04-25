@@ -59,8 +59,6 @@ public sealed class ToolRegistry
             result = ToolResult.Error($"{ex.GetType().Name}: {ex.Message}");
         }
 
-        result = result.WithInferredStructuredContent();
-
         if (shouldRecord && recordedArgs is not null && context.State.Recording.IsEnabled)
             context.State.Recording.Record(tool.Definition.Name, recordedArgs, result, context, actionStartTimestamp);
 

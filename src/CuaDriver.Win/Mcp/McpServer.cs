@@ -109,7 +109,7 @@ public sealed class McpServer
         var args = p["arguments"] is null
             ? new JsonObject()
             : p["arguments"] as JsonObject ?? throw new McpRequestException(-32602, "tools/call params.arguments must be a JSON object");
-        var result = (await _registry.InvokeAsync(name, args, _context, ct).ConfigureAwait(false)).WithInferredStructuredContent();
+        var result = await _registry.InvokeAsync(name, args, _context, ct).ConfigureAwait(false);
 
         var content = new JsonArray();
         foreach (var block in result.Content)
