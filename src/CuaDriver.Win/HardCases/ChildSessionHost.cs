@@ -446,7 +446,7 @@ public static class ChildSessionHost
             var unknown = Marshal.GetIUnknownForObject(ocx);
             try
             {
-                var hr = Marshal.QueryInterface(unknown, ref iid, out var extended);
+                var hr = Marshal.QueryInterface(unknown, in iid, out var extended);
                 if (hr != 0 || extended == IntPtr.Zero)
                     return false;
 
@@ -532,7 +532,7 @@ public static class ChildSessionHost
         {
         }
 
-        public object OcxObject => GetOcx();
+        public object OcxObject => GetOcx() ?? throw new InvalidOperationException("RDP ActiveX control did not expose an OCX object.");
     }
 
     [ComImport]

@@ -399,7 +399,7 @@ public static class MsaaActions
         {
             unknown = Marshal.GetIUnknownForObject(value);
             var iid = NativeMethods.IID_IAccessible;
-            if (Marshal.QueryInterface(unknown, ref iid, out accessiblePtr) != 0 || accessiblePtr == IntPtr.Zero)
+            if (Marshal.QueryInterface(unknown, in iid, out accessiblePtr) != 0 || accessiblePtr == IntPtr.Zero)
                 return null;
 
             return Marshal.GetObjectForIUnknown(accessiblePtr) as IAccessible;
@@ -434,7 +434,7 @@ public static class MsaaActions
         {
             unknown = Marshal.GetIUnknownForObject(value);
             var iid = IidAccessibleAction;
-            if (Marshal.QueryInterface(unknown, ref iid, out actionPtr) != 0 || actionPtr == IntPtr.Zero)
+            if (Marshal.QueryInterface(unknown, in iid, out actionPtr) != 0 || actionPtr == IntPtr.Zero)
             {
                 if (value is not IServiceProvider serviceProvider)
                     return null;
@@ -477,7 +477,7 @@ public static class MsaaActions
         {
             unknown = Marshal.GetIUnknownForObject(value);
             var iid = IidAccessibleEditableText;
-            if (Marshal.QueryInterface(unknown, ref iid, out editablePtr) != 0 || editablePtr == IntPtr.Zero)
+            if (Marshal.QueryInterface(unknown, in iid, out editablePtr) != 0 || editablePtr == IntPtr.Zero)
             {
                 if (value is not IServiceProvider serviceProvider)
                     return null;
@@ -520,7 +520,7 @@ public static class MsaaActions
         {
             unknown = Marshal.GetIUnknownForObject(value);
             var iid = IidAccessibleText;
-            if (Marshal.QueryInterface(unknown, ref iid, out textPtr) != 0 || textPtr == IntPtr.Zero)
+            if (Marshal.QueryInterface(unknown, in iid, out textPtr) != 0 || textPtr == IntPtr.Zero)
             {
                 if (value is not IServiceProvider serviceProvider)
                     return null;
