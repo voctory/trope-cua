@@ -14,10 +14,7 @@ public sealed class SetAgentCursorEnabledTool : IDriverTool
 
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
-        if (!args.ContainsKey("enabled"))
-            return Task.FromResult(ToolResult.Error("Missing required boolean field enabled."));
-
-        var enabled = JsonArgs.OptionalBool(args, "enabled");
+        var enabled = JsonArgs.RequiredBool(args, "enabled");
         context.State.AgentCursor.SetEnabled(enabled);
         context.State.Config = context.State.Config with
         {
@@ -102,10 +99,7 @@ public sealed class SetRecordingTool : IDriverTool
 
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
-        if (!args.ContainsKey("enabled"))
-            return Task.FromResult(ToolResult.Error("Missing required boolean field enabled."));
-
-        var enabled = JsonArgs.OptionalBool(args, "enabled");
+        var enabled = JsonArgs.RequiredBool(args, "enabled");
         if (JsonArgs.OptionalBool(args, "video_experimental"))
             return Task.FromResult(ToolResult.Error("video_experimental is not implemented on Windows yet; use trajectory recording without video_experimental."));
 

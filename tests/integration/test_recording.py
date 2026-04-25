@@ -13,3 +13,10 @@ def test_set_recording_enable_returns_structured_content(tmp_path):
     assert result["isError"] is False
     assert result["structuredContent"]["enabled"] is True
     assert result["structuredContent"]["output_dir"]
+
+
+def test_set_recording_requires_boolean_enabled():
+    result = call("set_recording", {"enabled": None})
+
+    assert result["isError"] is True
+    assert "Missing required boolean field enabled" in result["content"][0]["text"]

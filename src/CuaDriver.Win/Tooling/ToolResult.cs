@@ -251,6 +251,13 @@ public static class JsonArgs
         throw new ArgumentException($"Missing required string field {name}.");
     }
 
+    public static bool RequiredBool(JsonObject args, string name)
+    {
+        if (args.TryGetPropertyValue(name, out var node) && node is not null)
+            return node.GetValue<bool>();
+        throw new ArgumentException($"Missing required boolean field {name}.");
+    }
+
     public static int? OptionalInt(JsonObject args, string name)
         => args.TryGetPropertyValue(name, out var node) && node is not null ? node.GetValue<int>() : null;
 

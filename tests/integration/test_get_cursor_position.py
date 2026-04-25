@@ -41,3 +41,10 @@ def test_parent_cursor_override_is_reported_as_not_background_safe():
     assert moved["structuredContent"]["route"] == "parent.setcursorpos"
     assert moved["structuredContent"]["background_safe"] is False
     assert moved["structuredContent"]["session"] == "parent"
+
+
+def test_set_agent_cursor_enabled_requires_boolean():
+    result = call("set_agent_cursor_enabled", {"enabled": None})
+
+    assert result["isError"] is True
+    assert "Missing required boolean field enabled" in result["content"][0]["text"]
