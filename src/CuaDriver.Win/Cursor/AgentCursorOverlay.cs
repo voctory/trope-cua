@@ -75,9 +75,6 @@ internal sealed class AgentCursorOverlay
     private const double RestingHeadingRadians = AgentCursorGeometry.RestingHeadingRadians;
     private const float SurfaceHalfSize = 76f;
     private const double TurnRadius = 80;
-    private const double PeakSpeed = 900;
-    private const double MinStartSpeed = 300;
-    private const double MinEndSpeed = 200;
     private const double SpringStiffness = 400;
     private const double SpringOvershoot = 0.8;
     private const double IdleBreathPeriodSeconds = 1.8;
@@ -85,7 +82,6 @@ internal sealed class AgentCursorOverlay
     private const double IdleRotationAmplitudeRadians = 0.10;
     private const double VisualHeadingCatchUpRadiansPerSecond = 18;
     private const double SameTargetTipTolerance = 3.0;
-    private const double DefaultGlideDurationMs = 750;
     private const double FadeOutDurationMs = 180;
 
     private readonly object _gate = new();
@@ -344,7 +340,7 @@ internal sealed class AgentCursorOverlay
         private double _heading = RestingHeadingRadians;
         private double _displayHeading = RestingHeadingRadians;
         private PlannedCursorPath? _path;
-        private Trip? _trip;
+        private CursorTrip? _trip;
         private SpringState? _spring;
         private SpringTarget? _springTarget;
         private double _distanceSoFar;
@@ -533,7 +529,7 @@ internal sealed class AgentCursorOverlay
                 Math.Max(1, TurnRadius * scale),
                 RestingHeadingRadians,
                 target);
-            _trip = TripFor(_motion.GlideDurationMs, scale);
+            _trip = AgentCursorKinematics.TripFor(_motion.GlideDurationMs, scale);
             _spring = null;
             _springTarget = null;
             _distanceSoFar = 0;
@@ -599,9 +595,7 @@ internal sealed class AgentCursorOverlay
             if (_path is { } path && _trip is { } trip)
             {
                 var u = Math.Min(1.0, _distanceSoFar / Math.Max(path.Length, 1));
-                var profileValue = SmootherSpeedProfile(u);
-                var floorSpeed = u < 0.5 ? trip.MinStart : trip.MinEnd;
-                var currentSpeed = floorSpeed + (trip.Peak - floorSpeed) * profileValue;
+                var currentSpeed = AgentCursorKinematics.CurrentSpeed(trip, u);
                 _distanceSoFar += currentSpeed * dt;
 
                 if (_distanceSoFar >= path.Length)
@@ -627,7 +621,7 @@ internal sealed class AgentCursorOverlay
                 {
                     var state = path.Sample(_distanceSoFar);
                     _current = new PointF((float)state.X, (float)state.Y);
-                    _heading = RotateToward(_heading, state.Heading + Math.PI, 14 * dt);
+                    _heading = AgentCursorKinematics.RotateToward(_heading, state.Heading + Math.PI, 14 * dt);
                 }
 
                 changed = true;
@@ -899,8 +893,6 @@ internal sealed class AgentCursorOverlay
             }
         }
 
-        private static double SmootherSpeedProfile(double u) => (30 * u * u * (1 - u) * (1 - u)) / 1.875;
-
         private double BloomBreath()
         {
             if (_path is not null || _spring is not null || _pulseStartedMs > 0)
@@ -941,11 +933,11 @@ internal sealed class AgentCursorOverlay
         private bool UpdateDisplayHeading(double dt)
         {
             var previous = _displayHeading;
-            _displayHeading = RotateToward(
+            _displayHeading = AgentCursorKinematics.RotateToward(
                 _displayHeading,
                 DesiredDisplayHeading(),
                 VisualHeadingCatchUpRadiansPerSecond * dt);
-            return Math.Abs(AngularDifference(previous, _displayHeading)) > 0.0001;
+            return Math.Abs(AgentCursorKinematics.AngularDifference(previous, _displayHeading)) > 0.0001;
         }
 
         private double DesiredDisplayHeading()
@@ -979,20 +971,6 @@ internal sealed class AgentCursorOverlay
             return 1 - eased;
         }
 
-        private static double RotateToward(double current, double desired, double maxStep)
-        {
-            var diff = AngularDifference(current, desired);
-            return current + Math.Max(-maxStep, Math.Min(maxStep, diff));
-        }
-
-        private static double AngularDifference(double current, double desired)
-        {
-            var diff = desired - current;
-            while (diff > Math.PI) diff -= 2 * Math.PI;
-            while (diff < -Math.PI) diff += 2 * Math.PI;
-            return diff;
-        }
-
         private float CurrentDpiScale()
         {
             var tip = AgentCursorGeometry.TipPointFromVisualPosition(_current, Math.Max(1f, DeviceDpi / 96f));
@@ -1020,17 +998,6 @@ internal sealed class AgentCursorOverlay
 
             return Math.Clamp(DeviceDpi / 96f, 1f, 2.5f);
         }
-
-        private static Trip TripFor(double glideDurationMs, float scale)
-        {
-            var speedScale = DefaultGlideDurationMs / Math.Clamp(glideDurationMs, 50, 5000);
-            return new Trip(
-                PeakSpeed * scale * speedScale,
-                MinStartSpeed * scale * speedScale,
-                MinEndSpeed * scale * speedScale);
-        }
-
-        private readonly record struct Trip(double Peak, double MinStart, double MinEnd);
 
         private struct SpringState(double ox, double oy, double vx, double vy)
         {
