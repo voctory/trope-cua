@@ -107,6 +107,8 @@ The default build refuses to use parent-session `SendInput`. If a target require
 
 Agent routing guidance is maintained in `docs/agent-routing.md`. The MCP server also returns the same core rules in its initialize instructions so clients can steer tool selection toward background-safe routes.
 
+Refactoring guidance is maintained in `docs/refactoring-rubric.md`. It captures the staged build, analyzer, packaging, testing, and module-boundary policy for reshaping this driver without weakening the background-safety contract.
+
 ## Important limitations in this source drop
 
 This is a source package, not a signed binary. The AppBroadcast/InputInjector lane requires Microsoft restricted capabilities and is therefore present as a documented integration seam rather than a generally buildable default. The child-session lane includes the Windows Terminal Services broker scaffolding, but packaging a full Picture-in-Picture host requires an RDP ActiveX UI host or equivalent wrapper.

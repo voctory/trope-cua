@@ -39,6 +39,7 @@ This repo is the Windows port of `cua-driver`: a .NET MCP/server driver for back
 - Prefer public, background-safe routes first: UIA patterns, IA2/MSAA where safe, targeted `HWND` messages for classic controls, and CDP for Chromium when configured.
 - Refuse unsafe parent-session fallbacks rather than reporting unverified delivery as success.
 - Keep MCP-facing prompts, tool descriptions, and docs aligned with `docs/agent-routing.md`: agents should reuse windows, snapshot a specific `(pid, window_id)`, prefer `element_index`, and treat foreground/parent-cursor flags as explicit user opt-ins.
+- Use `docs/refactoring-rubric.md` as the working rubric for staged refactors: safety net first, characterization tests before risky movement, small ownership-preserving commits.
 - Keep browser-specific guardrails strict. Browser UIA providers can foreground targets unexpectedly, so only allow routes that are known background-safe or explicitly configured.
 - Keep cursor work visually aligned with the official CUA feel while respecting Windows DPI, layered-window, and z-order constraints.
 - Do not introduce broad refactors while fixing one route or one visual behavior; split mechanical cleanup from behavior changes.
