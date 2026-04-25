@@ -116,6 +116,28 @@ def test_mcp_reports_invalid_params_for_missing_tool_name():
     assert response["error"]["code"] == -32602
 
 
+def test_mcp_reports_invalid_params_for_non_object_params():
+    request = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": "not-an-object",
+    }
+    proc = subprocess.run(
+        [EXE, "mcp"],
+        input=json.dumps(request) + "\n",
+        text=True,
+        capture_output=True,
+        timeout=30,
+    )
+
+    assert proc.returncode == 0
+    response = json.loads(proc.stdout.splitlines()[0])
+    assert response["id"] == 1
+    assert response["error"]["code"] == -32602
+    assert "params" in response["error"]["message"]
+
+
 def test_mcp_reports_invalid_params_for_non_object_arguments():
     request = {
         "jsonrpc": "2.0",
