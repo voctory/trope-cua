@@ -50,7 +50,7 @@ public sealed class AgentCursorOverlay
     private const string OverlayWindowTitle = "CuaDriverWin.AgentCursorOverlay";
     private const double RestingHeadingRadians = Math.PI / 4;
     private const float CursorTipOffset = 16f;
-    private const float SurfaceHalfSize = 64f;
+    private const float SurfaceHalfSize = 76f;
     private const int Supersample = 3;
     private const double TurnRadius = 80;
     private const double PeakSpeed = 900;
@@ -813,18 +813,18 @@ public sealed class AgentCursorOverlay
             DrawGaussianGlow(
                 g,
                 p,
-                (float)((48 + 4 * breath) * scale),
-                (float)((18 + 1.5 * breath) * scale),
-                Color.FromArgb(164, 222, 245),
-                centerAlpha: (int)Math.Round(34 + 7 * breath));
+                (float)((64 + 3 * breath) * scale),
+                (float)((19.5 + breath) * scale),
+                Color.FromArgb(188, 232, 252),
+                centerAlpha: (int)Math.Round(70 + 16 * breath));
 
             DrawGaussianGlow(
                 g,
                 p,
-                (float)((22 + breath) * scale),
-                (float)((7.5 + 0.5 * breath) * scale),
-                Color.FromArgb(219, 238, 255),
-                centerAlpha: (int)Math.Round(16 + 5 * breath));
+                (float)((30 + breath) * scale),
+                (float)((8.5 + 0.5 * breath) * scale),
+                Color.FromArgb(238, 248, 255),
+                centerAlpha: (int)Math.Round(42 + 10 * breath));
         }
 
         private static void DrawGaussianGlow(
