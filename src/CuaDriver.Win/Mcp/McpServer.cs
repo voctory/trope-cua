@@ -72,7 +72,14 @@ public sealed class McpServer
             {
                 ["name"] = tool.Definition.Name,
                 ["description"] = tool.Definition.Description,
-                ["inputSchema"] = tool.Definition.InputSchema.DeepClone()
+                ["inputSchema"] = tool.Definition.InputSchema.DeepClone(),
+                ["annotations"] = new JsonObject
+                {
+                    ["readOnlyHint"] = tool.Definition.ReadOnly,
+                    ["destructiveHint"] = tool.Definition.Destructive,
+                    ["idempotentHint"] = tool.Definition.Idempotent,
+                    ["openWorldHint"] = tool.Definition.OpenWorld
+                }
             });
         }
         return new JsonObject { ["tools"] = tools };

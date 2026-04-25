@@ -9,7 +9,7 @@ public sealed class HotkeyTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "hotkey",
-        "Post a modifier hotkey to the target HWND without parent-session SendInput.",
+        ToolDescriptions.Hotkey,
         JsonArgs.Schema(
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),

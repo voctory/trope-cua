@@ -9,7 +9,7 @@ public sealed class GetWindowStateTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "get_window_state",
-        "Return a UIA Markdown tree and/or screenshot for a specific pid/window_id. Mode comes from config capture_mode: som, ax, or vision.",
+        ToolDescriptions.GetWindowState,
         JsonArgs.Schema(
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND as returned by list_windows.")),

@@ -7,7 +7,7 @@ public sealed class DoubleClickTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "double_click",
-        "Pixel double-click convenience wrapper around click(count=2).",
+        ToolDescriptions.DoubleClick,
         JsonArgs.Schema(
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),

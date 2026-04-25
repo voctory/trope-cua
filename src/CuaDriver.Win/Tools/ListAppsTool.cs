@@ -9,7 +9,7 @@ public sealed class ListAppsTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "list_apps",
-        "List running Windows GUI processes plus a count of Start Menu shortcuts.",
+        ToolDescriptions.ListApps,
         JsonArgs.Schema(),
         ReadOnly: true);
 

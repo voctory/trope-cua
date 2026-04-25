@@ -11,7 +11,7 @@ public sealed class ScrollTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "scroll",
-        "Scroll by UIA ScrollPattern where available, otherwise post WM_MOUSEWHEEL to the target child HWND under x/y or to the window center.",
+        ToolDescriptions.Scroll,
         JsonArgs.Schema(
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),

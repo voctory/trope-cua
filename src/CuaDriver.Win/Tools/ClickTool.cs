@@ -13,7 +13,7 @@ public sealed class ClickTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "click",
-        "Left-click by element_index (UIA pattern path) or by x/y window-local screenshot pixels. Pixel clicks try UIA hit-test first, then CDP, then targeted HWND messages for classic controls.",
+        ToolDescriptions.Click,
         JsonArgs.Schema(
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND. Required for element_index; recommended for pixel clicks.")),

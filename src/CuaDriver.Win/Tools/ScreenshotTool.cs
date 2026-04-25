@@ -9,7 +9,7 @@ public sealed class ScreenshotTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "screenshot",
-        "Capture a target window image. Uses the source-drop PrintWindow/GDI fallback; see docs/capture.md for WGC production seam.",
+        ToolDescriptions.Screenshot,
         JsonArgs.Schema(
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
             ("pid", JsonArgs.Prop("integer", "Optional pid validation.")),

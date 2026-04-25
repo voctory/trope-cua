@@ -9,7 +9,7 @@ public sealed class PressKeyTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "press_key",
-        "Post a key to the target HWND without parent-session SendInput.",
+        ToolDescriptions.PressKey,
         JsonArgs.Schema(
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),

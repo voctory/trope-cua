@@ -12,7 +12,7 @@ public sealed class LaunchAppTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "launch_app",
-        "Launch a Windows application. Refuses parent-session launches by default because Windows may foreground the launched app; pass allow_foreground=true for explicit foreground launches.",
+        ToolDescriptions.LaunchApp,
         JsonArgs.Schema(
             ("path", JsonArgs.Prop("string", "Executable, document, shortcut, or URL to launch.")),
             ("exe", JsonArgs.Prop("string", "Executable name or path.")),

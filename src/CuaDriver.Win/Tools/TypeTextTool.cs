@@ -11,7 +11,7 @@ public sealed class TypeTextTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "type_text",
-        "Set or type text. With element_index uses UIA ValuePattern; with cdp_port uses CDP Input.insertText; otherwise targets the last clicked child HWND or detected native text control.",
+        ToolDescriptions.TypeText,
         JsonArgs.Schema(
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),

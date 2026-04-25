@@ -9,7 +9,7 @@ public sealed class SetValueTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "set_value",
-        "Set a UIA ValuePattern or RangeValuePattern on an element_index.",
+        ToolDescriptions.SetValue,
         JsonArgs.Schema(
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),

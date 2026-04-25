@@ -13,7 +13,7 @@ public sealed class ZoomTool : IDriverTool
 
     public ToolDefinition Definition { get; } = new(
         "zoom",
-        "Crop a region from a target window at native resolution. Coordinates are in the resized screenshot space returned by get_window_state.",
+        ToolDescriptions.Zoom,
         JsonArgs.Schema(
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("x1", JsonArgs.Prop("number", "Left edge in resized screenshot pixels.")),

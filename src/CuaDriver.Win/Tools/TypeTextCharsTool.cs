@@ -7,7 +7,7 @@ public sealed class TypeTextCharsTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "type_text_chars",
-        "Compatibility alias for type_text.",
+        ToolDescriptions.TypeTextChars,
         JsonArgs.Schema(
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),

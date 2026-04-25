@@ -10,7 +10,7 @@ public sealed class ListWindowsTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "list_windows",
-        "List top-level Windows HWNDs with owning process, title, class, bounds, visibility, minimized state, z-order, and DPI.",
+        ToolDescriptions.ListWindows,
         JsonArgs.Schema(
             ("pid", JsonArgs.Prop("integer", "Optional pid filter.")),
             ("on_screen_only", JsonArgs.Prop("boolean", "When true, omit hidden/minimized windows."))),

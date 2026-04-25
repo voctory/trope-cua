@@ -11,7 +11,7 @@ public sealed class RightClickTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "right_click",
-        "Right-click by element_index (UIA show_menu where available) or by x/y (CDP or HWND context-menu route).",
+        ToolDescriptions.RightClick,
         JsonArgs.Schema(
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
