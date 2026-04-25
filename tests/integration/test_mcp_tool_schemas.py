@@ -21,21 +21,25 @@ def mcp_request(method, params=None):
     return json.loads(proc.stdout.splitlines()[0])["result"]
 
 
-def test_mcp_tool_schemas_advertise_required_and_alternatives():
+def test_mcp_tool_schemas_are_openai_compatible_plain_objects():
     result = mcp_request("tools/list")
     tools = {tool["name"]: tool for tool in result["tools"]}
+
+    forbidden_top_level_keywords = {"anyOf", "oneOf", "allOf", "enum", "not"}
+    for tool in tools.values():
+        schema = tool["inputSchema"]
+        assert schema["type"] == "object"
+        assert forbidden_top_level_keywords.isdisjoint(schema)
 
     get_window_state = tools["get_window_state"]["inputSchema"]
     assert get_window_state["required"] == ["pid", "window_id"]
 
     click = tools["click"]["inputSchema"]
     assert click["required"] == ["pid"]
-    assert {"required": ["element_index"]} in click["anyOf"]
-    assert {"required": ["x", "y"]} in click["anyOf"]
+    assert {"element_index", "x", "y"}.issubset(click["properties"])
 
     launch = tools["launch_app"]["inputSchema"]
-    assert {"required": ["path"]} in launch["anyOf"]
-    assert {"required": ["app_id"]} in launch["anyOf"]
+    assert {"path", "exe", "name", "app_id"}.issubset(launch["properties"])
 
     zoom = tools["zoom"]["inputSchema"]
     assert "window_id" in zoom["properties"]
