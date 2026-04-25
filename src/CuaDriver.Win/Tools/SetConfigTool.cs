@@ -59,6 +59,7 @@ public sealed class SetConfigTool : IDriverTool
             "agent_cursor.motion.glide_duration_ms" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { GlideDurationMs = NumberValue(value) } } },
             "agent_cursor.motion.dwell_after_click_ms" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { DwellAfterClickMs = NumberValue(value) } } },
             "agent_cursor.motion.idle_hide_ms" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { IdleHideMs = NumberValue(value) } } },
+            "agent_cursor.motion.press_duration_ms" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { PressDurationMs = NumberValue(value) } } },
             _ => throw new ArgumentException($"Unknown config key: {key}")
         };
     }
@@ -78,7 +79,8 @@ public sealed class SetConfigTool : IDriverTool
                 motion.Spring,
                 motion.GlideDurationMs,
                 motion.DwellAfterClickMs,
-                motion.IdleHideMs);
+                motion.IdleHideMs,
+                motion.PressDurationMs);
         }
     }
 

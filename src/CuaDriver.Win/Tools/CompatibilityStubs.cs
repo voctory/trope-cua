@@ -47,7 +47,8 @@ public sealed class SetAgentCursorMotionTool : IDriverTool
             ("spring", JsonArgs.Prop("number", "Reserved settle damping knob in [0.3, 1]. Default 0.72.")),
             ("glide_duration_ms", JsonArgs.Prop("number", "Cursor flight duration in milliseconds. Default 750.")),
             ("dwell_after_click_ms", JsonArgs.Prop("number", "Post-click rest time in milliseconds. Default 400.")),
-            ("idle_hide_ms", JsonArgs.Prop("number", "Idle time before the overlay hides. 0 disables auto-hide. Default 20000."))),
+            ("idle_hide_ms", JsonArgs.Prop("number", "Idle time before the overlay hides. 0 disables auto-hide. Default 20000.")),
+            ("press_duration_ms", JsonArgs.Prop("number", "Click pulse duration in milliseconds. Default 650."))),
         Destructive: true,
         Idempotent: true);
 
@@ -61,7 +62,8 @@ public sealed class SetAgentCursorMotionTool : IDriverTool
             JsonArgs.OptionalDouble(args, "spring"),
             JsonArgs.OptionalDouble(args, "glide_duration_ms"),
             JsonArgs.OptionalDouble(args, "dwell_after_click_ms"),
-            JsonArgs.OptionalDouble(args, "idle_hide_ms"));
+            JsonArgs.OptionalDouble(args, "idle_hide_ms"),
+            JsonArgs.OptionalDouble(args, "press_duration_ms"));
 
         context.State.Config = context.State.Config with
         {
@@ -76,7 +78,8 @@ public sealed class SetAgentCursorMotionTool : IDriverTool
                     Spring = motion.Spring,
                     GlideDurationMs = motion.GlideDurationMs,
                     DwellAfterClickMs = motion.DwellAfterClickMs,
-                    IdleHideMs = motion.IdleHideMs
+                    IdleHideMs = motion.IdleHideMs,
+                    PressDurationMs = motion.PressDurationMs
                 }
             }
         };

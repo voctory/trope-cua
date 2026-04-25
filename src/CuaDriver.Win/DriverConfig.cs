@@ -148,6 +148,9 @@ public sealed record AgentCursorMotionConfig
     [JsonPropertyName("idle_hide_ms")]
     public double IdleHideMs { get; init; } = 20000;
 
+    [JsonPropertyName("press_duration_ms")]
+    public double PressDurationMs { get; init; } = 650;
+
     public AgentCursorMotionConfig Normalize() => this with
     {
         StartHandle = Clamp(StartHandle, 0, 1),
@@ -157,7 +160,8 @@ public sealed record AgentCursorMotionConfig
         Spring = Clamp(Spring, 0.3, 1),
         GlideDurationMs = Clamp(GlideDurationMs, 50, 5000),
         DwellAfterClickMs = Clamp(DwellAfterClickMs, 0, 5000),
-        IdleHideMs = Clamp(IdleHideMs, 0, 60000)
+        IdleHideMs = Clamp(IdleHideMs, 0, 60000),
+        PressDurationMs = Clamp(PressDurationMs, 0, 5000)
     };
 
     private static double Clamp(double value, double min, double max) =>
@@ -188,7 +192,8 @@ public sealed class DriverState
             motion.Spring,
             motion.GlideDurationMs,
             motion.DwellAfterClickMs,
-            motion.IdleHideMs);
+            motion.IdleHideMs,
+            motion.PressDurationMs);
         AgentCursor.SetEnabled(Config.AgentCursor.Enabled);
     }
 }

@@ -124,7 +124,8 @@ public sealed class AgentCursorOverlay
         double? spring,
         double? glideDurationMs,
         double? dwellAfterClickMs,
-        double? idleHideMs)
+        double? idleHideMs,
+        double? pressDurationMs)
     {
         AgentCursorMotion next;
         lock (_gate)
@@ -139,6 +140,7 @@ public sealed class AgentCursorOverlay
                 GlideDurationMs = Clamp(glideDurationMs ?? _motion.GlideDurationMs, 50, 5000),
                 DwellAfterClickMs = Clamp(dwellAfterClickMs ?? _motion.DwellAfterClickMs, 0, 5000),
                 IdleHideMs = Clamp(idleHideMs ?? _motion.IdleHideMs, 0, 60000),
+                PressDurationMs = Clamp(pressDurationMs ?? _motion.PressDurationMs, 0, 5000),
             };
             _motion = next;
         }
