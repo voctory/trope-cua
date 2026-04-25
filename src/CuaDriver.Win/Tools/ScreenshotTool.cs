@@ -59,8 +59,7 @@ public sealed class ScreenshotTool : IDriverTool
             if (!string.IsNullOrWhiteSpace(outPath))
             {
                 outPath = PathHelpers.ExpandUserPath(outPath);
-                Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outPath))!);
-                File.WriteAllBytes(outPath, capture.Data);
+                AtomicFile.WriteAllBytes(outPath, capture.Data);
             }
 
             var ratioText = window is null
