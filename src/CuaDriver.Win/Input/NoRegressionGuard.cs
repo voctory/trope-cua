@@ -24,7 +24,11 @@ public sealed class NoRegressionGuard : IDisposable
         return new NoRegressionGuard(cursor, cursorKnown, foreground);
     }
 
-    public ActionReceipt Finish(ActionReceipt receipt, bool allowCursorMove = false, bool allowForegroundChange = false)
+    public ActionReceipt Finish(
+        ActionReceipt receipt,
+        bool allowCursorMove = false,
+        bool allowForegroundChange = false,
+        bool allowUnsafeRoute = false)
     {
         var cursorAfterKnown = NativeMethods.GetCursorPos(out var cursorAfter);
         var foregroundAfter = NativeMethods.GetForegroundWindow();
@@ -39,7 +43,7 @@ public sealed class NoRegressionGuard : IDisposable
         var backgroundSafe = receipt.BackgroundSafe
                              && !cursorMoved
                              && !foregroundChanged;
-        var allowed = receipt.BackgroundSafe
+        var allowed = (receipt.BackgroundSafe || allowUnsafeRoute)
                       && (!cursorMoved || allowCursorMove)
                       && (!foregroundChanged || allowForegroundChange);
 

@@ -26,3 +26,18 @@ def test_visual_move_cursor_does_not_move_real_cursor():
     after = call("get_cursor_position")["structuredContent"]
     assert after["x"] == before["x"]
     assert after["y"] == before["y"]
+
+
+def test_parent_cursor_override_is_reported_as_not_background_safe():
+    current = call("get_cursor_position")["structuredContent"]
+
+    moved = call(
+        "move_cursor",
+        {"x": current["x"], "y": current["y"], "allow_parent_cursor": True},
+    )
+
+    assert moved["isError"] is False
+    assert moved["structuredContent"]["ok"] is True
+    assert moved["structuredContent"]["route"] == "parent.setcursorpos"
+    assert moved["structuredContent"]["background_safe"] is False
+    assert moved["structuredContent"]["session"] == "parent"

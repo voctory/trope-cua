@@ -82,7 +82,10 @@ public sealed class LaunchAppTool : IDriverTool
             windows = newWindows.Length > 0 ? newWindows : allAfter.Where(w => MatchesLaunchTarget(w, path, appId)).ToArray();
         }
 
-        var receipt = guard.Finish(ActionReceipt.Success("shellexecute.unsafe_foreground"), allowForegroundChange: true);
+        var receipt = guard.Finish(
+            ActionReceipt.UnsafeSuccess("shellexecute.unsafe_foreground"),
+            allowForegroundChange: true,
+            allowUnsafeRoute: true);
         var sb = new StringBuilder();
         sb.AppendLine("✅ " + receipt.ToJson());
         sb.Append("Launch requested: ").AppendLine(appId ?? path);

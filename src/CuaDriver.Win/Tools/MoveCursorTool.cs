@@ -44,9 +44,9 @@ public sealed class MoveCursorTool : IDriverTool
         var movedRealCursor = NativeMethods.SetCursorPos(x, y);
         await context.State.AgentCursor.MoveToAsync(point, targetHwnd, cancellationToken).ConfigureAwait(false);
         var receipt = movedRealCursor
-            ? ActionReceipt.Success("parent.setcursorpos")
+            ? ActionReceipt.UnsafeSuccess("parent.setcursorpos")
             : ActionReceipt.Failure("parent.setcursorpos", "SetCursorPos failed.");
-        var done = guard.Finish(receipt, allowCursorMove: true);
+        var done = guard.Finish(receipt, allowCursorMove: true, allowUnsafeRoute: true);
         return ToolResult.Text((done.Ok ? "✅ " : "❌ ") + done.ToJson(), !done.Ok);
     }
 }

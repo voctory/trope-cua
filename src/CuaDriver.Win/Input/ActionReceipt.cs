@@ -31,10 +31,15 @@ public sealed record ActionReceipt
     public string? Reason { get; init; }
 
     public static ActionReceipt Success(string route, string lane = "same_session") =>
-        new() { Ok = true, Route = route, Lane = lane, BackgroundSafe = true, Session = lane == "child_session" ? "child" : "parent" };
+        new() { Ok = true, Route = route, Lane = lane, BackgroundSafe = true, Session = SessionForLane(lane) };
+
+    public static ActionReceipt UnsafeSuccess(string route, string lane = "same_session") =>
+        new() { Ok = true, Route = route, Lane = lane, BackgroundSafe = false, Session = SessionForLane(lane) };
 
     public static ActionReceipt Failure(string route, string reason, string lane = "same_session") =>
-        new() { Ok = false, Route = route, Lane = lane, BackgroundSafe = false, Reason = reason };
+        new() { Ok = false, Route = route, Lane = lane, BackgroundSafe = false, Session = SessionForLane(lane), Reason = reason };
 
     public string ToJson() => JsonSerializer.Serialize(this, JsonUtil.SerializerOptions);
+
+    private static string SessionForLane(string lane) => lane == "child_session" ? "child" : "parent";
 }
