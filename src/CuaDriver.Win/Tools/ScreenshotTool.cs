@@ -1,4 +1,3 @@
-using System.IO;
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Capture;
 using CuaDriver.Win.Tooling;
@@ -82,8 +81,9 @@ public sealed class ScreenshotTool : IDriverTool
 
             if (window is null)
             {
-                structured["visible_windows"] = ToolJson.Array(WindowEnumerator.AllWindows(visibleOnly: true).Take(20), ToolJson.Window);
-                text += VisibleWindowsHint();
+                var visibleWindows = WindowEnumerator.AllWindows(visibleOnly: true).Take(20).ToArray();
+                structured["visible_windows"] = ToolJson.Array(visibleWindows, ToolJson.Window);
+                text += VisibleWindowsHint(visibleWindows);
             }
 
             return Task.FromResult(new ToolResult
@@ -99,9 +99,8 @@ public sealed class ScreenshotTool : IDriverTool
         }
     }
 
-    private static string VisibleWindowsHint()
+    private static string VisibleWindowsHint(WindowInfo[] visibleWindows)
     {
-        var visibleWindows = WindowEnumerator.AllWindows(visibleOnly: true).Take(20).ToArray();
         if (visibleWindows.Length == 0)
             return "";
 
@@ -125,5 +124,4 @@ public sealed class ScreenshotTool : IDriverTool
             _ => throw new ArgumentException("format must be one of png, jpeg, or jpg.")
         };
     }
-
 }
