@@ -88,7 +88,7 @@ public sealed class NamedPipeDaemon
         }
         finally
         {
-            RemoveInstanceRecord();
+            RemoveInstanceRecord(_instanceId);
         }
     }
 
@@ -181,7 +181,7 @@ public sealed class NamedPipeDaemon
         var lines = new List<string> { $"✅ daemon instances: {records.Count}" };
         foreach (var record in records)
         {
-            var running = IsProcessRunning(record.Pid, record.ExePath);
+            var running = IsInstanceRunning(record);
             structuredRecords.Add(new JsonObject
             {
                 ["instance_id"] = record.InstanceId,
@@ -235,17 +235,21 @@ public sealed class NamedPipeDaemon
         File.Move(tmp, path, overwrite: true);
     }
 
-    private void RemoveInstanceRecord()
+    public static bool IsInstanceRunning(DaemonInstanceRecord record) => IsProcessRunning(record.Pid, record.ExePath);
+
+    public static bool RemoveInstanceRecord(string instanceId)
     {
         try
         {
-            var path = InstanceRecordPath(_instanceId);
+            var path = InstanceRecordPath(instanceId);
             if (File.Exists(path))
                 File.Delete(path);
+            return true;
         }
         catch
         {
             // Best-effort cleanup; daemon-list ignores stale dead pids.
+            return false;
         }
     }
 

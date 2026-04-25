@@ -114,3 +114,37 @@ def stop_daemon(instance):
         env=env,
         timeout=10,
     )
+
+
+def test_daemon_stop_all_prunes_stale_records(tmp_path):
+    registry = tmp_path / "daemons"
+    registry.mkdir()
+    stale_id = f"pytest-stale-{uuid.uuid4().hex}"
+    stale_record = {
+        "instanceId": stale_id,
+        "pid": 999999,
+        "pipeName": f"cua-driver-win-test-{stale_id}",
+        "startedAt": "2026-01-01T00:00:00.0000000Z",
+        "exePath": str(tmp_path / "missing.exe"),
+    }
+    stale_path = registry / f"{stale_id}.json"
+    stale_path.write_text(json.dumps(stale_record), encoding="utf-8")
+
+    env = os.environ.copy()
+    env["CUA_DRIVER_JSON"] = "1"
+    env["CUA_DRIVER_CONFIG_DIR"] = str(tmp_path)
+    proc = subprocess.run(
+        [EXE, "daemon-stop", "--all"],
+        text=True,
+        capture_output=True,
+        env=env,
+        timeout=30,
+    )
+
+    assert proc.returncode == 0
+    result = json.loads(proc.stdout)
+    assert result["isError"] is False
+    assert result["structuredContent"]["stopped"] == 1
+    assert result["structuredContent"]["failed"] == 0
+    assert result["structuredContent"]["instances"][0]["stale"] is True
+    assert not stale_path.exists()

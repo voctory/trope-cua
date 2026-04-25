@@ -173,9 +173,20 @@ public static class Program
 
         foreach (var record in records)
         {
-            var daemon = new Mcp.NamedPipeDaemon(registry, context, record.InstanceId);
-            var result = await daemon.TryShutdownAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false);
-            var ok = result is not null && !result.IsError;
+            var stale = !Mcp.NamedPipeDaemon.IsInstanceRunning(record);
+            ToolResult? result = null;
+            var ok = stale;
+            if (stale)
+            {
+                _ = Mcp.NamedPipeDaemon.RemoveInstanceRecord(record.InstanceId);
+            }
+            else
+            {
+                var daemon = new Mcp.NamedPipeDaemon(registry, context, record.InstanceId);
+                result = await daemon.TryShutdownAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false);
+                ok = result is not null && !result.IsError;
+            }
+
             if (ok)
                 stopped++;
             else
@@ -186,9 +197,10 @@ public static class Program
                 ["instance_id"] = record.InstanceId,
                 ["pid"] = record.Pid,
                 ["ok"] = ok,
-                ["message"] = result?.ToCliText()
+                ["stale"] = stale,
+                ["message"] = stale ? "stale registry record removed" : result?.ToCliText()
             });
-            lines.Add($"- instance={record.InstanceId} pid={record.Pid} ok={ok}");
+            lines.Add($"- instance={record.InstanceId} pid={record.Pid} ok={ok} stale={stale}");
         }
 
         lines[0] = (failed == 0 ? "✅ " : "❌ ") + lines[0] + $" stopped={stopped} failed={failed}";
