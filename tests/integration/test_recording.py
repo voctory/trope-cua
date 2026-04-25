@@ -1,4 +1,8 @@
+import json
+import uuid
+
 from driver_client import call
+from test_daemon_lifecycle import call_instance, start_daemon, stop_daemon, wait_for_status
 
 
 def test_recording_state_returns_structured_content():
@@ -22,6 +26,29 @@ def test_set_recording_requires_boolean_enabled():
 
     assert result["isError"] is True
     assert "Missing required boolean field enabled" in result["content"][0]["text"]
+
+
+def test_recording_writes_action_turn_for_recorded_tool(tmp_path):
+    instance = f"pytest-recording-{uuid.uuid4().hex}"
+    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path / "config")}
+    process = None
+
+    try:
+        process = start_daemon(instance, env)
+        wait_for_status(instance, env)
+        call_instance(instance, "set_recording", {"enabled": True, "output_dir": str(tmp_path)}, extra_env=env)
+
+        result = call_instance(instance, "set_value", {"pid": 1, "window_id": 999999999, "element_index": 1, "value": "x"}, extra_env=env)
+
+        assert result["isError"] is True
+        action = json.loads((tmp_path / "turn-00001" / "action.json").read_text(encoding="utf-8"))
+        assert action["tool"] == "set_value"
+        assert action["arguments"]["window_id"] == 999999999
+        assert "No window with window_id 999999999" in action["result_summary"]
+    finally:
+        stop_daemon(instance, env)
+        if process is not None:
+            process.wait(timeout=5)
 
 
 def test_replay_reports_non_object_action_arguments(tmp_path):
