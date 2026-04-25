@@ -1,6 +1,6 @@
 # Child-session / PiP lane
 
-The child-session lane is the production answer for surfaces that cannot be controlled by UIA, CDP, or classic `HWND` messages.
+The child-session lane is the intended production answer for surfaces that cannot be controlled by UIA, CDP, or classic `HWND` messages. The current Windows port includes the broker/host probe; it does not yet launch a full child-session action agent or route normal tool calls through that child process.
 
 Shape:
 
@@ -24,6 +24,13 @@ Current implementation:
 - `child_session_status` reports parent/console session ids, whether child sessions are enabled, host state, and connected child session id.
 - `child_session_start` enables child sessions, starts a no-activate RDP ActiveX host, sets `IMsRdpExtendedSettings.Property("ConnectToChildSession") = true`, and waits for `WTSGetChildSessionId`.
 - `child_session_stop` closes the host.
+
+Missing before this is a real action lane:
+
+- Start the driver inside the connected child session.
+- Bridge tool calls from the parent daemon to the child agent.
+- Capture and return the child target window state from that agent.
+- Use SendInput only inside the child session, never in the parent session.
 
 Observed setup requirement:
 
