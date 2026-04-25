@@ -1,7 +1,6 @@
 using System.Text.Json.Nodes;
 using System.Windows.Automation;
 using CuaDriver.Win.Browser;
-using CuaDriver.Win.Capture;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
 using CuaDriver.Win.Uia;
@@ -45,15 +44,9 @@ internal sealed class ClickTool : IDriverTool
 
         if (target.HasElement && fromZoom)
             return ToolResult.Error("from_zoom only applies to pixel clicks.");
-        if (!string.IsNullOrWhiteSpace(debugImageOut))
-        {
-            if (target.HasElement)
-                return ToolResult.Error("debug_image_out only applies to pixel clicks (x, y); element_index clicks do not have a coordinate to verify.");
-            if (fromZoom)
-                return ToolResult.Error("debug_image_out is incompatible with from_zoom because the received x/y are in zoom-crop space, not window-local screenshot space.");
-            if (target.WindowId is null)
-                return ToolResult.Error("debug_image_out requires window_id so the tool can capture the window for the crosshair overlay.");
-        }
+        var debugError = ClickDebugImage.Validate(target, fromZoom, debugImageOut);
+        if (debugError is not null)
+            return debugError;
 
         ActionReceipt receipt;
 
@@ -137,21 +130,9 @@ internal sealed class ClickTool : IDriverTool
         CancellationToken cancellationToken)
     {
         ActionReceipt receipt;
-        if (!string.IsNullOrWhiteSpace(debugImageOut))
-        {
-            try
-            {
-                DebugCrosshair.WriteCrosshair(
-                    window,
-                    new System.Drawing.PointF((float)x!.Value, (float)y!.Value),
-                    context.State.Config.MaxImageDimension,
-                    debugImageOut);
-            }
-            catch (Exception ex)
-            {
-                return ToolResult.Error($"debug_image_out write failed: {ex.Message}. Not dispatching click; fix the path and retry.");
-            }
-        }
+        var debugError = ClickDebugImage.Write(window, x!.Value, y!.Value, context.State.Config.MaxImageDimension, debugImageOut);
+        if (debugError is not null)
+            return debugError;
 
         PixelTargetPoint point;
         if (fromZoom)
