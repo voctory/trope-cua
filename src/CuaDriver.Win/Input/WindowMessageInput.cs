@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Runtime.InteropServices;
 using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Input;
@@ -18,25 +20,25 @@ public static class WindowMessageInput
             try
             {
                 foreach (var vk in modifierKeys)
-                    NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_KEYDOWN, (UIntPtr)vk, IntPtr.Zero);
+                    PostMessageOrThrow(resolved.TargetHwnd, NativeMethods.WM_KEYDOWN, (UIntPtr)vk, IntPtr.Zero);
 
                 var normalizedCount = Math.Max(1, count);
                 for (var i = 0; i < normalizedCount; i++)
                 {
-                    NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_MOUSEMOVE, (UIntPtr)modifierFlags, lparam);
+                    PostMessageOrThrow(resolved.TargetHwnd, NativeMethods.WM_MOUSEMOVE, (UIntPtr)modifierFlags, lparam);
                     var isDoubleClickDown = i == 1 && normalizedCount == 2;
                     if (rightButton)
                     {
-                        NativeMethods.PostMessageW(resolved.TargetHwnd, isDoubleClickDown ? NativeMethods.WM_RBUTTONDBLCLK : NativeMethods.WM_RBUTTONDOWN, (UIntPtr)(modifierFlags | 0x0002), lparam);
+                        PostMessageOrThrow(resolved.TargetHwnd, isDoubleClickDown ? NativeMethods.WM_RBUTTONDBLCLK : NativeMethods.WM_RBUTTONDOWN, (UIntPtr)(modifierFlags | 0x0002), lparam);
                         await Task.Delay(35, ct).ConfigureAwait(false);
-                        NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_RBUTTONUP, (UIntPtr)modifierFlags, lparam);
-                        NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_CONTEXTMENU, UIntPtr.Zero, lparam);
+                        PostMessageOrThrow(resolved.TargetHwnd, NativeMethods.WM_RBUTTONUP, (UIntPtr)modifierFlags, lparam);
+                        PostMessageOrThrow(resolved.TargetHwnd, NativeMethods.WM_CONTEXTMENU, UIntPtr.Zero, lparam);
                     }
                     else
                     {
-                        NativeMethods.PostMessageW(resolved.TargetHwnd, isDoubleClickDown ? NativeMethods.WM_LBUTTONDBLCLK : NativeMethods.WM_LBUTTONDOWN, (UIntPtr)(modifierFlags | 0x0001), lparam);
+                        PostMessageOrThrow(resolved.TargetHwnd, isDoubleClickDown ? NativeMethods.WM_LBUTTONDBLCLK : NativeMethods.WM_LBUTTONDOWN, (UIntPtr)(modifierFlags | 0x0001), lparam);
                         await Task.Delay(35, ct).ConfigureAwait(false);
-                        NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_LBUTTONUP, (UIntPtr)modifierFlags, lparam);
+                        PostMessageOrThrow(resolved.TargetHwnd, NativeMethods.WM_LBUTTONUP, (UIntPtr)modifierFlags, lparam);
                     }
 
                     if (i + 1 < normalizedCount)
@@ -46,7 +48,7 @@ public static class WindowMessageInput
             finally
             {
                 foreach (var vk in modifierKeys.Reverse())
-                    NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_KEYUP, (UIntPtr)vk, IntPtr.Zero);
+                    _ = NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_KEYUP, (UIntPtr)vk, IntPtr.Zero);
             }
 
             var receipt = guard.Finish(ActionReceipt.Success(rightButton ? "hwnd.postmessage.right_click" : "hwnd.postmessage.click"));
@@ -66,7 +68,8 @@ public static class WindowMessageInput
         try
         {
             ptr = System.Runtime.InteropServices.Marshal.StringToHGlobalUni(text);
-            NativeMethods.SendMessageW(hwnd, NativeMethods.WM_SETTEXT, UIntPtr.Zero, ptr);
+            if (NativeMethods.SendMessageW(hwnd, NativeMethods.WM_SETTEXT, UIntPtr.Zero, ptr) == IntPtr.Zero)
+                throw new Win32Exception(Marshal.GetLastWin32Error(), "WM_SETTEXT failed.");
             return guard.Finish(ActionReceipt.Success("hwnd.wm_settext"));
         }
         catch (Exception ex)
@@ -87,7 +90,7 @@ public static class WindowMessageInput
         {
             foreach (var ch in text)
             {
-                NativeMethods.PostMessageW(hwnd, NativeMethods.WM_CHAR, (UIntPtr)ch, IntPtr.Zero);
+                PostMessageOrThrow(hwnd, NativeMethods.WM_CHAR, (UIntPtr)ch, IntPtr.Zero);
                 if (delayMs > 0)
                     await Task.Delay(delayMs, ct).ConfigureAwait(false);
             }
@@ -131,21 +134,26 @@ public static class WindowMessageInput
         try
         {
             var modifierKeys = modifiers.Select(VirtualKey).Where(v => v != 0).ToArray();
-            foreach (var vk in modifierKeys)
-                NativeMethods.PostMessageW(hwnd, NativeMethods.WM_KEYDOWN, (UIntPtr)vk, IntPtr.Zero);
+            try
+            {
+                foreach (var vk in modifierKeys)
+                    PostMessageOrThrow(hwnd, NativeMethods.WM_KEYDOWN, (UIntPtr)vk, IntPtr.Zero);
 
-            var main = VirtualKey(key);
-            if (main == 0)
-                return guard.Finish(ActionReceipt.Failure("hwnd.key", $"Unknown key: {key}"));
+                var main = VirtualKey(key);
+                if (main == 0)
+                    return guard.Finish(ActionReceipt.Failure("hwnd.key", $"Unknown key: {key}"));
 
-            NativeMethods.PostMessageW(hwnd, NativeMethods.WM_KEYDOWN, (UIntPtr)main, IntPtr.Zero);
-            await Task.Delay(25, ct).ConfigureAwait(false);
-            NativeMethods.PostMessageW(hwnd, NativeMethods.WM_KEYUP, (UIntPtr)main, IntPtr.Zero);
+                PostMessageOrThrow(hwnd, NativeMethods.WM_KEYDOWN, (UIntPtr)main, IntPtr.Zero);
+                await Task.Delay(25, ct).ConfigureAwait(false);
+                PostMessageOrThrow(hwnd, NativeMethods.WM_KEYUP, (UIntPtr)main, IntPtr.Zero);
 
-            foreach (var vk in modifierKeys.Reverse())
-                NativeMethods.PostMessageW(hwnd, NativeMethods.WM_KEYUP, (UIntPtr)vk, IntPtr.Zero);
-
-            return guard.Finish(ActionReceipt.Success("hwnd.key"));
+                return guard.Finish(ActionReceipt.Success("hwnd.key"));
+            }
+            finally
+            {
+                foreach (var vk in modifierKeys.Reverse())
+                    _ = NativeMethods.PostMessageW(hwnd, NativeMethods.WM_KEYUP, (UIntPtr)vk, IntPtr.Zero);
+            }
         }
         catch (Exception ex)
         {
@@ -164,7 +172,7 @@ public static class WindowMessageInput
 
             var lparam = NativeMethods.MakeLParam(resolved.ClientPoint.X, resolved.ClientPoint.Y);
             var wparam = NativeMethods.MakeWParam(0, delta);
-            NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_MOUSEWHEEL, wparam, lparam);
+            PostMessageOrThrow(resolved.TargetHwnd, NativeMethods.WM_MOUSEWHEEL, wparam, lparam);
             return guard.Finish(ActionReceipt.Success("hwnd.wm_mousewheel"));
         }
         catch (Exception ex)
@@ -289,5 +297,11 @@ public static class WindowMessageInput
             }
         }
         return flags;
+    }
+
+    private static void PostMessageOrThrow(IntPtr hwnd, uint message, UIntPtr wParam, IntPtr lParam)
+    {
+        if (!NativeMethods.PostMessageW(hwnd, message, wParam, lParam))
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "PostMessageW failed.");
     }
 }
