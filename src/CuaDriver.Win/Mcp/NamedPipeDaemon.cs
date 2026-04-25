@@ -63,7 +63,7 @@ public sealed class NamedPipeDaemon
                     var request = JsonSerializer.Deserialize<DaemonRequest>(line, JsonUtil.SerializerOptions);
                     if (request is null)
                     {
-                        await writer.WriteLineAsync(JsonSerializer.Serialize(new DaemonResponse(false, null, "Invalid daemon request"), JsonUtil.LineSerializerOptions)).ConfigureAwait(false);
+                        await WriteResponseAsync(writer, new DaemonResponse(false, null, "Invalid daemon request")).ConfigureAwait(false);
                         continue;
                     }
 
@@ -75,7 +75,7 @@ public sealed class NamedPipeDaemon
                         _ => new DaemonResponse(false, null, "Invalid daemon request")
                     };
 
-                    await writer.WriteLineAsync(JsonSerializer.Serialize(response, JsonUtil.LineSerializerOptions)).ConfigureAwait(false);
+                    await WriteResponseAsync(writer, response).ConfigureAwait(false);
                     if (request.Method == "shutdown")
                         shutdown.Cancel();
                 }
@@ -85,7 +85,7 @@ public sealed class NamedPipeDaemon
                 }
                 catch (Exception ex)
                 {
-                    await writer.WriteLineAsync(JsonSerializer.Serialize(new DaemonResponse(false, null, $"{ex.GetType().Name}: {ex.Message}"), JsonUtil.LineSerializerOptions)).ConfigureAwait(false);
+                    await WriteResponseAsync(writer, new DaemonResponse(false, null, $"{ex.GetType().Name}: {ex.Message}")).ConfigureAwait(false);
                 }
             }
         }
@@ -99,6 +99,11 @@ public sealed class NamedPipeDaemon
     {
         var result = await _registry.InvokeAsync(request.Name!, request.Args ?? new JsonObject(), _context, ct).ConfigureAwait(false);
         return new DaemonResponse(!result.IsError, result, null);
+    }
+
+    private static async Task WriteResponseAsync(StreamWriter writer, DaemonResponse response)
+    {
+        await writer.WriteLineAsync(JsonSerializer.Serialize(response, JsonUtil.LineSerializerOptions)).ConfigureAwait(false);
     }
 
     public async Task<ToolResult?> TryCallAsync(string name, JsonObject args, TimeSpan timeout, CancellationToken ct)

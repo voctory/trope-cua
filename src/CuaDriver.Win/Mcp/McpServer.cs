@@ -48,25 +48,27 @@ public sealed class McpServer
                     _ => Error(idNode, -32601, $"Unknown method: {method}")
                 };
 
-                Console.WriteLine(response.ToJsonString(JsonUtil.LineSerializerOptions));
-                await Console.Out.FlushAsync(cancellationToken).ConfigureAwait(false);
+                await WriteResponseAsync(response, cancellationToken).ConfigureAwait(false);
             }
             catch (JsonException ex)
             {
-                Console.WriteLine(Error(null, -32700, $"Parse error: {ex.Message}").ToJsonString(JsonUtil.LineSerializerOptions));
-                await Console.Out.FlushAsync(cancellationToken).ConfigureAwait(false);
+                await WriteResponseAsync(Error(null, -32700, $"Parse error: {ex.Message}"), cancellationToken).ConfigureAwait(false);
             }
             catch (McpRequestException ex)
             {
-                Console.WriteLine(Error(idNode, ex.Code, ex.Message).ToJsonString(JsonUtil.LineSerializerOptions));
-                await Console.Out.FlushAsync(cancellationToken).ConfigureAwait(false);
+                await WriteResponseAsync(Error(idNode, ex.Code, ex.Message), cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                Console.WriteLine(Error(idNode, -32603, $"{ex.GetType().Name}: {ex.Message}").ToJsonString(JsonUtil.LineSerializerOptions));
-                await Console.Out.FlushAsync(cancellationToken).ConfigureAwait(false);
+                await WriteResponseAsync(Error(idNode, -32603, $"{ex.GetType().Name}: {ex.Message}"), cancellationToken).ConfigureAwait(false);
             }
         }
+    }
+
+    private static async Task WriteResponseAsync(JsonObject response, CancellationToken cancellationToken)
+    {
+        Console.WriteLine(response.ToJsonString(JsonUtil.LineSerializerOptions));
+        await Console.Out.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static JsonObject InitializeResult() => new()
