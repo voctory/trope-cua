@@ -148,7 +148,9 @@ public sealed class AgentCursorOverlay
         if (!Enabled)
             return;
 
-        EnsureThread();
+        if (!EnsureThread())
+            return;
+
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         if (!Post(form => form.GlideTo(screenPoint.X, screenPoint.Y, targetHwnd ?? IntPtr.Zero, Motion, completion)))
             return;
@@ -217,7 +219,7 @@ public sealed class AgentCursorOverlay
         Post(form => form.KeepAlive());
     }
 
-    private void EnsureThread()
+    private bool EnsureThread()
     {
         ManualResetEventSlim ready;
         lock (_gate)
@@ -253,7 +255,7 @@ public sealed class AgentCursorOverlay
             }
         }
 
-        ready.Wait(TimeSpan.FromSeconds(2));
+        return ready.IsSet || SpinWait.SpinUntil(() => ready.IsSet, TimeSpan.FromSeconds(2));
     }
 
     private bool Post(Action<OverlayForm> action)
