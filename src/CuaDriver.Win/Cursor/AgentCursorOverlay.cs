@@ -72,8 +72,7 @@ internal sealed record CursorSnapshot(bool Visible, int? ScreenX, int? ScreenY, 
 internal sealed class AgentCursorOverlay
 {
     private const string OverlayWindowTitlePrefix = "CuaDriverWin.AgentCursorOverlay";
-    private const double RestingHeadingRadians = Math.PI / 4;
-    private const float CursorTipOffset = 16f;
+    private const double RestingHeadingRadians = AgentCursorGeometry.RestingHeadingRadians;
     private const float SurfaceHalfSize = 76f;
     private const double TurnRadius = 80;
     private const double PeakSpeed = 900;
@@ -88,7 +87,6 @@ internal sealed class AgentCursorOverlay
     private const double SameTargetTipTolerance = 3.0;
     private const double DefaultGlideDurationMs = 750;
     private const double FadeOutDurationMs = 180;
-    private const float InitialOffscreenPosition = -200f;
 
     private readonly object _gate = new();
     private OverlayForm? _form;
@@ -379,7 +377,7 @@ internal sealed class AgentCursorOverlay
             TopMost = false;
             Text = _overlayWindowTitle;
             StartPosition = FormStartPosition.Manual;
-            _current = new PointF(InitialOffscreenPosition, InitialOffscreenPosition);
+            _current = AgentCursorGeometry.InitialPosition(1f);
             _timerResolutionRaised = NativeMethods.timeBeginPeriod(1) == 0;
 
             _timer = new System.Windows.Forms.Timer { Interval = 8 };
@@ -430,7 +428,7 @@ internal sealed class AgentCursorOverlay
                 return;
             if (!_hasPosition)
             {
-                _current = VisualPositionForTip(ToLocal(screenX, screenY), DpiScaleForPoint(screenX, screenY));
+                _current = AgentCursorGeometry.VisualPositionForTip(ToLocal(screenX, screenY), DpiScaleForPoint(screenX, screenY));
                 _heading = RestingHeadingRadians;
                 _displayHeading = _heading;
                 _hasPosition = true;
@@ -485,10 +483,10 @@ internal sealed class AgentCursorOverlay
             }
             var scale = DpiScaleForPoint(screenX, screenY);
             var targetTip = ToLocal(screenX, screenY);
-            var target = VisualPositionForTip(targetTip, scale);
+            var target = AgentCursorGeometry.VisualPositionForTip(targetTip, scale);
             if (!_hasPosition)
             {
-                _current = InitialPosition(scale);
+                _current = AgentCursorGeometry.InitialPosition(scale);
                 _heading = RestingHeadingRadians;
                 _displayHeading = _heading;
                 _hasPosition = true;
@@ -499,7 +497,7 @@ internal sealed class AgentCursorOverlay
                 _current = visiblePose.Center;
                 _heading = visiblePose.Heading;
 
-                var currentTip = TipPointFromVisualPosition(_current, scale, _heading);
+                var currentTip = AgentCursorGeometry.TipPointFromVisualPosition(_current, scale, _heading);
                 if (Hypot(currentTip.X - targetTip.X, currentTip.Y - targetTip.Y) <= SameTargetTipTolerance * scale)
                 {
                     _arrival?.TrySetResult();
@@ -710,7 +708,7 @@ internal sealed class AgentCursorOverlay
             if (!_hasPosition)
                 return new CursorSnapshot(_visibleCursor, null, null, WindowIdFor(_pinnedTargetHwnd), _layering);
 
-            var tip = TipPointFromVisualPosition(_current, CurrentDpiScale());
+            var tip = AgentCursorGeometry.TipPointFromVisualPosition(_current, CurrentDpiScale());
             return new CursorSnapshot(
                 _visibleCursor,
                 (int)Math.Round(tip.X + _virtualBounds.Left),
@@ -901,9 +899,6 @@ internal sealed class AgentCursorOverlay
             }
         }
 
-        private static PointF InitialPosition(float scale) =>
-            new(InitialOffscreenPosition * scale, InitialOffscreenPosition * scale);
-
         private static double SmootherSpeedProfile(double u) => (30 * u * u * (1 - u) * (1 - u)) / 1.875;
 
         private double BloomBreath()
@@ -918,8 +913,8 @@ internal sealed class AgentCursorOverlay
         private (PointF Center, double Heading) RenderPose(float scale)
         {
             var anchorHeading = IsThinkingIdle() ? RestingHeadingRadians : _heading;
-            var tip = TipPointFromVisualPosition(_current, scale, anchorHeading);
-            return (VisualPositionForTip(tip, scale, _displayHeading), _displayHeading);
+            var tip = AgentCursorGeometry.TipPointFromVisualPosition(_current, scale, anchorHeading);
+            return (AgentCursorGeometry.VisualPositionForTip(tip, scale, _displayHeading), _displayHeading);
         }
 
         private bool IsThinkingIdle()
@@ -1000,7 +995,7 @@ internal sealed class AgentCursorOverlay
 
         private float CurrentDpiScale()
         {
-            var tip = TipPointFromVisualPosition(_current, Math.Max(1f, DeviceDpi / 96f));
+            var tip = AgentCursorGeometry.TipPointFromVisualPosition(_current, Math.Max(1f, DeviceDpi / 96f));
             return DpiScaleForPoint(
                 (int)Math.Round(tip.X + _virtualBounds.Left),
                 (int)Math.Round(tip.Y + _virtualBounds.Top));
@@ -1024,32 +1019,6 @@ internal sealed class AgentCursorOverlay
             }
 
             return Math.Clamp(DeviceDpi / 96f, 1f, 2.5f);
-        }
-
-        private static PointF VisualPositionForTip(PointF tip, float scale)
-        {
-            return VisualPositionForTip(tip, scale, RestingHeadingRadians);
-        }
-
-        private static PointF VisualPositionForTip(PointF tip, float scale, double heading)
-        {
-            var offset = CursorTipOffset * scale;
-            return new PointF(
-                tip.X + (float)(Math.Cos(heading) * offset),
-                tip.Y + (float)(Math.Sin(heading) * offset));
-        }
-
-        private static PointF TipPointFromVisualPosition(PointF visualPosition, float scale)
-        {
-            return TipPointFromVisualPosition(visualPosition, scale, RestingHeadingRadians);
-        }
-
-        private static PointF TipPointFromVisualPosition(PointF visualPosition, float scale, double heading)
-        {
-            var offset = CursorTipOffset * scale;
-            return new PointF(
-                visualPosition.X - (float)(Math.Cos(heading) * offset),
-                visualPosition.Y - (float)(Math.Sin(heading) * offset));
         }
 
         private static Trip TripFor(double glideDurationMs, float scale)
