@@ -44,6 +44,27 @@ def test_scroll_rejects_partial_wheel_coordinates():
     assert "both x and y" in result["content"][0]["text"]
 
 
+def test_hotkey_keys_requires_modifier_and_key():
+    result = call("hotkey", {"pid": 1, "keys": ["ctrl"]})
+
+    assert result["isError"] is True
+    assert "at least one modifier and one non-modifier key" in result["content"][0]["text"]
+
+
+def test_type_text_element_index_requires_window_id():
+    result = call("type_text", {"pid": 1, "element_index": 1, "text": "hello"})
+
+    assert result["isError"] is True
+    assert "window_id is required for element_index type_text" in result["content"][0]["text"]
+
+
+def test_browser_eval_requires_configured_cdp_port():
+    result = call("browser_eval", {"expression": "1 + 1"})
+
+    assert result["isError"] is True
+    assert "requires cdp_port" in result["content"][0]["text"]
+
+
 def test_window_scoped_tools_report_missing_window():
     result = call(
         "set_value",
