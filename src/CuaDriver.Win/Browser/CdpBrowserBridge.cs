@@ -166,7 +166,7 @@ internal static class CdpBrowserBridge
 
     private static (double X, double Y) WindowPointToViewport(long windowId, IntPtr hwnd, double x, double y)
     {
-        var screen = WindowMessageInput.WindowLocalToScreen(hwnd, x, y);
+        var screen = WindowMessageTargeting.WindowLocalToScreen(hwnd, x, y);
         var doc = UiAutomationTree.FindFirstDocumentBounds(windowId);
         if (doc is { } rect && !rect.IsEmpty)
             return (screen.X - rect.X, screen.Y - rect.Y);

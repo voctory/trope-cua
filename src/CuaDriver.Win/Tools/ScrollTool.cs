@@ -61,7 +61,7 @@ internal sealed class ScrollTool : IDriverTool
         }
         else
         {
-            await context.State.AgentCursor.MoveToAsync(WindowMessageInput.CenterOf(window.Hwnd), window.Hwnd, ct).ConfigureAwait(false);
+            await context.State.AgentCursor.MoveToAsync(WindowMessageTargeting.CenterOf(window.Hwnd), window.Hwnd, ct).ConfigureAwait(false);
         }
 
         ActionReceipt receipt = ActionReceipt.Success("hwnd.key.scroll");
@@ -94,7 +94,7 @@ internal sealed class ScrollTool : IDriverTool
         }
         else
         {
-            var center = WindowMessageInput.CenterLocal(window.Hwnd);
+            var center = WindowMessageTargeting.CenterLocal(window.Hwnd);
             resolved = ToolCoordinates.ResolveNativePointTarget(window, center.X, center.Y);
         }
 

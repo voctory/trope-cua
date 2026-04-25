@@ -45,7 +45,7 @@ internal static class ToolCoordinates
     }
 
     public static WindowMessageDispatch ResolveNativePointTarget(WindowInfo window, double localX, double localY) =>
-        WindowMessageInput.ResolvePointTarget(window.Hwnd, localX, localY);
+        WindowMessageTargeting.ResolvePointTarget(window.Hwnd, localX, localY);
 
     public static ElementCenterPoint? ElementCenter(AutomationElement element, WindowInfo window)
     {
