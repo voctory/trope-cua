@@ -25,9 +25,9 @@ public sealed class TypeTextTool : IDriverTool
         OpenWorld: true);
 
     public async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
-        => await InvokeAsync(args, context, cancellationToken, streamCharacters: false).ConfigureAwait(false);
+        => await InvokeAsync(args, context, streamCharacters: false, cancellationToken).ConfigureAwait(false);
 
-    internal async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken, bool streamCharacters)
+    internal static async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, bool streamCharacters, CancellationToken cancellationToken)
     {
         var pid = JsonArgs.RequiredInt(args, "pid");
         var text = JsonArgs.RequiredString(args, "text");
@@ -183,7 +183,7 @@ public sealed class TypeTextTool : IDriverTool
         ToolContext context,
         IntPtr rootHwnd,
         System.Windows.Automation.AutomationElement element,
-        IReadOnlyList<string> units,
+        List<string> units,
         int delayMs,
         CancellationToken cancellationToken)
     {
@@ -208,7 +208,7 @@ public sealed class TypeTextTool : IDriverTool
         IntPtr rootHwnd,
         System.Windows.Automation.AutomationElement element,
         string text,
-        IReadOnlyList<string> units,
+        List<string> units,
         int delayMs,
         CancellationToken cancellationToken)
     {
@@ -249,7 +249,7 @@ public sealed class TypeTextTool : IDriverTool
         return receipt;
     }
 
-    private static IReadOnlyList<string> TextElements(string text)
+    private static List<string> TextElements(string text)
     {
         var result = new List<string>();
         var enumerator = StringInfo.GetTextElementEnumerator(text);

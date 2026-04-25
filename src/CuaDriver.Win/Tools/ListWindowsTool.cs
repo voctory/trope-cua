@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Tooling;
@@ -22,7 +23,7 @@ public sealed class ListWindowsTool : IDriverTool
         var windows = WindowEnumerator.AllWindows(pid, visibleOnly);
 
         var sb = new StringBuilder();
-        sb.AppendLine($"✅ Found {windows.Count} window(s).");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"✅ Found {windows.Count} window(s).");
         foreach (var w in windows)
         {
             sb.Append("- ")

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Principal;
 using System.Text.Json.Nodes;
 using CuaDriver.Win.HardCases;
@@ -69,7 +70,7 @@ public sealed class ChildSessionStartTool : IDriverTool
         lines.Add("lane=child_session");
         lines.Add("background_safe=true");
         lines.Add($"host_running={result.HostRunning}");
-        lines.Add($"child_session_id={(result.ChildSessionId?.ToString() ?? "none")}");
+        lines.Add($"child_session_id={(result.ChildSessionId?.ToString(CultureInfo.InvariantCulture) ?? "none")}");
         lines.Add($"status=\"{result.Status}\"");
         lines.Add($"cursor_moved={(cursorBefore.X != cursorAfter.X || cursorBefore.Y != cursorAfter.Y)}");
         lines.Add($"foreground_changed={foregroundChanged}");

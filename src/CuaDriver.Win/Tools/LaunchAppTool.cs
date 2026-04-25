@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Input;
@@ -70,8 +71,8 @@ public sealed class LaunchAppTool : IDriverTool
 
         var pid = process?.Id;
         var allAfter = WindowEnumerator.AllWindows();
-        IReadOnlyList<WindowInfo> windows = pid is null ? Array.Empty<WindowInfo>() : allAfter.Where(w => w.Pid == pid.Value).ToArray();
-        if (windows.Count == 0)
+        WindowInfo[] windows = pid is null ? Array.Empty<WindowInfo>() : allAfter.Where(w => w.Pid == pid.Value).ToArray();
+        if (windows.Length == 0)
         {
             var newWindows = allAfter
                 .Where(w => !beforeWindows.Contains(w.WindowId))
@@ -84,13 +85,13 @@ public sealed class LaunchAppTool : IDriverTool
         var receipt = guard.Finish(ActionReceipt.Success("shellexecute.unsafe_foreground"), allowForegroundChange: true);
         var sb = new StringBuilder();
         sb.AppendLine("✅ " + receipt.ToJson());
-        sb.AppendLine($"Launch requested: {(appId ?? path)}");
+        sb.Append("Launch requested: ").AppendLine(appId ?? path);
         if (pid is not null)
-            sb.AppendLine($"pid={pid}");
-        if (windows.Count > 0 && windows[0].Pid != pid)
-            sb.AppendLine($"resolved_pid={windows[0].Pid}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"pid={pid}");
+        if (windows.Length > 0 && windows[0].Pid != pid)
+            sb.AppendLine(CultureInfo.InvariantCulture, $"resolved_pid={windows[0].Pid}");
         foreach (var w in windows)
-            sb.AppendLine($"- window_id={w.WindowId} title=\"{w.Title}\" bounds=({w.Bounds.X},{w.Bounds.Y},{w.Bounds.Width},{w.Bounds.Height})");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"- window_id={w.WindowId} title=\"{w.Title}\" bounds=({w.Bounds.X},{w.Bounds.Y},{w.Bounds.Width},{w.Bounds.Height})");
 
         return ToolResult.Text(sb.ToString().TrimEnd());
     }

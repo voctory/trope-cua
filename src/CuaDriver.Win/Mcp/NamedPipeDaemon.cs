@@ -249,7 +249,7 @@ public sealed class NamedPipeDaemon
         }
     }
 
-    private static IReadOnlyList<DaemonInstanceRecord> ReadInstanceRecords()
+    private static DaemonInstanceRecord[] ReadInstanceRecords()
     {
         if (!Directory.Exists(DaemonRegistryDirectory))
             return [];

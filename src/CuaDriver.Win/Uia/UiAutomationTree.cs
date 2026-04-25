@@ -260,7 +260,7 @@ public sealed class UiAutomationTree
               .Append(' ')
               .Append(enabled)
               .Append(offscreen)
-              .Append($" bounds=({info.Bounds.X},{info.Bounds.Y},{info.Bounds.Width},{info.Bounds.Height})")
+              .Append(" bounds=(").Append(info.Bounds.X).Append(',').Append(info.Bounds.Y).Append(',').Append(info.Bounds.Width).Append(',').Append(info.Bounds.Height).Append(')')
               .Append(autoId)
               .Append(cls)
               .Append(patterns)

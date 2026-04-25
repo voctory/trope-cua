@@ -301,7 +301,7 @@ public sealed class CdpBrowserBridge
 
     private static int _nextId;
 
-    private static IReadOnlyList<string> TextElements(string text)
+    private static List<string> TextElements(string text)
     {
         var result = new List<string>();
         var enumerator = StringInfo.GetTextElementEnumerator(text);

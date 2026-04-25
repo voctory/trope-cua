@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Tooling;
@@ -19,7 +20,7 @@ public sealed class ListAppsTool : IDriverTool
         var shortcuts = AppEnumerator.StartMenuShortcuts();
 
         var sb = new StringBuilder();
-        sb.AppendLine($"✅ Found {apps.Count} running GUI app(s). Start Menu shortcuts detected: {shortcuts.Count}.");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"✅ Found {apps.Count} running GUI app(s). Start Menu shortcuts detected: {shortcuts.Count}.");
         foreach (var app in apps)
         {
             sb.Append("- ").Append(app.Name)

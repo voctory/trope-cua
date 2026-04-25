@@ -23,6 +23,6 @@ public sealed class TypeTextCharsTool : IDriverTool
     {
         if (!args.ContainsKey("delay_ms"))
             args["delay_ms"] = 30;
-        return new TypeTextTool().InvokeAsync(args, context, cancellationToken, streamCharacters: true);
+        return TypeTextTool.InvokeAsync(args, context, streamCharacters: true, cancellationToken);
     }
 }
