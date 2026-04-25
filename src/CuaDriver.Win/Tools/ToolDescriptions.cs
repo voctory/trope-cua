@@ -48,9 +48,11 @@ internal static class ToolDescriptions
         """;
 
     public const string Scroll = """
-        Scroll a target window without parent-session SendInput. Coordinates, when supplied, are window-local screenshot pixels in the same space returned by get_window_state.
+        Scroll a target window without parent-session SendInput. Prefer the Mac-compatible direction mode: direction up/down/left/right, amount repetitions, and by line/page. This sends background-safe key messages such as Down, PageDown, or PageUp.
 
-        Prefer element_index + window_id when get_window_state exposed a scrollable element: the driver resolves the cached UIA element and performs the UIA scroll action. Otherwise x/y identify the region to scroll; if omitted, the target window center is used.
+        Optional element_index + window_id from the last get_window_state snapshot targets that element's native HWND when available, falling back to the root target window. Skip it when a prior click already established the target's internal focus.
+
+        Windows wheel mode remains available when direction is omitted: x/y identify the region to scroll in window-local screenshot pixels, delta controls wheel amount, and the target window center is used when x/y are omitted. Prefer direction mode for browser-like surfaces because wheel messages are commonly filtered or foreground-prone.
 
         Browser providers often expose partial UIA trees and foreground-prone routes. The Windows driver refuses unsafe browser scroll fallbacks unless a background-safe UIA or CDP route is available.
         """;

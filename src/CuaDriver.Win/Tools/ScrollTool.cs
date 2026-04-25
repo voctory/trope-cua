@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using System.Windows.Automation;
 using CuaDriver.Win.Browser;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
@@ -14,17 +15,72 @@ public sealed class ScrollTool : IDriverTool
         ToolDescriptions.Scroll,
         JsonArgs.Schema(
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
-            ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
-            ("x", JsonArgs.Prop("number", "Optional window-local screenshot X.")),
-            ("y", JsonArgs.Prop("number", "Optional window-local screenshot Y.")),
-            ("delta", JsonArgs.Prop("integer", "Wheel delta; positive up, negative down. Default -120."))),
-        Destructive: true,
+            ("direction", JsonArgs.Prop("string", "Mac-compatible direction: up, down, left, or right.")),
+            ("amount", JsonArgs.Prop("integer", "Number of key or wheel repetitions. Default: 3 for direction mode.")),
+            ("by", JsonArgs.Prop("string", "Scroll granularity for direction mode: line or page. Default: line.")),
+            ("element_index", JsonArgs.Prop("integer", "Optional element index from get_window_state. With direction mode, targets that element's native HWND when available.")),
+            ("window_id", JsonArgs.Prop("integer", "Target HWND. Required when element_index is used.")),
+            ("x", JsonArgs.Prop("number", "Optional window-local screenshot X for Windows wheel mode.")),
+            ("y", JsonArgs.Prop("number", "Optional window-local screenshot Y for Windows wheel mode.")),
+            ("delta", JsonArgs.Prop("integer", "Windows wheel delta; positive up, negative down. Default -120. Used when direction is omitted."))),
+        Destructive: false,
         Idempotent: false,
         OpenWorld: true);
 
     public async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
         var pid = JsonArgs.RequiredInt(args, "pid");
+        var direction = JsonArgs.OptionalString(args, "direction");
+        if (!string.IsNullOrWhiteSpace(direction))
+            return await ScrollByKeysAsync(pid, direction!, args, context, cancellationToken).ConfigureAwait(false);
+
+        return await ScrollByWheelAsync(pid, args, context, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<ToolResult> ScrollByKeysAsync(int pid, string direction, JsonObject args, ToolContext context, CancellationToken ct)
+    {
+        var amount = Math.Clamp(JsonArgs.OptionalInt(args, "amount") ?? 3, 1, 50);
+        var by = JsonArgs.OptionalString(args, "by") ?? "line";
+        var key = ScrollKey(direction, by);
+        if (key is null)
+            return ToolResult.Error($"Invalid direction/by combination: {direction}/{by}.");
+
+        var index = JsonArgs.OptionalInt(args, "element_index");
+        var windowId = JsonArgs.OptionalLong(args, "window_id");
+        if (index is not null && windowId is null)
+            return ToolResult.Error("window_id is required when element_index is used.");
+        windowId ??= WindowEnumerator.MainWindowForPid(pid)?.WindowId;
+        if (windowId is null)
+            return ToolResult.Error($"No window found for pid {pid}.");
+
+        var window = WindowEnumerator.Find(windowId.Value);
+        if (window is null)
+            return ToolResult.Error($"No window with window_id {windowId.Value}.");
+        if (window.Pid != pid)
+            return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
+
+        var targetHwnd = window.Hwnd;
+        if (index is not null)
+        {
+            var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
+            var elementHwnd = ElementHwnd(element);
+            if (elementHwnd != IntPtr.Zero)
+                targetHwnd = elementHwnd;
+        }
+
+        ActionReceipt receipt = ActionReceipt.Success("hwnd.key.scroll");
+        for (var i = 0; i < amount; i++)
+        {
+            receipt = await WindowMessageInput.PressKeyAsync(targetHwnd, key, [], ct).ConfigureAwait(false);
+            if (!receipt.Ok)
+                break;
+        }
+
+        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+    }
+
+    private static async Task<ToolResult> ScrollByWheelAsync(int pid, JsonObject args, ToolContext context, CancellationToken cancellationToken)
+    {
         var windowId = JsonArgs.OptionalLong(args, "window_id") ?? WindowEnumerator.MainWindowForPid(pid)?.WindowId;
         if (windowId is null)
             return ToolResult.Error($"No window found for pid {pid}.");
@@ -32,6 +88,8 @@ public sealed class ScrollTool : IDriverTool
         var window = WindowEnumerator.Find(windowId.Value);
         if (window is null)
             return ToolResult.Error($"No window with window_id {windowId.Value}.");
+        if (window.Pid != pid)
+            return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
 
         var x = JsonArgs.OptionalDouble(args, "x");
         var y = JsonArgs.OptionalDouble(args, "y");
@@ -65,5 +123,34 @@ public sealed class ScrollTool : IDriverTool
             : WindowMessageInput.Scroll(window.Hwnd, resolved.ScreenPoint.X - window.Bounds.X, resolved.ScreenPoint.Y - window.Bounds.Y, delta);
 
         return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+    }
+
+    private static string? ScrollKey(string direction, string by)
+    {
+        return (direction.Trim().ToLowerInvariant(), by.Trim().ToLowerInvariant()) switch
+        {
+            ("up", "line") => "up",
+            ("down", "line") => "down",
+            ("left", "line") => "left",
+            ("right", "line") => "right",
+            ("up", "page") => "pageup",
+            ("down", "page") => "pagedown",
+            ("left", "page") => "left",
+            ("right", "page") => "right",
+            _ => null
+        };
+    }
+
+    private static IntPtr ElementHwnd(AutomationElement element)
+    {
+        try
+        {
+            var hwnd = element.Current.NativeWindowHandle;
+            return hwnd == 0 ? IntPtr.Zero : new IntPtr(hwnd);
+        }
+        catch
+        {
+            return IntPtr.Zero;
+        }
     }
 }
