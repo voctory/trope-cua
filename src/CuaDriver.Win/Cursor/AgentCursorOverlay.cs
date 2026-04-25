@@ -64,6 +64,7 @@ public sealed class AgentCursorOverlay
     private const double VisualHeadingCatchUpRadiansPerSecond = 18;
     private const double SameTargetTipTolerance = 3.0;
     private const double DefaultGlideDurationMs = 750;
+    private const double FadeOutDurationMs = 180;
     private const float InitialOffscreenPosition = -200f;
 
     private readonly object _gate = new();
@@ -316,6 +317,8 @@ public sealed class AgentCursorOverlay
         private TaskCompletionSource? _arrival;
         private IntPtr _pinnedTargetHwnd;
         private long _lastPinAtMs;
+        private long _fadeStartedMs;
+        private bool _isFadingOut;
         private string _layering = "normal";
         private readonly bool _timerResolutionRaised;
 
@@ -389,6 +392,7 @@ public sealed class AgentCursorOverlay
                 _hasPosition = true;
             }
 
+            CancelFadeOut();
             _visibleCursor = true;
             _lastActivityAt = DateTime.UtcNow;
             ShowOverlay();
@@ -396,6 +400,7 @@ public sealed class AgentCursorOverlay
 
         public void HideCursor()
         {
+            CancelFadeOut();
             _visibleCursor = false;
             _isGliding = false;
             _path = null;
@@ -412,7 +417,11 @@ public sealed class AgentCursorOverlay
         public void KeepAlive()
         {
             if (_enabled && _visibleCursor)
+            {
+                CancelFadeOut();
                 _lastActivityAt = DateTime.UtcNow;
+                ShowOverlay();
+            }
         }
 
         public void GlideTo(int screenX, int screenY, IntPtr targetHwnd, AgentCursorMotion motion, TaskCompletionSource arrival)
@@ -424,6 +433,7 @@ public sealed class AgentCursorOverlay
             }
 
             _motion = motion;
+            CancelFadeOut();
             PinToTarget(targetHwnd);
             var scale = DpiScaleForPoint(screenX, screenY);
             var targetTip = ToLocal(screenX, screenY);
@@ -510,6 +520,7 @@ public sealed class AgentCursorOverlay
                 return;
 
             _motion = motion;
+            CancelFadeOut();
             _lastActivityAt = DateTime.UtcNow;
             _pulseStartedMs = Environment.TickCount64;
             _visibleCursor = true;
@@ -608,6 +619,17 @@ public sealed class AgentCursorOverlay
 
             changed = UpdateDisplayHeading(dt) || changed;
 
+            if (_isFadingOut)
+            {
+                if (Environment.TickCount64 - _fadeStartedMs >= FadeOutDurationMs)
+                {
+                    HideCursor();
+                    return;
+                }
+
+                changed = true;
+            }
+
             if (_pulseStartedMs > 0 && Environment.TickCount64 - _pulseStartedMs > Math.Max(1, _motion.PressDurationMs))
             {
                 _pulseStartedMs = 0;
@@ -619,11 +641,14 @@ public sealed class AgentCursorOverlay
                 changed = true;
             }
 
-            if (!_isGliding && _pulseStartedMs <= 0)
+            if (!_isGliding && _pulseStartedMs <= 0 && !_isFadingOut)
             {
                 var idleMs = (now - _lastActivityAt).TotalMilliseconds;
                 if (_motion.IdleHideMs > 0 && idleMs >= _motion.IdleHideMs)
-                    HideCursor();
+                {
+                    BeginFadeOut();
+                    changed = true;
+                }
                 else
                     changed = true;
             }
@@ -746,6 +771,10 @@ public sealed class AgentCursorOverlay
             if (!_enabled || !_visibleCursor || !IsHandleCreated || IsDisposed)
                 return;
 
+            var opacity = FadeOpacity();
+            if (opacity <= 0)
+                return;
+
             var scale = CurrentDpiScale();
             var renderPose = RenderPose(scale);
             var screenCenter = new PointF(renderPose.Center.X + _virtualBounds.Left, renderPose.Center.Y + _virtualBounds.Top);
@@ -798,7 +827,7 @@ public sealed class AgentCursorOverlay
                 {
                     BlendOp = NativeMethods.AC_SRC_OVER,
                     BlendFlags = 0,
-                    SourceConstantAlpha = 255,
+                    SourceConstantAlpha = (byte)Math.Clamp((int)Math.Round(255 * opacity), 0, 255),
                     AlphaFormat = NativeMethods.AC_SRC_ALPHA
                 };
                 NativeMethods.UpdateLayeredWindow(Handle, screenDc, ref dst, ref size, memDc, ref src, 0, ref blend, NativeMethods.ULW_ALPHA);
@@ -985,6 +1014,32 @@ public sealed class AgentCursorOverlay
         private double DesiredDisplayHeading()
         {
             return IsThinkingIdle() ? RestingHeadingRadians + IdleRotation() : _heading;
+        }
+
+        private void BeginFadeOut()
+        {
+            if (_isFadingOut || !_visibleCursor)
+                return;
+
+            _isFadingOut = true;
+            _fadeStartedMs = Environment.TickCount64;
+            _lastFrameTimestamp = Stopwatch.GetTimestamp();
+        }
+
+        private void CancelFadeOut()
+        {
+            _isFadingOut = false;
+            _fadeStartedMs = 0;
+        }
+
+        private double FadeOpacity()
+        {
+            if (!_isFadingOut || _fadeStartedMs <= 0)
+                return 1;
+
+            var u = Math.Clamp((Environment.TickCount64 - _fadeStartedMs) / FadeOutDurationMs, 0, 1);
+            var eased = u * u * (3 - 2 * u);
+            return 1 - eased;
         }
 
         private static double RotateToward(double current, double desired, double maxStep)
