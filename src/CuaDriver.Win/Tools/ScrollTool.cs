@@ -86,6 +86,11 @@ public sealed class ScrollTool : IDriverTool
 
     private static async Task<ToolResult> ScrollByWheelAsync(int pid, JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
+        var x = JsonArgs.OptionalDouble(args, "x");
+        var y = JsonArgs.OptionalDouble(args, "y");
+        if ((x is null) != (y is null))
+            return ToolResult.Error("Provide both x and y for wheel scrolling, or neither.");
+
         var windowId = JsonArgs.OptionalLong(args, "window_id") ?? WindowEnumerator.MainWindowForPid(pid)?.WindowId;
         if (windowId is null)
             return ToolResult.Error($"No window found for pid {pid}.");
@@ -96,8 +101,6 @@ public sealed class ScrollTool : IDriverTool
         if (window.Pid != pid)
             return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
 
-        var x = JsonArgs.OptionalDouble(args, "x");
-        var y = JsonArgs.OptionalDouble(args, "y");
         var delta = JsonArgs.OptionalInt(args, "delta") ?? -120;
 
         WindowMessageDispatch resolved;

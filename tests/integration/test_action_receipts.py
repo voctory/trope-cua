@@ -28,3 +28,10 @@ def test_right_click_rejects_mixed_addressing_modes():
 
     assert result["isError"] is True
     assert "either element_index or x/y" in result["content"][0]["text"]
+
+
+def test_scroll_rejects_partial_wheel_coordinates():
+    result = call("scroll", {"pid": 1, "x": 10})
+
+    assert result["isError"] is True
+    assert "both x and y" in result["content"][0]["text"]
