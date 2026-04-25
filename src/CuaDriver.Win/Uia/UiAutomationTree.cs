@@ -53,7 +53,7 @@ public sealed class UiAutomationTree
         var sb = new StringBuilder();
 
         var turnId = Interlocked.Increment(ref _nextTurnId);
-        Walk(root, pid, 0, 0, elements, infos, sb);
+        Walk(root, root, windowId, pid, 0, 0, elements, infos, sb);
 
         var markdown = sb.ToString().TrimEnd();
         if (!string.IsNullOrWhiteSpace(query))
@@ -118,7 +118,7 @@ public sealed class UiAutomationTree
             if (root is null)
                 return null;
 
-            return HitTestWithinRoot(root, pid, screenPoint, wantScrollable: false);
+            return HitTestWithinRoot(root, pid, windowId, screenPoint, wantScrollable: false);
         }
         catch
         {
@@ -134,7 +134,7 @@ public sealed class UiAutomationTree
             if (root is null)
                 return null;
 
-            return HitTestWithinRoot(root, pid, screenPoint, wantScrollable: true);
+            return HitTestWithinRoot(root, pid, windowId, screenPoint, wantScrollable: true);
         }
         catch
         {
@@ -144,7 +144,7 @@ public sealed class UiAutomationTree
         return null;
     }
 
-    private static UiaHitTestResult? HitTestWithinRoot(AutomationElement root, int pid, POINT screenPoint, bool wantScrollable)
+    private static UiaHitTestResult? HitTestWithinRoot(AutomationElement root, int pid, long windowId, POINT screenPoint, bool wantScrollable)
     {
         var point = new System.Windows.Point(screenPoint.X, screenPoint.Y);
         UiaHitTestResult? bestClick = null;
@@ -171,7 +171,7 @@ public sealed class UiAutomationTree
                     return;
 
                 info = MakeInfo(element, 0, pid);
-                if (info.ProcessId != pid)
+                if (info.ProcessId != pid && !IsSameWindowTree(element, root, windowId))
                     return;
 
                 var area = Math.Max(1, rect.Width * rect.Height);
@@ -217,6 +217,8 @@ public sealed class UiAutomationTree
 
     private static void Walk(
         AutomationElement element,
+        AutomationElement root,
+        long windowId,
         int pid,
         int depth,
         int siblingOrdinal,
@@ -231,7 +233,7 @@ public sealed class UiAutomationTree
         try
         {
             info = MakeInfo(element, cache.Count, pid);
-            if (info.ProcessId != 0 && info.ProcessId != pid)
+            if (info.ProcessId != 0 && info.ProcessId != pid && !IsSameWindowTree(element, root, windowId))
             {
                 return;
             }
@@ -276,7 +278,7 @@ public sealed class UiAutomationTree
         var ordinal = 0;
         while (child is not null && ordinal < 500)
         {
-            Walk(child, pid, depth + 1, ordinal, cache, infos, sb);
+            Walk(child, root, windowId, pid, depth + 1, ordinal, cache, infos, sb);
             try { child = walker.GetNextSibling(child); }
             catch { break; }
             ordinal++;
