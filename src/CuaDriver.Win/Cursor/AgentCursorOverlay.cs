@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -49,7 +50,7 @@ public sealed class AgentCursorOverlay
     private const string OverlayWindowTitle = "CuaDriverWin.AgentCursorOverlay";
     private const double RestingHeadingRadians = Math.PI / 4;
     private const float CursorTipOffset = 16f;
-    private const float SurfaceHalfSize = 52f;
+    private const float SurfaceHalfSize = 64f;
     private const int Supersample = 3;
     private const double TurnRadius = 80;
     private const double PeakSpeed = 900;
@@ -809,49 +810,83 @@ public sealed class AgentCursorOverlay
 
         private static void DrawBloom(Graphics g, PointF p, float scale, double breath)
         {
-            DrawRadialGlow(
+            DrawGaussianGlow(
                 g,
                 p,
-                (float)((34 + 3 * breath) * scale),
+                (float)((48 + 4 * breath) * scale),
+                (float)((18 + 1.5 * breath) * scale),
                 Color.FromArgb(164, 222, 245),
-                centerAlpha: (int)Math.Round(44 + 12 * breath),
-                factors: [1.0f, 0.46f, 0.16f, 0.04f, 0.0f],
-                positions: [0.0f, 0.18f, 0.46f, 0.76f, 1.0f]);
+                centerAlpha: (int)Math.Round(34 + 7 * breath));
 
-            DrawRadialGlow(
+            DrawGaussianGlow(
                 g,
                 p,
-                (float)((18 + breath) * scale),
+                (float)((22 + breath) * scale),
+                (float)((7.5 + 0.5 * breath) * scale),
                 Color.FromArgb(219, 238, 255),
-                centerAlpha: (int)Math.Round(22 + 8 * breath),
-                factors: [1.0f, 0.55f, 0.18f, 0.0f],
-                positions: [0.0f, 0.28f, 0.62f, 1.0f]);
+                centerAlpha: (int)Math.Round(16 + 5 * breath));
         }
 
-        private static void DrawRadialGlow(
+        private static void DrawGaussianGlow(
             Graphics g,
             PointF p,
             float radius,
+            float sigma,
             Color color,
-            int centerAlpha,
-            float[] factors,
-            float[] positions)
+            int centerAlpha)
         {
-            var bounds = new RectangleF(p.X - radius, p.Y - radius, radius * 2, radius * 2);
-            using var path = new GraphicsPath();
-            path.AddEllipse(bounds);
-            using var brush = new PathGradientBrush(path)
+            if (radius <= 0 || sigma <= 0 || centerAlpha <= 0)
+                return;
+
+            var renderScale = Supersample;
+            var diameter = Math.Max(1, (int)Math.Ceiling(radius * 2 * renderScale));
+            var center = (diameter - 1) / 2.0;
+            var maxRadius = radius * renderScale;
+            var sigmaPixels = sigma * renderScale;
+            var maxRadiusSquared = maxRadius * maxRadius;
+            var sigmaDenominator = 2 * sigmaPixels * sigmaPixels;
+
+            using var bitmap = new Bitmap(diameter, diameter, PixelFormat.Format32bppPArgb);
+            var rect = new Rectangle(0, 0, diameter, diameter);
+            var data = bitmap.LockBits(rect, ImageLockMode.WriteOnly, PixelFormat.Format32bppPArgb);
+            try
             {
-                CenterPoint = p,
-                CenterColor = Color.FromArgb(centerAlpha, color),
-                SurroundColors = [Color.FromArgb(0, color)]
-            };
-            brush.Blend = new Blend
+                var stride = data.Stride;
+                var strideAbs = Math.Abs(stride);
+                var buffer = new byte[strideAbs * diameter];
+
+                for (var y = 0; y < diameter; y++)
+                {
+                    var dy = y - center;
+                    var row = stride >= 0 ? y * stride : (diameter - 1 - y) * strideAbs;
+                    for (var x = 0; x < diameter; x++)
+                    {
+                        var dx = x - center;
+                        var r2 = dx * dx + dy * dy;
+                        if (r2 > maxRadiusSquared)
+                            continue;
+
+                        var alpha = (int)Math.Round(centerAlpha * Math.Exp(-r2 / sigmaDenominator));
+                        if (alpha <= 0)
+                            continue;
+
+                        var index = row + x * 4;
+                        buffer[index] = (byte)(color.B * alpha / 255);
+                        buffer[index + 1] = (byte)(color.G * alpha / 255);
+                        buffer[index + 2] = (byte)(color.R * alpha / 255);
+                        buffer[index + 3] = (byte)alpha;
+                    }
+                }
+
+                Marshal.Copy(buffer, 0, data.Scan0, buffer.Length);
+            }
+            finally
             {
-                Factors = factors,
-                Positions = positions
-            };
-            g.FillPath(brush, path);
+                bitmap.UnlockBits(data);
+            }
+
+            var dest = new RectangleF(p.X - radius, p.Y - radius, radius * 2, radius * 2);
+            g.DrawImage(bitmap, dest);
         }
 
         private static void DrawCursor(Graphics g, PointF p, double heading, float scale)
