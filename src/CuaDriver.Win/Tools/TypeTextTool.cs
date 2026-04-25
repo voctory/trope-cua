@@ -40,11 +40,8 @@ public sealed class TypeTextTool : IDriverTool
         {
             if (windowId is null)
                 return ToolResult.Error("window_id is required for element_index type_text.");
-            var window = WindowEnumerator.Find(windowId.Value);
-            if (window is null)
-                return ToolResult.Error($"No window with window_id {windowId.Value}.");
-            if (window.Pid != pid)
-                return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
+            if (!ToolWindows.TryFindForPid(pid, windowId.Value, out var window, out var error))
+                return error!;
 
             var cdpPort = BrowserToolArgs.CdpPort(args, context);
             if (BrowserWindowClassifier.IsLikelyChromium(window) && cdpPort is null)
@@ -67,21 +64,10 @@ public sealed class TypeTextTool : IDriverTool
         }
         else
         {
-            if (windowId is null)
-            {
-                var w = WindowEnumerator.MainWindowForPid(pid);
-                if (w is null)
-                    return ToolResult.Error($"No window found for pid {pid}.");
-                windowId = w.WindowId;
-            }
+            if (!ToolWindows.TryFindMainOrForPid(pid, windowId, out var window, out var error))
+                return error!;
 
-            var window = WindowEnumerator.Find(windowId.Value);
-            if (window is null)
-                return ToolResult.Error($"No window with window_id {windowId.Value}.");
-            if (window.Pid != pid)
-                return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
-
-            if (context.State.LastUiaTextTarget.TryGetValue((pid, windowId.Value), out var textElement))
+            if (context.State.LastUiaTextTarget.TryGetValue((pid, window.WindowId), out var textElement))
             {
                 await AgentCursorTooling.MoveToElementAsync(context, textElement, window.Hwnd, cancellationToken).ConfigureAwait(false);
                 var targetCdpPort = BrowserToolArgs.CdpPort(args, context);
@@ -111,7 +97,7 @@ public sealed class TypeTextTool : IDriverTool
                 }
                 else
                 {
-                    var target = context.State.LastTargetHwnd.TryGetValue((pid, windowId.Value), out var clickedTarget)
+                    var target = context.State.LastTargetHwnd.TryGetValue((pid, window.WindowId), out var clickedTarget)
                         ? clickedTarget
                         : WindowMessageInput.FindTextInputTarget(window.Hwnd);
                     receipt = await WindowMessageInput.TypeTextAsync(target, text, cancellationToken, delayMs).ConfigureAwait(false);
