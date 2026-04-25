@@ -140,6 +140,15 @@ internal static class NativeMethods
     [DllImport("gdi32.dll", SetLastError = true)]
     public static extern bool DeleteObject(IntPtr hObject);
 
+    [DllImport("gdi32.dll", SetLastError = true)]
+    public static extern IntPtr CreateDIBSection(
+        IntPtr hdc,
+        ref BITMAPINFO pbmi,
+        uint usage,
+        out IntPtr ppvBits,
+        IntPtr hSection,
+        uint offset);
+
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool UpdateLayeredWindow(
         IntPtr hwnd,
@@ -218,6 +227,8 @@ internal static class NativeMethods
     public const byte AC_SRC_OVER = 0x00;
     public const byte AC_SRC_ALPHA = 0x01;
     public const int ULW_ALPHA = 0x00000002;
+    public const uint BI_RGB = 0;
+    public const uint DIB_RGB_COLORS = 0;
 
     public static string GetWindowText(IntPtr hwnd)
     {
@@ -311,6 +322,29 @@ internal struct BLENDFUNCTION
     public byte BlendFlags;
     public byte SourceConstantAlpha;
     public byte AlphaFormat;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct BITMAPINFOHEADER
+{
+    public uint biSize;
+    public int biWidth;
+    public int biHeight;
+    public ushort biPlanes;
+    public ushort biBitCount;
+    public uint biCompression;
+    public uint biSizeImage;
+    public int biXPelsPerMeter;
+    public int biYPelsPerMeter;
+    public uint biClrUsed;
+    public uint biClrImportant;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct BITMAPINFO
+{
+    public BITMAPINFOHEADER bmiHeader;
+    public uint bmiColors;
 }
 
 internal sealed record RectDto(int X, int Y, int Width, int Height)

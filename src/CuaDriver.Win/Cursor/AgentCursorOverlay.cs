@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Windows.Forms;
@@ -303,6 +304,7 @@ internal sealed class AgentCursorOverlay
         private double? _renderFps;
         private double? _renderMs;
         private int _animationQueued;
+        private LayeredBackBuffer? _backBuffer;
 
         public OverlayForm(string overlayWindowTitle)
         {
@@ -326,6 +328,7 @@ internal sealed class AgentCursorOverlay
             FormClosed += (_, _) =>
             {
                 _timer.Dispose();
+                _backBuffer?.Dispose();
                 if (_timerResolutionRaised)
                     _ = NativeMethods.timeEndPeriod(1);
                 Application.ExitThread();
@@ -764,31 +767,24 @@ internal sealed class AgentCursorOverlay
             var top = (int)Math.Floor(screenCenter.Y - halfSize);
             var localCenter = new PointF(screenCenter.X - left, screenCenter.Y - top);
 
-            using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
-            bitmap.SetResolution(96, 96);
-            using (var g = Graphics.FromImage(bitmap))
-            {
-                g.Clear(Color.Transparent);
-                AgentCursorRenderer.ConfigureHighQuality(g);
-                AgentCursorRenderer.DrawBloom(g, localCenter, scale, BloomBreath());
-                AgentCursorRenderer.DrawCursor(g, localCenter, renderPose.Heading, scale);
-            }
-
             var screenDc = NativeMethods.GetDC(IntPtr.Zero);
             if (screenDc == IntPtr.Zero)
                 return;
 
-            var memDc = IntPtr.Zero;
-            var hBitmap = IntPtr.Zero;
-            var oldBitmap = IntPtr.Zero;
             try
             {
-                memDc = NativeMethods.CreateCompatibleDC(screenDc);
-                if (memDc == IntPtr.Zero)
+                var buffer = BackBuffer(screenDc, width, height);
+                if (buffer is null)
                     return;
 
-                hBitmap = bitmap.GetHbitmap(Color.FromArgb(0));
-                oldBitmap = NativeMethods.SelectObject(memDc, hBitmap);
+                using (var g = Graphics.FromImage(buffer.Bitmap))
+                {
+                    g.Clear(Color.Transparent);
+                    AgentCursorRenderer.ConfigureHighQuality(g);
+                    AgentCursorRenderer.DrawBloom(g, localCenter, scale, BloomBreath());
+                    AgentCursorRenderer.DrawCursor(g, localCenter, renderPose.Heading, scale);
+                }
+
                 var dst = new POINT(left, top);
                 var size = new SIZE(width, height);
                 var src = new POINT(0, 0);
@@ -799,18 +795,101 @@ internal sealed class AgentCursorOverlay
                     SourceConstantAlpha = (byte)Math.Clamp((int)Math.Round(255 * opacity), 0, 255),
                     AlphaFormat = NativeMethods.AC_SRC_ALPHA
                 };
-                NativeMethods.UpdateLayeredWindow(Handle, screenDc, ref dst, ref size, memDc, ref src, 0, ref blend, NativeMethods.ULW_ALPHA);
+                NativeMethods.UpdateLayeredWindow(Handle, screenDc, ref dst, ref size, buffer.MemoryDc, ref src, 0, ref blend, NativeMethods.ULW_ALPHA);
                 RecordRenderedFrame(renderStarted);
             }
             finally
             {
-                if (oldBitmap != IntPtr.Zero && memDc != IntPtr.Zero)
-                    NativeMethods.SelectObject(memDc, oldBitmap);
-                if (hBitmap != IntPtr.Zero)
-                    NativeMethods.DeleteObject(hBitmap);
-                if (memDc != IntPtr.Zero)
-                    NativeMethods.DeleteDC(memDc);
                 _ = NativeMethods.ReleaseDC(IntPtr.Zero, screenDc);
+            }
+        }
+
+        private LayeredBackBuffer? BackBuffer(IntPtr screenDc, int width, int height)
+        {
+            if (_backBuffer is { } existing && existing.Width == width && existing.Height == height)
+                return existing;
+
+            _backBuffer?.Dispose();
+            _backBuffer = LayeredBackBuffer.TryCreate(screenDc, width, height);
+            return _backBuffer;
+        }
+
+        private sealed class LayeredBackBuffer : IDisposable
+        {
+            public int Width { get; }
+            public int Height { get; }
+            public IntPtr MemoryDc { get; }
+            public Bitmap Bitmap { get; }
+
+            private readonly IntPtr _hBitmap;
+            private readonly IntPtr _oldBitmap;
+
+            private LayeredBackBuffer(int width, int height, IntPtr memoryDc, IntPtr hBitmap, IntPtr oldBitmap, IntPtr bits)
+            {
+                Width = width;
+                Height = height;
+                MemoryDc = memoryDc;
+                _hBitmap = hBitmap;
+                _oldBitmap = oldBitmap;
+                Bitmap = new Bitmap(width, height, width * 4, PixelFormat.Format32bppPArgb, bits);
+                Bitmap.SetResolution(96, 96);
+            }
+
+            public static LayeredBackBuffer? TryCreate(IntPtr screenDc, int width, int height)
+            {
+                var memoryDc = NativeMethods.CreateCompatibleDC(screenDc);
+                if (memoryDc == IntPtr.Zero)
+                    return null;
+
+                var info = new BITMAPINFO
+                {
+                    bmiHeader = new BITMAPINFOHEADER
+                    {
+                        biSize = (uint)Marshal.SizeOf<BITMAPINFOHEADER>(),
+                        biWidth = width,
+                        biHeight = -height,
+                        biPlanes = 1,
+                        biBitCount = 32,
+                        biCompression = NativeMethods.BI_RGB,
+                        biSizeImage = (uint)(width * height * 4)
+                    }
+                };
+
+                var hBitmap = NativeMethods.CreateDIBSection(
+                    screenDc,
+                    ref info,
+                    NativeMethods.DIB_RGB_COLORS,
+                    out var bits,
+                    IntPtr.Zero,
+                    0);
+                if (hBitmap == IntPtr.Zero || bits == IntPtr.Zero)
+                {
+                    if (hBitmap != IntPtr.Zero)
+                        NativeMethods.DeleteObject(hBitmap);
+                    NativeMethods.DeleteDC(memoryDc);
+                    return null;
+                }
+
+                var oldBitmap = NativeMethods.SelectObject(memoryDc, hBitmap);
+                if (oldBitmap == IntPtr.Zero)
+                {
+                    NativeMethods.DeleteObject(hBitmap);
+                    NativeMethods.DeleteDC(memoryDc);
+                    return null;
+                }
+
+                return new LayeredBackBuffer(width, height, memoryDc, hBitmap, oldBitmap, bits);
+            }
+
+            public void Dispose()
+            {
+                Bitmap.Dispose();
+                if (_oldBitmap != IntPtr.Zero)
+                    NativeMethods.SelectObject(MemoryDc, _oldBitmap);
+                if (_hBitmap != IntPtr.Zero)
+                    NativeMethods.DeleteObject(_hBitmap);
+                if (MemoryDc != IntPtr.Zero)
+                    NativeMethods.DeleteDC(MemoryDc);
             }
         }
 
