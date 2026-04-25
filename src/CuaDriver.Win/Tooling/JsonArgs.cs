@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Nodes;
 
 namespace CuaDriver.Win.Tooling;
@@ -6,53 +7,53 @@ public static class JsonArgs
 {
     public static int RequiredInt(JsonObject args, string name)
     {
-        if (args.TryGetPropertyValue(name, out var node) && node is not null)
+        if (TryGet(args, name, out var node))
             return node.GetValue<int>();
         throw new ArgumentException($"Missing required integer field {name}.");
     }
 
     public static long RequiredLong(JsonObject args, string name)
     {
-        if (args.TryGetPropertyValue(name, out var node) && node is not null)
+        if (TryGet(args, name, out var node))
             return node.GetValue<long>();
         throw new ArgumentException($"Missing required integer field {name}.");
     }
 
     public static double RequiredDouble(JsonObject args, string name)
     {
-        if (args.TryGetPropertyValue(name, out var node) && node is not null)
+        if (TryGet(args, name, out var node))
             return node.GetValue<double>();
         throw new ArgumentException($"Missing required number field {name}.");
     }
 
     public static string RequiredString(JsonObject args, string name)
     {
-        if (args.TryGetPropertyValue(name, out var node) && node is not null)
+        if (TryGet(args, name, out var node))
             return node.GetValue<string>();
         throw new ArgumentException($"Missing required string field {name}.");
     }
 
     public static bool RequiredBool(JsonObject args, string name)
     {
-        if (args.TryGetPropertyValue(name, out var node) && node is not null)
+        if (TryGet(args, name, out var node))
             return node.GetValue<bool>();
         throw new ArgumentException($"Missing required boolean field {name}.");
     }
 
     public static int? OptionalInt(JsonObject args, string name)
-        => args.TryGetPropertyValue(name, out var node) && node is not null ? node.GetValue<int>() : null;
+        => TryGet(args, name, out var node) ? node.GetValue<int>() : null;
 
     public static long? OptionalLong(JsonObject args, string name)
-        => args.TryGetPropertyValue(name, out var node) && node is not null ? node.GetValue<long>() : null;
+        => TryGet(args, name, out var node) ? node.GetValue<long>() : null;
 
     public static double? OptionalDouble(JsonObject args, string name)
-        => args.TryGetPropertyValue(name, out var node) && node is not null ? node.GetValue<double>() : null;
+        => TryGet(args, name, out var node) ? node.GetValue<double>() : null;
 
     public static bool OptionalBool(JsonObject args, string name, bool defaultValue = false)
-        => args.TryGetPropertyValue(name, out var node) && node is not null ? node.GetValue<bool>() : defaultValue;
+        => TryGet(args, name, out var node) ? node.GetValue<bool>() : defaultValue;
 
     public static string? OptionalString(JsonObject args, string name)
-        => args.TryGetPropertyValue(name, out var node) && node is not null ? node.GetValue<string>() : null;
+        => TryGet(args, name, out var node) ? node.GetValue<string>() : null;
 
     public static string[] OptionalStringArray(JsonObject args, string name)
     {
@@ -63,6 +64,9 @@ public static class JsonArgs
         var scalar = node.GetValue<string>();
         return string.IsNullOrWhiteSpace(scalar) ? [] : [scalar];
     }
+
+    private static bool TryGet(JsonObject args, string name, [NotNullWhen(true)] out JsonNode? node) =>
+        args.TryGetPropertyValue(name, out node) && node is not null;
 
     public static JsonObject Schema(params (string Key, JsonNode Value)[] properties)
     {
