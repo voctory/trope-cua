@@ -42,25 +42,25 @@ internal sealed class McpServer
 
                 var response = method switch
                 {
-                    "initialize" => Response(idNode, InitializeResult()),
-                    "tools/list" => Response(idNode, ToolsListResult()),
-                    "tools/call" => Response(idNode, await ToolsCallAsync(request, cancellationToken).ConfigureAwait(false)),
-                    _ => Error(idNode, -32601, $"Unknown method: {method}")
+                    "initialize" => McpProtocol.Response(idNode, InitializeResult()),
+                    "tools/list" => McpProtocol.Response(idNode, ToolsListResult()),
+                    "tools/call" => McpProtocol.Response(idNode, await ToolsCallAsync(request, cancellationToken).ConfigureAwait(false)),
+                    _ => McpProtocol.Error(idNode, -32601, $"Unknown method: {method}")
                 };
 
                 await WriteResponseAsync(response, cancellationToken).ConfigureAwait(false);
             }
             catch (JsonException ex)
             {
-                await WriteResponseAsync(Error(null, -32700, $"Parse error: {ex.Message}"), cancellationToken).ConfigureAwait(false);
+                await WriteResponseAsync(McpProtocol.Error(null, -32700, $"Parse error: {ex.Message}"), cancellationToken).ConfigureAwait(false);
             }
             catch (McpRequestException ex)
             {
-                await WriteResponseAsync(Error(idNode, ex.Code, ex.Message), cancellationToken).ConfigureAwait(false);
+                await WriteResponseAsync(McpProtocol.Error(idNode, ex.Code, ex.Message), cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                await WriteResponseAsync(Error(idNode, -32603, $"{ex.GetType().Name}: {ex.Message}"), cancellationToken).ConfigureAwait(false);
+                await WriteResponseAsync(McpProtocol.Error(idNode, -32603, $"{ex.GetType().Name}: {ex.Message}"), cancellationToken).ConfigureAwait(false);
             }
         }
     }
@@ -113,28 +113,7 @@ internal sealed class McpServer
             : p["arguments"] as JsonObject ?? throw new McpRequestException(-32602, "tools/call params.arguments must be a JSON object");
         var result = await _registry.InvokeAsync(name, args, _context, ct).ConfigureAwait(false);
 
-        var content = new JsonArray();
-        foreach (var block in result.Content)
-        {
-            var obj = new JsonObject { ["type"] = block.Type };
-            if (block.Text is not null) obj["text"] = block.Text;
-            if (block.Data is not null) obj["data"] = block.Data;
-            if (block.MimeType is not null) obj["mimeType"] = block.MimeType;
-            content.Add(obj);
-        }
-
-        var response = new JsonObject { ["content"] = content, ["isError"] = result.IsError };
-        var structured = result.StructuredContent?.DeepClone() as JsonObject;
-        if (structured is not null)
-            response["structuredContent"] = structured;
-        return response;
-    }
-
-    private static JsonObject Response(JsonNode? id, JsonObject result)
-    {
-        var obj = new JsonObject { ["jsonrpc"] = "2.0", ["result"] = result };
-        if (id is not null) obj["id"] = id;
-        return obj;
+        return McpProtocol.ToolCallResult(result);
     }
 
     private static string? OptionalString(JsonObject obj, string key, int errorCode, string errorMessage)
@@ -144,17 +123,6 @@ internal sealed class McpServer
         if (node.GetValueKind() != JsonValueKind.String)
             throw new McpRequestException(errorCode, errorMessage);
         return node.GetValue<string>();
-    }
-
-    private static JsonObject Error(JsonNode? id, int code, string message)
-    {
-        var obj = new JsonObject
-        {
-            ["jsonrpc"] = "2.0",
-            ["error"] = new JsonObject { ["code"] = code, ["message"] = message }
-        };
-        if (id is not null) obj["id"] = id;
-        return obj;
     }
 
     private sealed class McpRequestException(int code, string message) : Exception(message)
