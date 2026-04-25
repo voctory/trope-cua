@@ -20,24 +20,26 @@ public static class WindowMessageInput
                 foreach (var vk in modifierKeys)
                     NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_KEYDOWN, (UIntPtr)vk, IntPtr.Zero);
 
-                for (var i = 0; i < Math.Max(1, count); i++)
+                var normalizedCount = Math.Max(1, count);
+                for (var i = 0; i < normalizedCount; i++)
                 {
                     NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_MOUSEMOVE, (UIntPtr)modifierFlags, lparam);
+                    var isDoubleClickDown = i == 1 && normalizedCount == 2;
                     if (rightButton)
                     {
-                        NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_RBUTTONDOWN, (UIntPtr)(modifierFlags | 0x0002), lparam);
+                        NativeMethods.PostMessageW(resolved.TargetHwnd, isDoubleClickDown ? NativeMethods.WM_RBUTTONDBLCLK : NativeMethods.WM_RBUTTONDOWN, (UIntPtr)(modifierFlags | 0x0002), lparam);
                         await Task.Delay(35, ct).ConfigureAwait(false);
                         NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_RBUTTONUP, (UIntPtr)modifierFlags, lparam);
                         NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_CONTEXTMENU, UIntPtr.Zero, lparam);
                     }
                     else
                     {
-                        NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_LBUTTONDOWN, (UIntPtr)(modifierFlags | 0x0001), lparam);
+                        NativeMethods.PostMessageW(resolved.TargetHwnd, isDoubleClickDown ? NativeMethods.WM_LBUTTONDBLCLK : NativeMethods.WM_LBUTTONDOWN, (UIntPtr)(modifierFlags | 0x0001), lparam);
                         await Task.Delay(35, ct).ConfigureAwait(false);
                         NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_LBUTTONUP, (UIntPtr)modifierFlags, lparam);
                     }
 
-                    if (i + 1 < count)
+                    if (i + 1 < normalizedCount)
                         await Task.Delay(80, ct).ConfigureAwait(false);
                 }
             }

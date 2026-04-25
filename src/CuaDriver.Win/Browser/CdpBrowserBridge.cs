@@ -38,27 +38,34 @@ public sealed class CdpBrowserBridge
 
             var button = rightButton ? "right" : "left";
             var modifierMask = CdpModifierMask(modifiers);
-            await SendAsync(client, "Input.dispatchMouseEvent", new JsonObject
+            var normalizedCount = Math.Max(1, count);
+            for (var i = 1; i <= normalizedCount; i++)
             {
-                ["type"] = "mousePressed",
-                ["x"] = viewport.X,
-                ["y"] = viewport.Y,
-                ["button"] = button,
-                ["buttons"] = rightButton ? 2 : 1,
-                ["clickCount"] = Math.Max(1, count),
-                ["modifiers"] = modifierMask
-            }, ct).ConfigureAwait(false);
+                await SendAsync(client, "Input.dispatchMouseEvent", new JsonObject
+                {
+                    ["type"] = "mousePressed",
+                    ["x"] = viewport.X,
+                    ["y"] = viewport.Y,
+                    ["button"] = button,
+                    ["buttons"] = rightButton ? 2 : 1,
+                    ["clickCount"] = i,
+                    ["modifiers"] = modifierMask
+                }, ct).ConfigureAwait(false);
 
-            await SendAsync(client, "Input.dispatchMouseEvent", new JsonObject
-            {
-                ["type"] = "mouseReleased",
-                ["x"] = viewport.X,
-                ["y"] = viewport.Y,
-                ["button"] = button,
-                ["buttons"] = 0,
-                ["clickCount"] = Math.Max(1, count),
-                ["modifiers"] = modifierMask
-            }, ct).ConfigureAwait(false);
+                await SendAsync(client, "Input.dispatchMouseEvent", new JsonObject
+                {
+                    ["type"] = "mouseReleased",
+                    ["x"] = viewport.X,
+                    ["y"] = viewport.Y,
+                    ["button"] = button,
+                    ["buttons"] = 0,
+                    ["clickCount"] = i,
+                    ["modifiers"] = modifierMask
+                }, ct).ConfigureAwait(false);
+
+                if (i < normalizedCount)
+                    await Task.Delay(80, ct).ConfigureAwait(false);
+            }
 
             return guard.Finish(ActionReceipt.Success(rightButton ? "cdp.input.dispatch_mouse.right" : "cdp.input.dispatch_mouse"));
         }
