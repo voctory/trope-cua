@@ -7,9 +7,9 @@ namespace CuaDriver.Win.Capture;
 
 public sealed record CapturedImage(byte[] Data, int Width, int Height, int OriginalWidth, int OriginalHeight, double ScaleFactor, string MimeType, string Route);
 
-public sealed class WindowCapture
+public static class WindowCapture
 {
-    public CapturedImage Capture(IntPtr hwnd, int maxImageDimension, long quality = 85, string format = "jpeg")
+    public static CapturedImage Capture(IntPtr hwnd, int maxImageDimension, long quality = 85, string format = "jpeg")
     {
         var rect = NativeMethods.GetBestWindowRect(hwnd);
         if (rect.IsEmpty)
@@ -43,7 +43,7 @@ public sealed class WindowCapture
         return new CapturedImage(data, final.Width, final.Height, bitmap.Width, bitmap.Height, scale, mimeType, route);
     }
 
-    public CapturedImage CaptureVirtualScreen(int maxImageDimension, long quality = 95, string format = "png")
+    public static CapturedImage CaptureVirtualScreen(int maxImageDimension, long quality = 95, string format = "png")
     {
         var left = NativeMethods.GetSystemMetrics(NativeMethods.SM_XVIRTUALSCREEN);
         var top = NativeMethods.GetSystemMetrics(NativeMethods.SM_YVIRTUALSCREEN);

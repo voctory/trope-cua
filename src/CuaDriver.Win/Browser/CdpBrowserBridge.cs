@@ -10,16 +10,9 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Browser;
 
-public sealed class CdpBrowserBridge
+public static class CdpBrowserBridge
 {
-    private readonly UiAutomationTree _uia;
-
-    public CdpBrowserBridge(UiAutomationTree uia)
-    {
-        _uia = uia;
-    }
-
-    public async Task<ActionReceipt?> TryClickAsync(IntPtr hwnd, long windowId, double x, double y, int count, bool rightButton, int? port, CancellationToken ct, IReadOnlyCollection<string>? modifiers = null)
+    public static async Task<ActionReceipt?> TryClickAsync(IntPtr hwnd, long windowId, double x, double y, int count, bool rightButton, int? port, CancellationToken ct, IReadOnlyCollection<string>? modifiers = null)
     {
         if (port is null)
             return null;
@@ -75,10 +68,10 @@ public sealed class CdpBrowserBridge
         }
     }
 
-    public async Task<ActionReceipt?> TryTypeTextAsync(int? port, string text, int delayMs, CancellationToken ct)
+    public static async Task<ActionReceipt?> TryTypeTextAsync(int? port, string text, int delayMs, CancellationToken ct)
         => await TryTypeTextAsync(port, null, text, delayMs, ct).ConfigureAwait(false);
 
-    public async Task<ActionReceipt?> TryTypeTextAsync(int? port, long? windowId, string text, int delayMs, CancellationToken ct)
+    public static async Task<ActionReceipt?> TryTypeTextAsync(int? port, long? windowId, string text, int delayMs, CancellationToken ct)
     {
         if (port is null)
             return null;
@@ -114,10 +107,10 @@ public sealed class CdpBrowserBridge
         }
     }
 
-    public async Task<ActionReceipt> EvaluateUserGestureAsync(int port, string expression, CancellationToken ct)
+    public static async Task<ActionReceipt> EvaluateUserGestureAsync(int port, string expression, CancellationToken ct)
         => await EvaluateUserGestureAsync(port, null, expression, ct).ConfigureAwait(false);
 
-    public async Task<ActionReceipt> EvaluateUserGestureAsync(int port, long? windowId, string expression, CancellationToken ct)
+    public static async Task<ActionReceipt> EvaluateUserGestureAsync(int port, long? windowId, string expression, CancellationToken ct)
     {
         var guard = NoRegressionGuard.Capture();
         try
@@ -229,10 +222,10 @@ public sealed class CdpBrowserBridge
         return string.Join(" ", value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).Trim();
     }
 
-    private (double X, double Y) WindowPointToViewport(long windowId, IntPtr hwnd, double x, double y)
+    private static (double X, double Y) WindowPointToViewport(long windowId, IntPtr hwnd, double x, double y)
     {
         var screen = WindowMessageInput.WindowLocalToScreen(hwnd, x, y);
-        var doc = _uia.FindFirstDocumentBounds(windowId);
+        var doc = UiAutomationTree.FindFirstDocumentBounds(windowId);
         if (doc is { } rect && !rect.IsEmpty)
             return (screen.X - rect.X, screen.Y - rect.Y);
 

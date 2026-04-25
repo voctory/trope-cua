@@ -90,7 +90,7 @@ public sealed class UiAutomationTree
         }
     }
 
-    public Rect? FindFirstDocumentBounds(long windowId)
+    public static Rect? FindFirstDocumentBounds(long windowId)
     {
         try
         {
@@ -110,7 +110,7 @@ public sealed class UiAutomationTree
         }
     }
 
-    public UiaHitTestResult? HitTest(int pid, long windowId, POINT screenPoint)
+    public static UiaHitTestResult? HitTest(int pid, long windowId, POINT screenPoint)
     {
         try
         {
@@ -126,7 +126,7 @@ public sealed class UiAutomationTree
         }
     }
 
-    public UiaHitTestResult? FindScrollableAtPoint(int pid, long windowId, POINT screenPoint)
+    public static UiaHitTestResult? FindScrollableAtPoint(int pid, long windowId, POINT screenPoint)
     {
         try
         {

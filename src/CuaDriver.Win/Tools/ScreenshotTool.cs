@@ -38,7 +38,7 @@ public sealed class ScreenshotTool : IDriverTool
                 if (pid is not null && window.Pid != pid)
                     return Task.FromResult(ToolResult.Error($"window_id {windowId} belongs to pid {window.Pid}, not pid {pid}."));
 
-                capture = context.State.Capture.Capture(new IntPtr(windowId.Value), context.State.Config.MaxImageDimension, quality, format);
+                capture = WindowCapture.Capture(new IntPtr(windowId.Value), context.State.Config.MaxImageDimension, quality, format);
                 context.State.ImageResizeRatio[(window.Pid, windowId.Value)] = capture.Width > 0
                     ? capture.OriginalWidth / (double)capture.Width
                     : 1.0;
@@ -47,7 +47,7 @@ public sealed class ScreenshotTool : IDriverTool
             {
                 if (pid is not null)
                     return Task.FromResult(ToolResult.Error("pid validation requires window_id. Omit pid for full-desktop screenshots or pass window_id."));
-                capture = context.State.Capture.CaptureVirtualScreen(context.State.Config.MaxImageDimension, quality, format);
+                capture = WindowCapture.CaptureVirtualScreen(context.State.Config.MaxImageDimension, quality, format);
             }
 
             var outPath = JsonArgs.OptionalString(args, "out");

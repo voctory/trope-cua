@@ -56,8 +56,7 @@ public sealed class RightClickTool : IDriverTool
                 {
                     var localX = rect.X + rect.Width / 2 - window.Bounds.X;
                     var localY = rect.Y + rect.Height / 2 - window.Bounds.Y;
-                    var cdp = new CdpBrowserBridge(context.State.UiaTree);
-                    receipt = await cdp.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, 1, rightButton: true, cdpPort, cancellationToken).ConfigureAwait(false)
+                    receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, 1, rightButton: true, cdpPort, cancellationToken).ConfigureAwait(false)
                               ?? ActionReceipt.Failure("cdp.input.dispatch_mouse.right", $"No page tab found on CDP port {cdpPort}.");
                     if (receipt.Ok)
                         await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
@@ -93,7 +92,7 @@ public sealed class RightClickTool : IDriverTool
             var clickY = y.Value * ratio;
             var resolved = WindowMessageInput.ResolvePointTarget(window.Hwnd, clickX, clickY);
 
-            var hit = context.State.UiaTree.HitTest(pid, window.WindowId, resolved.ScreenPoint);
+            var hit = UiAutomationTree.HitTest(pid, window.WindowId, resolved.ScreenPoint);
             if (hit is { IsClickAction: true } && modifiers.Length == 0)
             {
                 await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
@@ -102,8 +101,7 @@ public sealed class RightClickTool : IDriverTool
                     var hitCdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
                     if (hitCdpPort is not null)
                     {
-                        var hitCdp = new CdpBrowserBridge(context.State.UiaTree);
-                        receipt = await hitCdp.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, 1, rightButton: true, hitCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
+                        receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, 1, rightButton: true, hitCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
                                   ?? ActionReceipt.Failure("cdp.input.dispatch_mouse.right", $"No page tab found on CDP port {hitCdpPort}.");
                         if (receipt.Ok)
                             await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
@@ -124,9 +122,8 @@ public sealed class RightClickTool : IDriverTool
             }
 
             var cdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
-            var cdp = new CdpBrowserBridge(context.State.UiaTree);
             await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-            receipt = await cdp.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, 1, rightButton: true, cdpPort, cancellationToken, modifiers).ConfigureAwait(false)
+            receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, 1, rightButton: true, cdpPort, cancellationToken, modifiers).ConfigureAwait(false)
                       ?? (BrowserWindowClassifier.IsLikelyBrowser(window)
                           ? ActionReceipt.Failure("requires_cdp_or_uia_hit_test", "Browser web content did not expose an actionable UIA target and no CDP port was configured; refusing to report a blind PostMessage right-click as delivered.")
                           : (await WindowMessageInput.ClickAsync(window.Hwnd, clickX, clickY, 1, rightButton: true, cancellationToken, modifiers).ConfigureAwait(false)).Receipt);

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json.Nodes;
+using CuaDriver.Win.Capture;
 using CuaDriver.Win.Tooling;
 using CuaDriver.Win.Win32;
 
@@ -46,7 +47,7 @@ public sealed class GetWindowStateTool : IDriverTool
         {
             try
             {
-                var capture = context.State.Capture.Capture(new IntPtr(windowId), context.State.Config.MaxImageDimension);
+                var capture = WindowCapture.Capture(new IntPtr(windowId), context.State.Config.MaxImageDimension);
                 context.State.ImageResizeRatio[(pid, windowId)] = capture.Width > 0 ? capture.OriginalWidth / (double)capture.Width : 1.0;
                 content.Add(ContentBlock.ImageBlock(capture.Data, capture.MimeType));
                 structured["capture"] = ToolJson.Capture(capture);

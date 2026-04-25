@@ -8,14 +8,14 @@ namespace CuaDriver.Win.Capture;
 
 public static class DebugCrosshair
 {
-    public static void WriteCrosshair(WindowCapture capture, WindowInfo window, PointF point, int maxImageDimension, string path)
+    public static void WriteCrosshair(WindowInfo window, PointF point, int maxImageDimension, string path)
     {
         var resolvedPath = ExpandPath(path);
         var directory = Path.GetDirectoryName(Path.GetFullPath(resolvedPath));
         if (!string.IsNullOrWhiteSpace(directory))
             Directory.CreateDirectory(directory);
 
-        var shot = capture.Capture(window.Hwnd, maxImageDimension, quality: 100);
+        var shot = WindowCapture.Capture(window.Hwnd, maxImageDimension, quality: 100);
         using var ms = new MemoryStream(shot.Data);
         using var image = Image.FromStream(ms);
         using var bitmap = new Bitmap(image);

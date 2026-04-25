@@ -4,6 +4,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using CuaDriver.Win.Capture;
 using CuaDriver.Win.Tooling;
 using CuaDriver.Win.Win32;
 
@@ -107,7 +108,7 @@ public sealed class RecordingSession
         }
     }
 
-    private void WriteActionJson(
+    private static void WriteActionJson(
         string turnDir,
         string toolName,
         JsonObject arguments,
@@ -176,7 +177,7 @@ public sealed class RecordingSession
     {
         try
         {
-            var capture = context.State.Capture.Capture(window.Hwnd, context.State.Config.MaxImageDimension);
+            var capture = WindowCapture.Capture(window.Hwnd, context.State.Config.MaxImageDimension);
             context.State.ImageResizeRatio[(window.Pid, window.WindowId)] = capture.Width > 0
                 ? capture.OriginalWidth / (double)capture.Width
                 : 1.0;

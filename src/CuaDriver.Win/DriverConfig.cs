@@ -139,7 +139,6 @@ public sealed class DriverState
 {
     public DriverConfig Config { get; set; } = DriverConfig.Load();
     public Uia.UiAutomationTree UiaTree { get; } = new();
-    public Capture.WindowCapture Capture { get; } = new();
     public ConcurrentDictionary<(int Pid, long WindowId), double> ImageResizeRatio { get; } = new();
     public ConcurrentDictionary<int, ZoomContext> ZoomContexts { get; } = new();
     public ConcurrentDictionary<(int Pid, long WindowId), IntPtr> LastTargetHwnd { get; } = new();

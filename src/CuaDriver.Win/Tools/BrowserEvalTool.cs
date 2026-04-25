@@ -39,7 +39,7 @@ public sealed class BrowserEvalTool : IDriverTool
                 return ToolResult.Error($"window_id {windowId.Value} does not look like a Chromium browser window.");
         }
 
-        var receipt = await new CdpBrowserBridge(context.State.UiaTree).EvaluateUserGestureAsync(port.Value, windowId, expression, cancellationToken).ConfigureAwait(false);
+        var receipt = await CdpBrowserBridge.EvaluateUserGestureAsync(port.Value, windowId, expression, cancellationToken).ConfigureAwait(false);
         return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
     }
 }

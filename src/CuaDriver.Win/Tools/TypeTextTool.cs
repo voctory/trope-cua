@@ -98,8 +98,7 @@ public sealed class TypeTextTool : IDriverTool
             }
 
             var cdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
-            var cdp = new CdpBrowserBridge(context.State.UiaTree);
-            var cdpReceipt = await cdp.TryTypeTextAsync(cdpPort, window.WindowId, text, delayMs, cancellationToken).ConfigureAwait(false);
+            var cdpReceipt = await CdpBrowserBridge.TryTypeTextAsync(cdpPort, window.WindowId, text, delayMs, cancellationToken).ConfigureAwait(false);
             if (cdpReceipt is not null)
             {
                 receipt = cdpReceipt;
@@ -138,13 +137,12 @@ public sealed class TypeTextTool : IDriverTool
 
         var localX = point.Value.X - window.Bounds.X;
         var localY = point.Value.Y - window.Bounds.Y;
-        var cdp = new CdpBrowserBridge(context.State.UiaTree);
-        var clickReceipt = await cdp.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, 1, rightButton: false, cdpPort, cancellationToken).ConfigureAwait(false)
+        var clickReceipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, 1, rightButton: false, cdpPort, cancellationToken).ConfigureAwait(false)
                            ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {cdpPort}.");
         if (!clickReceipt.Ok)
             return clickReceipt;
 
-        return await cdp.TryTypeTextAsync(cdpPort, window.WindowId, text, delayMs, cancellationToken).ConfigureAwait(false)
+        return await CdpBrowserBridge.TryTypeTextAsync(cdpPort, window.WindowId, text, delayMs, cancellationToken).ConfigureAwait(false)
                ?? ActionReceipt.Failure("cdp.input.insert_text", $"No page tab found on CDP port {cdpPort}.");
     }
 

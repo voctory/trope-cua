@@ -113,7 +113,7 @@ public sealed class ScrollTool : IDriverTool
         }
 
         ActionReceipt receipt;
-        var scrollHit = context.State.UiaTree.FindScrollableAtPoint(pid, windowId.Value, resolved.ScreenPoint);
+        var scrollHit = UiAutomationTree.FindScrollableAtPoint(pid, windowId.Value, resolved.ScreenPoint);
         if (scrollHit is not null)
         {
             await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);

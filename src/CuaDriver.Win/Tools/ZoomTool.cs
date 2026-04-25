@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Text.Json.Nodes;
+using CuaDriver.Win.Capture;
 using CuaDriver.Win.Tooling;
 using CuaDriver.Win.Win32;
 
@@ -56,7 +57,7 @@ public sealed class ZoomTool : IDriverTool
             var padW = (int)Math.Round((origX2 - origX1) * 0.20);
             var padH = (int)Math.Round((origY2 - origY1) * 0.20);
 
-            var capture = context.State.Capture.Capture(window.Hwnd, maxImageDimension: 0, quality: 90);
+            var capture = WindowCapture.Capture(window.Hwnd, maxImageDimension: 0, quality: 90);
             using var input = new MemoryStream(capture.Data);
             using var full = new Bitmap(input);
 
