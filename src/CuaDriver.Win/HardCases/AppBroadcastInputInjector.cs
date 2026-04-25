@@ -51,8 +51,7 @@ public static class AppBroadcastInputInjector
                 DeltaY = 0
             };
             injector.InjectMouseInput([forward]);
-            Thread.Sleep(50);
-            NativeMethods.GetCursorPos(out var afterForward);
+            var afterForward = WaitForCursor(point => point.X != before.X || point.Y != before.Y, TimeSpan.FromMilliseconds(50));
 
             var back = new InjectedInputMouseInfo
             {
@@ -61,17 +60,15 @@ public static class AppBroadcastInputInjector
                 DeltaY = 0
             };
             injector.InjectMouseInput([back]);
-            Thread.Sleep(50);
-            NativeMethods.GetCursorPos(out var afterBack);
+            var afterBack = WaitForCursor(point => point.X == before.X && point.Y == before.Y, TimeSpan.FromMilliseconds(50));
 
             var movedOnForward = before.X != afterForward.X || before.Y != afterForward.Y;
             var restoredByInjector = before.X == afterBack.X && before.Y == afterBack.Y;
             var restoredByProbe = false;
             if (!restoredByInjector)
             {
-                NativeMethods.SetCursorPos(before.X, before.Y);
-                Thread.Sleep(50);
-                NativeMethods.GetCursorPos(out afterBack);
+                _ = NativeMethods.SetCursorPos(before.X, before.Y);
+                afterBack = WaitForCursor(point => point.X == before.X && point.Y == before.Y, TimeSpan.FromMilliseconds(50));
                 restoredByProbe = before.X == afterBack.X && before.Y == afterBack.Y;
             }
 
@@ -92,6 +89,17 @@ public static class AppBroadcastInputInjector
         {
             return $"ok=false appbroadcast_only={appBroadcastOnly} type={ex.GetType().Name} hresult=0x{Marshal.GetHRForException(ex):X8} message=\"{ex.Message}\"";
         }
+    }
+
+    private static POINT WaitForCursor(Func<POINT, bool> predicate, TimeSpan timeout)
+    {
+        NativeMethods.GetCursorPos(out var current);
+        SpinWait.SpinUntil(() =>
+        {
+            NativeMethods.GetCursorPos(out current);
+            return predicate(current);
+        }, timeout);
+        return current;
     }
 
 #if CUA_ENABLE_APPBROADCAST
