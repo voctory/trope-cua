@@ -36,8 +36,15 @@ public sealed record ToolResult
     [JsonPropertyName("isError")]
     public bool IsError { get; init; }
 
+    [JsonPropertyName("structuredContent")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonObject? StructuredContent { get; init; }
+
     public static ToolResult Text(string text, bool isError = false) =>
         new() { IsError = isError, Content = [ContentBlock.TextBlock(text)] };
+
+    public static ToolResult Text(string text, JsonObject structuredContent, bool isError = false) =>
+        new() { IsError = isError, Content = [ContentBlock.TextBlock(text)], StructuredContent = structuredContent };
 
     public static ToolResult Error(string text) => Text("❌ " + text, true);
 

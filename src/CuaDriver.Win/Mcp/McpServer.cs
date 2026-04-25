@@ -102,7 +102,31 @@ public sealed class McpServer
             content.Add(obj);
         }
 
-        return new JsonObject { ["content"] = content, ["isError"] = result.IsError };
+        var response = new JsonObject { ["content"] = content, ["isError"] = result.IsError };
+        var structured = result.StructuredContent?.DeepClone() as JsonObject ?? TryExtractStructuredContent(result);
+        if (structured is not null)
+            response["structuredContent"] = structured;
+        return response;
+    }
+
+    private static JsonObject? TryExtractStructuredContent(ToolResult result)
+    {
+        var text = result.Content.FirstOrDefault(block => block.Type == "text")?.Text;
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+
+        var jsonStart = text.IndexOf('{');
+        if (jsonStart < 0)
+            return null;
+
+        try
+        {
+            return JsonNode.Parse(text[jsonStart..]) as JsonObject;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static JsonObject Response(JsonNode? id, JsonObject result)
