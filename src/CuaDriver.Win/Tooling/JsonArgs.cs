@@ -55,6 +55,18 @@ public static class JsonArgs
     public static string? OptionalString(JsonObject args, string name)
         => TryGet(args, name, out var node) ? node.GetValue<string>() : null;
 
+    public static string? OptionalFirstString(JsonObject args, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            var value = OptionalString(args, name);
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+        }
+
+        return null;
+    }
+
     public static int? TryOptionalInt(JsonObject args, string name) => TryOptionalValue<int>(args, name);
 
     public static long? TryOptionalLong(JsonObject args, string name) => TryOptionalValue<long>(args, name);

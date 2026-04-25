@@ -27,13 +27,8 @@ public sealed class LaunchAppTool : IDriverTool
 
     public async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
-        var path = FirstNonBlank(
-            JsonArgs.OptionalString(args, "path"),
-            JsonArgs.OptionalString(args, "exe"),
-            JsonArgs.OptionalString(args, "name"));
-        var appId = FirstNonBlank(
-            JsonArgs.OptionalString(args, "app_id"),
-            JsonArgs.OptionalString(args, "bundle_id"));
+        var path = JsonArgs.OptionalFirstString(args, "path", "exe", "name");
+        var appId = JsonArgs.OptionalFirstString(args, "app_id", "bundle_id");
         var arguments = JsonArgs.OptionalString(args, "arguments") ?? "";
         if (args.ContainsKey("allow_foreground"))
         {
@@ -126,7 +121,4 @@ public sealed class LaunchAppTool : IDriverTool
         => window.AppName.Equals("cua-driver-win", StringComparison.OrdinalIgnoreCase)
            || window.Title.Contains("GDI+", StringComparison.OrdinalIgnoreCase)
            || window.ClassName.Contains("WindowsForms", StringComparison.OrdinalIgnoreCase);
-
-    private static string? FirstNonBlank(params string?[] values)
-        => values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 }
