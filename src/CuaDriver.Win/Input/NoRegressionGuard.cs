@@ -79,8 +79,8 @@ public sealed class NoRegressionGuard : IDisposable
             if (currentForegroundThread != 0 && currentForegroundThread != currentThread)
                 NativeMethods.AttachThreadInput(currentThread, currentForegroundThread, true);
 
-            NativeMethods.SetForegroundWindow(_foregroundBefore);
-            Thread.Sleep(50);
+            _ = NativeMethods.SetForegroundWindow(_foregroundBefore);
+            SpinWait.SpinUntil(() => NativeMethods.GetForegroundWindow() == _foregroundBefore, TimeSpan.FromMilliseconds(50));
         }
         finally
         {
@@ -94,15 +94,18 @@ public sealed class NoRegressionGuard : IDisposable
     private sealed class ForegroundSampler : IDisposable
     {
         private readonly IntPtr _initialForeground;
-        private readonly CancellationTokenSource _cts = new();
-        private readonly Task _task;
+        private readonly System.Threading.Timer _timer;
         private int _changed;
         private int _stopped;
 
         public ForegroundSampler(IntPtr initialForeground)
         {
             _initialForeground = initialForeground;
-            _task = Task.Run(SampleLoop);
+            _timer = new System.Threading.Timer(
+                static state => ((ForegroundSampler)state!).Sample(),
+                this,
+                TimeSpan.Zero,
+                TimeSpan.FromMilliseconds(10));
         }
 
         public bool Stop()
@@ -116,37 +119,16 @@ public sealed class NoRegressionGuard : IDisposable
             if (Interlocked.Exchange(ref _stopped, 1) != 0)
                 return;
 
-            _cts.Cancel();
-            try
-            {
-                _task.Wait(TimeSpan.FromMilliseconds(50));
-            }
-            catch
-            {
-                // Best-effort diagnostics only; action receipts must still return.
-            }
-            finally
-            {
-                _cts.Dispose();
-            }
+            _timer.Dispose();
         }
 
-        private async Task SampleLoop()
+        private void Sample()
         {
-            while (!_cts.IsCancellationRequested)
-            {
-                if (NativeMethods.GetForegroundWindow() != _initialForeground)
-                    Interlocked.Exchange(ref _changed, 1);
+            if (Volatile.Read(ref _stopped) != 0)
+                return;
 
-                try
-                {
-                    await Task.Delay(10, _cts.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
-                }
-            }
+            if (NativeMethods.GetForegroundWindow() != _initialForeground)
+                Interlocked.Exchange(ref _changed, 1);
         }
     }
 }
