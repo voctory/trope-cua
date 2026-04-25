@@ -60,11 +60,18 @@ public static class Program
 
         if (command == "daemon-stop" || command == "daemon-shutdown")
         {
+            if (args.Any(arg => arg.Equals("--all", StringComparison.OrdinalIgnoreCase)))
+            {
+                var stopAllResult = await StopAllDaemonsAsync(registry, context).ConfigureAwait(false);
+                PrintResult(stopAllResult);
+                return stopAllResult.IsError ? 1 : 0;
+            }
+
             var daemon = new Mcp.NamedPipeDaemon(registry, context, instanceId);
-            var result = await daemon.TryShutdownAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false)
+            var stopResult = await daemon.TryShutdownAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false)
                          ?? ToolResult.Error($"daemon not running on named pipe {daemon.InstancePipeName}");
-            PrintResult(result);
-            return result.IsError ? 1 : 0;
+            PrintResult(stopResult);
+            return stopResult.IsError ? 1 : 0;
         }
 
         if (command == "tools")
@@ -105,7 +112,7 @@ public static class Program
         Console.WriteLine("cua-driver-win serve [--instance <id>]");
         Console.WriteLine("cua-driver-win daemon-status [--instance <id>]");
         Console.WriteLine("cua-driver-win daemon-list");
-        Console.WriteLine("cua-driver-win daemon-stop [--instance <id>]");
+        Console.WriteLine("cua-driver-win daemon-stop [--instance <id>|--all]");
         Console.WriteLine("cua-driver-win call [--instance <id>] <tool> [json]");
         Console.WriteLine();
         Console.WriteLine("Tools:");
@@ -141,6 +148,43 @@ public static class Program
         }
 
         return (kept.ToArray(), instanceId);
+    }
+
+    private static async Task<ToolResult> StopAllDaemonsAsync(ToolRegistry registry, ToolContext context)
+    {
+        var records = Mcp.NamedPipeDaemon.RegisteredInstances();
+        var stopped = 0;
+        var failed = 0;
+        var lines = new List<string> { $"daemon-stop --all: instances={records.Count}" };
+        var structured = new JsonArray();
+
+        foreach (var record in records)
+        {
+            var daemon = new Mcp.NamedPipeDaemon(registry, context, record.InstanceId);
+            var result = await daemon.TryShutdownAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false);
+            var ok = result is not null && !result.IsError;
+            if (ok)
+                stopped++;
+            else
+                failed++;
+
+            structured.Add(new JsonObject
+            {
+                ["instance_id"] = record.InstanceId,
+                ["pid"] = record.Pid,
+                ["ok"] = ok,
+                ["message"] = result?.ToCliText()
+            });
+            lines.Add($"- instance={record.InstanceId} pid={record.Pid} ok={ok}");
+        }
+
+        lines[0] = (failed == 0 ? "✅ " : "❌ ") + lines[0] + $" stopped={stopped} failed={failed}";
+        return ToolResult.Text(string.Join(Environment.NewLine, lines), new JsonObject
+        {
+            ["stopped"] = stopped,
+            ["failed"] = failed,
+            ["instances"] = structured
+        }, failed > 0);
     }
 
     private static JsonObject ParseArgs(string raw)

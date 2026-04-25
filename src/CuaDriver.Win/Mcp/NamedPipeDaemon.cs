@@ -176,7 +176,7 @@ public sealed class NamedPipeDaemon
 
     public static ToolResult ListInstances()
     {
-        var records = ReadInstanceRecords();
+        var records = RegisteredInstances();
         var structuredRecords = new JsonArray();
         var lines = new List<string> { $"✅ daemon instances: {records.Count}" };
         foreach (var record in records)
@@ -199,6 +199,8 @@ public sealed class NamedPipeDaemon
             ["instances"] = structuredRecords
         });
     }
+
+    public static IReadOnlyList<DaemonInstanceRecord> RegisteredInstances() => ReadInstanceRecords();
 
     private static string UserKey()
     {
