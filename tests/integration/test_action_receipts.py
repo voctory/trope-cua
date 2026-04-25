@@ -37,6 +37,33 @@ def test_right_click_rejects_mixed_addressing_modes():
     assert "either element_index or x/y" in result["content"][0]["text"]
 
 
+def test_click_debug_image_rejects_element_index():
+    result = call(
+        "click",
+        {"pid": 1, "window_id": 999999999, "element_index": 1, "debug_image_out": "debug.png"},
+    )
+
+    assert result["isError"] is True
+    assert "debug_image_out only applies to pixel clicks" in result["content"][0]["text"]
+
+
+def test_click_debug_image_requires_window_id():
+    result = call("click", {"pid": 1, "x": 10, "y": 10, "debug_image_out": "debug.png"})
+
+    assert result["isError"] is True
+    assert "debug_image_out requires window_id" in result["content"][0]["text"]
+
+
+def test_click_debug_image_rejects_zoom_coordinates():
+    result = call(
+        "click",
+        {"pid": 1, "window_id": 999999999, "x": 10, "y": 10, "from_zoom": True, "debug_image_out": "debug.png"},
+    )
+
+    assert result["isError"] is True
+    assert "debug_image_out is incompatible with from_zoom" in result["content"][0]["text"]
+
+
 def test_scroll_rejects_partial_wheel_coordinates():
     result = call("scroll", {"pid": 1, "x": 10})
 
