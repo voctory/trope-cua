@@ -3,7 +3,6 @@ using CuaDriver.Win.Browser;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
 using CuaDriver.Win.Uia;
-using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
@@ -46,11 +45,8 @@ public sealed class RightClickTool : IDriverTool
         {
             if (windowId is null)
                 return ToolResult.Error("window_id is required for element_index right_click.");
-            var window = WindowEnumerator.Find(windowId.Value);
-            if (window is null)
-                return ToolResult.Error($"No window with window_id {windowId.Value}.");
-            if (window.Pid != pid)
-                return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
+            if (!ToolWindows.TryFindForPid(pid, windowId.Value, out var window, out var error))
+                return error!;
             var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
             await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
             if (BrowserWindowClassifier.IsLikelyBrowser(window))
@@ -77,18 +73,8 @@ public sealed class RightClickTool : IDriverTool
         }
         else
         {
-            if (windowId is null)
-            {
-                var w = WindowEnumerator.MainWindowForPid(pid);
-                if (w is null)
-                    return ToolResult.Error($"No window found for pid {pid}.");
-                windowId = w.WindowId;
-            }
-            var window = WindowEnumerator.Find(windowId.Value);
-            if (window is null)
-                return ToolResult.Error($"No window with window_id {windowId.Value}.");
-            if (window.Pid != pid)
-                return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
+            if (!ToolWindows.TryFindMainOrForPid(pid, windowId, out var window, out var error))
+                return error!;
 
             var ratio = context.State.ImageResizeRatio.TryGetValue((pid, window.WindowId), out var r) ? r : 1.0;
             var clickX = x!.Value * ratio;
