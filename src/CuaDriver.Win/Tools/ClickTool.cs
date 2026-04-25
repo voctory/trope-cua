@@ -43,9 +43,7 @@ public sealed class ClickTool : IDriverTool
         var action = JsonArgs.OptionalString(args, "action") ?? "press";
         var fromZoom = JsonArgs.OptionalBool(args, "from_zoom");
         var debugImageOut = JsonArgs.OptionalString(args, "debug_image_out");
-        var modifiers = JsonArgs.OptionalStringArray(args, "modifier");
-        if (modifiers.Length == 0)
-            modifiers = JsonArgs.OptionalStringArray(args, "modifiers");
+        var modifiers = JsonArgs.OptionalStringArray(args, "modifier", "modifiers");
 
         if (index is not null && (x is not null || y is not null))
             return ToolResult.Error("Provide either element_index or x/y, not both.");

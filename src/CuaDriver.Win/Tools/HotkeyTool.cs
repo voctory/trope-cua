@@ -14,7 +14,8 @@ public sealed class HotkeyTool : IDriverTool
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
             ("keys", JsonArgs.Prop("array", "Modifier(s) and one non-modifier key, e.g. [\"ctrl\", \"c\"]. Preferred shape.")),
             ("key", JsonArgs.Prop("string", "Main key. Windows-compatible alias used with modifiers.")),
-            ("modifiers", JsonArgs.Prop("array", "Modifiers: ctrl, shift, alt, win/cmd."))),
+            ("modifiers", JsonArgs.Prop("array", "Modifiers: ctrl, shift, alt, win/cmd.")),
+            ("modifier", JsonArgs.Prop("array", "Alias for modifiers."))),
         Destructive: true,
         Idempotent: false,
         OpenWorld: true);
@@ -35,9 +36,7 @@ public sealed class HotkeyTool : IDriverTool
         else
         {
             key = JsonArgs.RequiredString(args, "key");
-            modifiers = JsonArgs.OptionalStringArray(args, "modifiers");
-            if (modifiers.Length == 0)
-                modifiers = JsonArgs.OptionalStringArray(args, "modifier");
+            modifiers = JsonArgs.OptionalStringArray(args, "modifiers", "modifier");
         }
 
         if (!ToolWindows.TryFindMainOrForPid(pid, JsonArgs.OptionalLong(args, "window_id"), out var window, out var error))

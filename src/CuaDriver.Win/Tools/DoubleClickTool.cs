@@ -32,9 +32,7 @@ public sealed class DoubleClickTool : IDriverTool
         var index = JsonArgs.OptionalInt(args, "element_index");
         var x = JsonArgs.OptionalDouble(args, "x");
         var y = JsonArgs.OptionalDouble(args, "y");
-        var modifiers = JsonArgs.OptionalStringArray(args, "modifier");
-        if (modifiers.Length == 0)
-            modifiers = JsonArgs.OptionalStringArray(args, "modifiers");
+        var modifiers = JsonArgs.OptionalStringArray(args, "modifier", "modifiers");
 
         if (index is not null && (x is not null || y is not null))
             return ToolResult.Error("Provide either element_index or x/y, not both.");

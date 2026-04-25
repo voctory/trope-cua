@@ -26,9 +26,7 @@ public sealed class PressKeyTool : IDriverTool
         var pid = JsonArgs.RequiredInt(args, "pid");
         var key = JsonArgs.RequiredString(args, "key");
         var index = JsonArgs.OptionalInt(args, "element_index");
-        var modifiers = JsonArgs.OptionalStringArray(args, "modifiers");
-        if (modifiers.Length == 0)
-            modifiers = JsonArgs.OptionalStringArray(args, "modifier");
+        var modifiers = JsonArgs.OptionalStringArray(args, "modifiers", "modifier");
 
         var windowId = JsonArgs.OptionalLong(args, "window_id");
         if (index is not null && windowId is null)

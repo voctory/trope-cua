@@ -65,6 +65,12 @@ public static class JsonArgs
         return string.IsNullOrWhiteSpace(scalar) ? [] : [scalar];
     }
 
+    public static string[] OptionalStringArray(JsonObject args, string preferredName, string fallbackName)
+    {
+        var values = OptionalStringArray(args, preferredName);
+        return values.Length == 0 ? OptionalStringArray(args, fallbackName) : values;
+    }
+
     private static bool TryGet(JsonObject args, string name, [NotNullWhen(true)] out JsonNode? node) =>
         args.TryGetPropertyValue(name, out node) && node is not null;
 
