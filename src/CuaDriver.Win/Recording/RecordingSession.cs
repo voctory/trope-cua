@@ -87,7 +87,7 @@ internal sealed class RecordingSession
             var window = ResolveWindow(arguments, pid);
             var clickPoint = ResolveClickPoint(arguments, context, window);
 
-            WriteActionJson(turn.Directory, toolName, arguments, result, pid, window, clickPoint, turn.SessionStartTimestamp, actionStartTimestamp);
+            RecordingActionWriter.Write(turn.Directory, toolName, arguments, result, pid, window, clickPoint, turn.SessionStartTimestamp, actionStartTimestamp);
 
             if (pid is not null && window is not null)
             {
@@ -124,56 +124,6 @@ internal sealed class RecordingSession
                 Path.Combine(_outputDirectory, $"turn-{turnIndex:00000}"),
                 _sessionStartTimestamp);
         }
-    }
-
-    private static void WriteActionJson(
-        string turnDir,
-        string toolName,
-        JsonObject arguments,
-        ToolResult result,
-        int? pid,
-        WindowInfo? window,
-        PointF? clickPoint,
-        long sessionStartTimestamp,
-        long actionStartTimestamp)
-    {
-        var now = Stopwatch.GetTimestamp();
-        var payload = new JsonObject
-        {
-            ["tool"] = toolName,
-            ["arguments"] = arguments.DeepClone(),
-            ["result_summary"] = result.FirstText(),
-            ["result_structured"] = result.StructuredContent?.DeepClone(),
-            ["timestamp"] = DateTimeOffset.UtcNow.ToString("O"),
-            ["t_ms_from_session_start"] = ElapsedMs(sessionStartTimestamp, now),
-            ["t_start_ms_from_session_start"] = ElapsedMs(sessionStartTimestamp, actionStartTimestamp == 0 ? now : actionStartTimestamp),
-        };
-
-        if (pid is not null)
-            payload["pid"] = pid.Value;
-        if (window is not null)
-        {
-            payload["window_id"] = window.WindowId;
-            payload["window_bounds"] = new JsonObject
-            {
-                ["x"] = window.Bounds.X,
-                ["y"] = window.Bounds.Y,
-                ["width"] = window.Bounds.Width,
-                ["height"] = window.Bounds.Height,
-            };
-        }
-        if (clickPoint is not null)
-        {
-            payload["click_point"] = new JsonObject
-            {
-                ["x"] = clickPoint.Value.X,
-                ["y"] = clickPoint.Value.Y,
-            };
-        }
-
-        AtomicFile.WriteAllText(
-            Path.Combine(turnDir, "action.json"),
-            payload.ToJsonString(JsonUtil.SerializerOptions));
     }
 
     private static void WriteAppStateJson(string turnDir, int pid, long windowId, ToolContext context)
@@ -283,7 +233,7 @@ internal sealed class RecordingSession
             ["started_at_wall_clock"] = _sessionStartWallClock.ToString("O"),
             ["started_at_monotonic_ns"] = _sessionStartTimestamp,
             ["ended_at_monotonic_ns"] = endedTimestamp,
-            ["duration_ms"] = endedTimestamp == 0 ? 0 : ElapsedMs(_sessionStartTimestamp, endedTimestamp),
+            ["duration_ms"] = endedTimestamp == 0 ? 0 : RecordingClock.ElapsedMs(_sessionStartTimestamp, endedTimestamp),
             ["video"] = new JsonObject
             {
                 ["path"] = "recording.mp4",
@@ -304,10 +254,4 @@ internal sealed class RecordingSession
         AtomicFile.WriteAllText(Path.Combine(_outputDirectory!, "session.json"), payload.ToJsonString(JsonUtil.SerializerOptions));
     }
 
-    private static long ElapsedMs(long start, long end)
-    {
-        if (start <= 0 || end < start)
-            return 0;
-        return (long)((end - start) * 1000.0 / Stopwatch.Frequency);
-    }
 }
