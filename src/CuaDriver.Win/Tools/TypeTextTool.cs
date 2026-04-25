@@ -123,12 +123,12 @@ public sealed class TypeTextTool : IDriverTool
         var localX = point.Value.X - window.Bounds.X;
         var localY = point.Value.Y - window.Bounds.Y;
         var clickReceipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, 1, rightButton: false, cdpPort, cancellationToken).ConfigureAwait(false)
-                           ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {cdpPort}.");
+                           ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse", cdpPort);
         if (!clickReceipt.Ok)
             return clickReceipt;
 
         return await CdpBrowserBridge.TryTypeTextAsync(cdpPort, window.WindowId, text, delayMs, cancellationToken).ConfigureAwait(false)
-               ?? ActionReceipt.Failure("cdp.input.insert_text", $"No page tab found on CDP port {cdpPort}.");
+               ?? BrowserToolArgs.NoPageReceipt("cdp.input.insert_text", cdpPort);
     }
 
     private static async Task<ActionReceipt> TypeViaElementAsync(

@@ -83,7 +83,7 @@ public sealed class ClickTool : IDriverTool
                         var localX = rect.X + rect.Width / 2 - window.Bounds.X;
                         var localY = rect.Y + rect.Height / 2 - window.Bounds.Y;
                         receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, count, rightButton: false, cdpPort, cancellationToken).ConfigureAwait(false)
-                                  ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {cdpPort}.");
+                                  ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse", cdpPort.Value);
                         if (receipt.Ok)
                             await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
                         return ActionToolResult.FromReceipt(receipt);
@@ -192,7 +192,7 @@ public sealed class ClickTool : IDriverTool
                 if (hitCdpPort is not null)
                 {
                     receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, hitCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
-                              ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {hitCdpPort}.");
+                              ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse", hitCdpPort.Value);
                     if (receipt.Ok)
                         await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                     return ActionToolResult.FromReceipt(receipt);
@@ -233,7 +233,7 @@ public sealed class ClickTool : IDriverTool
             if (textCdpPort is not null)
             {
                 receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, textCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
-                          ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {textCdpPort}.");
+                          ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse", textCdpPort.Value);
                 if (receipt.Ok)
                     await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                 return ActionToolResult.FromReceipt(receipt);

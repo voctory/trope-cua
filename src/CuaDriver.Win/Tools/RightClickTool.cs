@@ -46,7 +46,7 @@ public sealed class RightClickTool : IDriverTool
                     var localX = rect.X + rect.Width / 2 - window.Bounds.X;
                     var localY = rect.Y + rect.Height / 2 - window.Bounds.Y;
                     receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, 1, rightButton: true, cdpPort, cancellationToken).ConfigureAwait(false)
-                              ?? ActionReceipt.Failure("cdp.input.dispatch_mouse.right", $"No page tab found on CDP port {cdpPort}.");
+                              ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse.right", cdpPort.Value);
                     if (receipt.Ok)
                         await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
                     return ActionToolResult.FromReceipt(receipt);
@@ -79,7 +79,7 @@ public sealed class RightClickTool : IDriverTool
                     if (hitCdpPort is not null)
                     {
                         receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, 1, rightButton: true, hitCdpPort, cancellationToken, target.Modifiers).ConfigureAwait(false)
-                                  ?? ActionReceipt.Failure("cdp.input.dispatch_mouse.right", $"No page tab found on CDP port {hitCdpPort}.");
+                                  ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse.right", hitCdpPort.Value);
                         if (receipt.Ok)
                             await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                         return ActionToolResult.FromReceipt(receipt);

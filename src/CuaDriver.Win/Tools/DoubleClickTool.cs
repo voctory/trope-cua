@@ -69,7 +69,7 @@ public sealed class DoubleClickTool : IDriverTool
             }
 
             receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, 2, rightButton: false, cdpPort, cancellationToken, target.Modifiers).ConfigureAwait(false)
-                      ?? ActionReceipt.Failure("cdp.input.dispatch_mouse.double", $"No page tab found on CDP port {cdpPort}.");
+                      ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse.double", cdpPort.Value);
         }
         else
         {
