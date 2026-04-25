@@ -1,5 +1,6 @@
 using System.Net.Http;
 using System.Net.WebSockets;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -67,7 +68,7 @@ public sealed class CdpBrowserBridge
         }
     }
 
-    public async Task<ActionReceipt?> TryTypeTextAsync(int? port, string text, CancellationToken ct)
+    public async Task<ActionReceipt?> TryTypeTextAsync(int? port, string text, int delayMs, CancellationToken ct)
     {
         if (port is null)
             return null;
@@ -81,8 +82,21 @@ public sealed class CdpBrowserBridge
 
             using var client = new ClientWebSocket();
             await client.ConnectAsync(new Uri(wsUrl), ct).ConfigureAwait(false);
-            await SendAsync(client, "Input.insertText", new JsonObject { ["text"] = text }, ct).ConfigureAwait(false);
-            return guard.Finish(ActionReceipt.Success("cdp.input.insert_text"));
+            var units = TextElements(text);
+            if (delayMs <= 0 || units.Count <= 1)
+            {
+                await SendAsync(client, "Input.insertText", new JsonObject { ["text"] = text }, ct).ConfigureAwait(false);
+                return guard.Finish(ActionReceipt.Success("cdp.input.insert_text"));
+            }
+
+            for (var i = 0; i < units.Count; i++)
+            {
+                await SendAsync(client, "Input.insertText", new JsonObject { ["text"] = units[i] }, ct).ConfigureAwait(false);
+                if (i + 1 < units.Count)
+                    await Task.Delay(delayMs, ct).ConfigureAwait(false);
+            }
+
+            return guard.Finish(ActionReceipt.Success("cdp.input.insert_text.stream"));
         }
         catch (Exception ex)
         {
@@ -203,4 +217,13 @@ public sealed class CdpBrowserBridge
     }
 
     private static int _nextId;
+
+    private static IReadOnlyList<string> TextElements(string text)
+    {
+        var result = new List<string>();
+        var enumerator = StringInfo.GetTextElementEnumerator(text);
+        while (enumerator.MoveNext())
+            result.Add(enumerator.GetTextElement());
+        return result;
+    }
 }

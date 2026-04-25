@@ -58,9 +58,11 @@ internal static class ToolDescriptions
         """;
 
     public const string TypeText = """
-        Insert text into a target pid/window. Use element_index + window_id from the last get_window_state snapshot when filling a specific field; this uses UIA ValuePattern and replaces the target element value. Without element_index, type_text targets the last UIA text target, then Chromium CDP Input.insertText when cdp_port is configured, then a native child HWND text route for classic controls.
+        Insert text into a target pid/window. Use element_index + window_id from the last get_window_state snapshot when filling a specific field; this streams the visible value through IA2/UIA text setters by default. Without element_index, type_text targets the last UIA text target, then Chromium CDP Input.insertText when cdp_port is configured, then a native child HWND text route for classic controls.
 
         For Chromium or Electron inputs, first click the input or pass element_index so the driver has a text target. If the browser route has no safe target and no cdp_port, the tool refuses blind WM_CHAR delivery rather than typing into the wrong foreground app.
+
+        delay_ms spaces streamed text chunks so autocomplete and reactive inputs can keep up. Default is 30 ms, matching the Mac type_text_chars pacing. Pass delay_ms=0 for the old instant/bulk behavior. For an explicitly atomic write, use set_value.
 
         Special keys such as Return, Escape, arrows, and shortcuts go through press_key or hotkey, not type_text.
         """;
@@ -68,7 +70,7 @@ internal static class ToolDescriptions
     public const string TypeTextChars = """
         Compatibility surface for type_text. It accepts the same pid, window_id, element_index, text, and cdp_port arguments and routes through the same background-safe text insertion logic.
 
-        delay_ms spaces character delivery for native WM_CHAR fallback routes, matching the Mac pacing knob. Default is 30 ms, clamped to 0-200. CDP and UIA value routes may insert the full text at once because those APIs are already atomic.
+        delay_ms spaces character delivery, matching the Mac pacing knob. Default is 30 ms, clamped to 0-200. Pass delay_ms=0 when an instant/bulk write is explicitly desired.
 
         Use this name when a Mac-oriented caller expects type_text_chars for character-by-character entry; on Windows the implementation intentionally shares the safer type_text routing where possible.
         """;

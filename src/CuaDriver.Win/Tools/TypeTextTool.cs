@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Browser;
 using CuaDriver.Win.Input;
@@ -17,6 +19,7 @@ public sealed class TypeTextTool : IDriverTool
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
             ("element_index", JsonArgs.Prop("integer", "Optional element index for UIA ValuePattern.")),
             ("text", JsonArgs.Prop("string", "Text to type or set.")),
+            ("delay_ms", JsonArgs.Prop("integer", "Milliseconds between streamed text chunks, 0-200. Default 30.")),
             ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium debugging port."))),
         Destructive: true,
         Idempotent: false,
@@ -28,7 +31,7 @@ public sealed class TypeTextTool : IDriverTool
         var text = JsonArgs.RequiredString(args, "text");
         var windowId = JsonArgs.OptionalLong(args, "window_id");
         var index = JsonArgs.OptionalInt(args, "element_index");
-        var delayMs = Math.Clamp(JsonArgs.OptionalInt(args, "delay_ms") ?? 4, 0, 200);
+        var delayMs = Math.Clamp(JsonArgs.OptionalInt(args, "delay_ms") ?? 30, 0, 200);
 
         ActionReceipt receipt;
         if (index is not null)
@@ -37,9 +40,7 @@ public sealed class TypeTextTool : IDriverTool
                 return ToolResult.Error("window_id is required for element_index type_text.");
             var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
             await AgentCursorTooling.MoveToElementAsync(context, element, cancellationToken).ConfigureAwait(false);
-            receipt = MsaaActions.SetEditableTextAtElement(new IntPtr(windowId.Value), element, text);
-            if (!receipt.Ok)
-                receipt = UiAutomationActions.SetValue(element, text);
+            receipt = await TypeViaElementAsync(context, new IntPtr(windowId.Value), element, text, delayMs, cancellationToken).ConfigureAwait(false);
         }
         else
         {
@@ -60,16 +61,14 @@ public sealed class TypeTextTool : IDriverTool
             if (context.State.LastUiaTextTarget.TryGetValue((pid, windowId.Value), out var textElement))
             {
                 await AgentCursorTooling.MoveToElementAsync(context, textElement, cancellationToken).ConfigureAwait(false);
-                var setReceipt = MsaaActions.SetEditableTextAtElement(window.Hwnd, textElement, text);
-                if (!setReceipt.Ok)
-                    setReceipt = UiAutomationActions.SetValue(textElement, text);
+                var setReceipt = await TypeViaElementAsync(context, window.Hwnd, textElement, text, delayMs, cancellationToken).ConfigureAwait(false);
                 if (setReceipt.Ok)
                     return ToolResult.Text("✅ " + (setReceipt with { Route = "uia.last_text_target." + setReceipt.Route }).ToJson());
             }
 
             var cdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
             var cdp = new CdpBrowserBridge(context.State.UiaTree);
-            var cdpReceipt = await cdp.TryTypeTextAsync(cdpPort, text, cancellationToken).ConfigureAwait(false);
+            var cdpReceipt = await cdp.TryTypeTextAsync(cdpPort, text, delayMs, cancellationToken).ConfigureAwait(false);
             if (cdpReceipt is not null)
             {
                 receipt = cdpReceipt;
@@ -91,5 +90,63 @@ public sealed class TypeTextTool : IDriverTool
         }
 
         return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+    }
+
+    private static async Task<ActionReceipt> TypeViaElementAsync(
+        ToolContext context,
+        IntPtr rootHwnd,
+        System.Windows.Automation.AutomationElement element,
+        string text,
+        int delayMs,
+        CancellationToken cancellationToken)
+    {
+        var units = TextElements(text);
+        if (delayMs <= 0 || units.Count <= 1)
+            return SetElementText(rootHwnd, element, text);
+
+        ActionReceipt? last = null;
+        var prefix = new StringBuilder(text.Length);
+        for (var i = 0; i < units.Count; i++)
+        {
+            prefix.Append(units[i]);
+            var receipt = SetElementText(rootHwnd, element, prefix.ToString());
+            if (!receipt.Ok)
+            {
+                if (last is null)
+                    return SetElementText(rootHwnd, element, text);
+
+                var final = SetElementText(rootHwnd, element, text);
+                return final.Ok
+                    ? final with { Route = $"{last.Route}.stream.final_set" }
+                    : receipt;
+            }
+
+            last = receipt;
+            context.State.AgentCursor.KeepAlive();
+            if (i + 1 < units.Count)
+                await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
+        }
+
+        return (last ?? SetElementText(rootHwnd, element, text)) with
+        {
+            Route = $"{(last?.Route ?? "uia.value.set")}.stream"
+        };
+    }
+
+    private static ActionReceipt SetElementText(IntPtr rootHwnd, System.Windows.Automation.AutomationElement element, string text)
+    {
+        var receipt = MsaaActions.SetEditableTextAtElement(rootHwnd, element, text);
+        if (!receipt.Ok)
+            receipt = UiAutomationActions.SetValue(element, text);
+        return receipt;
+    }
+
+    private static IReadOnlyList<string> TextElements(string text)
+    {
+        var result = new List<string>();
+        var enumerator = StringInfo.GetTextElementEnumerator(text);
+        while (enumerator.MoveNext())
+            result.Add(enumerator.GetTextElement());
+        return result;
     }
 }
