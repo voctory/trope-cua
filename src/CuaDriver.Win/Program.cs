@@ -11,6 +11,24 @@ public static class Program
     public static async Task<int> Main(string[] args)
     {
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
+        try
+        {
+            return await RunAsync(args).ConfigureAwait(false);
+        }
+        catch (JsonException ex)
+        {
+            Console.Error.WriteLine($"Invalid JSON arguments: {ex.Message}");
+            return 64;
+        }
+        catch (ArgumentException ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 64;
+        }
+    }
+
+    private static async Task<int> RunAsync(string[] args)
+    {
         var state = new DriverState();
         var registry = ToolRegistry.CreateDefault(state);
         var context = new ToolContext { State = state, Registry = registry };
