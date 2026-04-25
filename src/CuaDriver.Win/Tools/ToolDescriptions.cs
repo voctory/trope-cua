@@ -72,7 +72,9 @@ internal static class ToolDescriptions
     public const string PressKey = """
         Press and release a single key against a target pid/window without parent-session SendInput. The target does not need to be foreground if the target HWND accepts posted key messages.
 
-        Pass window_id when you know the target window; otherwise the driver's current main-window heuristic is used. Key vocabulary: enter/return, tab, escape/esc, arrows, space, backspace, delete, home, end, pageup, pagedown, f1-f24, plus any letter or digit. For true key combinations such as ctrl+c, use hotkey.
+        Optional element_index + window_id from the last get_window_state snapshot targets that element's native HWND when available, falling back to the root target window. This is the Windows equivalent of the Mac focus-then-key route while avoiding parent-session SendInput.
+
+        Pass window_id when you know the target window; otherwise the driver's current main-window heuristic is used. Key vocabulary: enter/return, tab, escape/esc, arrows, space, backspace, delete, home, end, pageup, pagedown, f1-f24, plus any letter or digit. modifiers can hold ctrl, shift, alt/option, or win/cmd. For true key combinations such as ctrl+c, use hotkey.
         """;
 
     public const string Hotkey = """
