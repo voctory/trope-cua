@@ -22,7 +22,7 @@ The Windows port intentionally does **not** treat `SendInput` as the normal equi
 - Classic Win32 targeted message fallback for native controls, typing, keys, and scroll; browser web content without UIA/CDP now returns an explicit failure instead of reporting unverified delivery.
 - Visual agent cursor overlay drawn in a click-through, no-activate WinForms window. It does not move the user's hardware cursor.
 - Trajectory recording writes Mac-compatible `turn-NNNNN` folders with `action.json`, `app_state.json`, `screenshot.png`, and click markers, plus `replay_trajectory` for re-driving recorded action calls.
-- `launch_app` refuses parent-session launches by default because Windows ShellExecute/CreateProcess can foreground the target. Use `allow_foreground=true` only when that is intentional, or run launches in the child-session/AppBroadcast lane.
+- `launch_app` refuses parent-session launches by default because Windows ShellExecute/CreateProcess can foreground the target. Use `unsafe_allow_foreground=true` only when that is intentional, or run launches in the child-session/AppBroadcast lane.
 - GDI/PrintWindow screenshot fallback plus a WGC integration seam. Production WGC capture is documented in `docs/capture.md` because it needs Windows-only WinRT/D3D plumbing and validation on the target OS.
 - Child-session broker scaffolding for the hard-case lane.
 - AppBroadcast/InputInjector lane documentation and disabled source hook for Microsoft-provisioned builds.
