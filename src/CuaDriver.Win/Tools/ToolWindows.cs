@@ -40,7 +40,12 @@ internal static class ToolWindows
         return true;
     }
 
-    public static bool TryFindMainOrForPid(int pid, long? windowId, out WindowInfo window, out ToolResult? error)
+    public static bool TryFindMainOrForPid(
+        int pid,
+        long? windowId,
+        out WindowInfo window,
+        out ToolResult? error,
+        string? mainMissingMessage = null)
     {
         if (windowId is not null)
             return TryFindForPid(pid, windowId.Value, out window, out error);
@@ -49,7 +54,7 @@ internal static class ToolWindows
         if (main is null)
         {
             window = null!;
-            error = ToolResult.Error($"No window found for pid {pid}.");
+            error = ToolResult.Error(mainMissingMessage ?? $"No window found for pid {pid}.");
             return false;
         }
 

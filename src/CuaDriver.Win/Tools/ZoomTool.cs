@@ -4,7 +4,6 @@ using System.IO;
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Capture;
 using CuaDriver.Win.Tooling;
-using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
@@ -39,13 +38,8 @@ public sealed class ZoomTool : IDriverTool
         if (x2 - x1 > MaxZoomWidth)
             return Task.FromResult(ToolResult.Error($"Zoom region too wide: {(int)(x2 - x1)} px > {(int)MaxZoomWidth} px max."));
 
-        var window = windowId is not null
-            ? WindowEnumerator.Find(windowId.Value)
-            : WindowEnumerator.MainWindowForPid(pid);
-        if (window is null)
-            return Task.FromResult(ToolResult.Error(windowId is null ? $"No capturable window for pid {pid}." : $"No window with window_id {windowId.Value}."));
-        if (window.Pid != pid)
-            return Task.FromResult(ToolResult.Error($"window_id {window.WindowId} belongs to pid {window.Pid}, not pid {pid}."));
+        if (!ToolWindows.TryFindMainOrForPid(pid, windowId, out var window, out var error, $"No capturable window for pid {pid}."))
+            return Task.FromResult(error!);
 
         try
         {
