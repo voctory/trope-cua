@@ -20,7 +20,15 @@ if ($Runtime -eq "win-x64" -and (Test-Path $ProgramFilesX64Dotnet)) {
 }
 
 $env:CUA_DRIVER_EXE = Join-Path $Root "artifacts\publish\cua-driver-win.exe"
-python -m pytest (Join-Path $Root "tests\integration")
-if ($LASTEXITCODE -ne 0) {
-  throw "pytest failed with exit code $LASTEXITCODE"
+$TestsDir = Join-Path $Root "tests\integration"
+try {
+  python -m pytest $TestsDir
+  if ($LASTEXITCODE -ne 0) {
+    throw "pytest failed with exit code $LASTEXITCODE"
+  }
+} finally {
+  $Pycache = Join-Path $TestsDir "__pycache__"
+  if (Test-Path $Pycache) {
+    Remove-Item -LiteralPath $Pycache -Recurse -Force
+  }
 }
