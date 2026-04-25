@@ -18,7 +18,7 @@ public sealed class CdpBrowserBridge
         _uia = uia;
     }
 
-    public async Task<ActionReceipt?> TryClickAsync(IntPtr hwnd, long windowId, double x, double y, int count, bool rightButton, int? port, CancellationToken ct)
+    public async Task<ActionReceipt?> TryClickAsync(IntPtr hwnd, long windowId, double x, double y, int count, bool rightButton, int? port, CancellationToken ct, IReadOnlyCollection<string>? modifiers = null)
     {
         if (port is null)
             return null;
@@ -36,6 +36,7 @@ public sealed class CdpBrowserBridge
             await client.ConnectAsync(new Uri(wsUrl), ct).ConfigureAwait(false);
 
             var button = rightButton ? "right" : "left";
+            var modifierMask = CdpModifierMask(modifiers);
             await SendAsync(client, "Input.dispatchMouseEvent", new JsonObject
             {
                 ["type"] = "mousePressed",
@@ -43,7 +44,8 @@ public sealed class CdpBrowserBridge
                 ["y"] = viewport.Y,
                 ["button"] = button,
                 ["buttons"] = rightButton ? 2 : 1,
-                ["clickCount"] = Math.Max(1, count)
+                ["clickCount"] = Math.Max(1, count),
+                ["modifiers"] = modifierMask
             }, ct).ConfigureAwait(false);
 
             await SendAsync(client, "Input.dispatchMouseEvent", new JsonObject
@@ -53,7 +55,8 @@ public sealed class CdpBrowserBridge
                 ["y"] = viewport.Y,
                 ["button"] = button,
                 ["buttons"] = 0,
-                ["clickCount"] = Math.Max(1, count)
+                ["clickCount"] = Math.Max(1, count),
+                ["modifiers"] = modifierMask
             }, ct).ConfigureAwait(false);
 
             return guard.Finish(ActionReceipt.Success(rightButton ? "cdp.input.dispatch_mouse.right" : "cdp.input.dispatch_mouse"));
@@ -138,6 +141,38 @@ public sealed class CdpBrowserBridge
 
         // Fallback: assume caller's pixel coordinate is already content-relative.
         return (x, y);
+    }
+
+    private static int CdpModifierMask(IReadOnlyCollection<string>? modifiers)
+    {
+        if (modifiers is null || modifiers.Count == 0)
+            return 0;
+
+        var mask = 0;
+        foreach (var modifier in modifiers)
+        {
+            switch (modifier.Trim().ToLowerInvariant())
+            {
+                case "alt":
+                case "option":
+                    mask |= 1;
+                    break;
+                case "ctrl":
+                case "control":
+                    mask |= 2;
+                    break;
+                case "cmd":
+                case "meta":
+                case "win":
+                    mask |= 4;
+                    break;
+                case "shift":
+                    mask |= 8;
+                    break;
+            }
+        }
+
+        return mask;
     }
 
     private static async Task SendAsync(ClientWebSocket ws, string method, JsonObject parameters, CancellationToken ct)

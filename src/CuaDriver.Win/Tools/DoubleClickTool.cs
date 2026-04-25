@@ -13,6 +13,8 @@ public sealed class DoubleClickTool : IDriverTool
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
             ("x", JsonArgs.Prop("number", "Window-local screenshot X.")),
             ("y", JsonArgs.Prop("number", "Window-local screenshot Y.")),
+            ("modifier", JsonArgs.Prop("array", "Modifier keys held during pixel double-clicks: ctrl, shift, alt/option, win/cmd.")),
+            ("modifiers", JsonArgs.Prop("array", "Alias for modifier.")),
             ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium remote debugging port."))),
         Destructive: true,
         Idempotent: false,

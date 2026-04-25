@@ -6,33 +6,45 @@ public sealed record WindowMessageDispatch(ActionReceipt Receipt, IntPtr TargetH
 
 public static class WindowMessageInput
 {
-    public static async Task<WindowMessageDispatch> ClickAsync(IntPtr hwnd, double x, double y, int count, bool rightButton, CancellationToken ct)
+    public static async Task<WindowMessageDispatch> ClickAsync(IntPtr hwnd, double x, double y, int count, bool rightButton, CancellationToken ct, string[]? modifiers = null)
     {
         var guard = NoRegressionGuard.Capture();
         var resolved = ResolvePointTarget(hwnd, x, y);
         try
         {
             var lparam = NativeMethods.MakeLParam(resolved.ClientPoint.X, resolved.ClientPoint.Y);
-
-            for (var i = 0; i < Math.Max(1, count); i++)
+            var modifierKeys = (modifiers ?? []).Select(VirtualKey).Where(v => v != 0).Distinct().ToArray();
+            var modifierFlags = MouseModifierFlags(modifiers ?? []);
+            try
             {
-                NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_MOUSEMOVE, UIntPtr.Zero, lparam);
-                if (rightButton)
-                {
-                    NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_RBUTTONDOWN, (UIntPtr)0x0002, lparam);
-                    await Task.Delay(35, ct).ConfigureAwait(false);
-                    NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_RBUTTONUP, UIntPtr.Zero, lparam);
-                    NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_CONTEXTMENU, UIntPtr.Zero, lparam);
-                }
-                else
-                {
-                    NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_LBUTTONDOWN, (UIntPtr)0x0001, lparam);
-                    await Task.Delay(35, ct).ConfigureAwait(false);
-                    NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_LBUTTONUP, UIntPtr.Zero, lparam);
-                }
+                foreach (var vk in modifierKeys)
+                    NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_KEYDOWN, (UIntPtr)vk, IntPtr.Zero);
 
-                if (i + 1 < count)
-                    await Task.Delay(80, ct).ConfigureAwait(false);
+                for (var i = 0; i < Math.Max(1, count); i++)
+                {
+                    NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_MOUSEMOVE, (UIntPtr)modifierFlags, lparam);
+                    if (rightButton)
+                    {
+                        NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_RBUTTONDOWN, (UIntPtr)(modifierFlags | 0x0002), lparam);
+                        await Task.Delay(35, ct).ConfigureAwait(false);
+                        NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_RBUTTONUP, (UIntPtr)modifierFlags, lparam);
+                        NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_CONTEXTMENU, UIntPtr.Zero, lparam);
+                    }
+                    else
+                    {
+                        NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_LBUTTONDOWN, (UIntPtr)(modifierFlags | 0x0001), lparam);
+                        await Task.Delay(35, ct).ConfigureAwait(false);
+                        NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_LBUTTONUP, (UIntPtr)modifierFlags, lparam);
+                    }
+
+                    if (i + 1 < count)
+                        await Task.Delay(80, ct).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                foreach (var vk in modifierKeys.Reverse())
+                    NativeMethods.PostMessageW(resolved.TargetHwnd, NativeMethods.WM_KEYUP, (UIntPtr)vk, IntPtr.Zero);
             }
 
             var receipt = guard.Finish(ActionReceipt.Success(rightButton ? "hwnd.postmessage.right_click" : "hwnd.postmessage.click"));
@@ -255,5 +267,24 @@ public static class WindowMessageInput
             var s when s.StartsWith("f", StringComparison.Ordinal) && int.TryParse(s[1..], out var n) && n is >= 1 and <= 24 => 0x70 + n - 1,
             _ => 0
         };
+    }
+
+    private static int MouseModifierFlags(IEnumerable<string> modifiers)
+    {
+        var flags = 0;
+        foreach (var modifier in modifiers)
+        {
+            switch (modifier.Trim().ToLowerInvariant())
+            {
+                case "ctrl":
+                case "control":
+                    flags |= 0x0008;
+                    break;
+                case "shift":
+                    flags |= 0x0004;
+                    break;
+            }
+        }
+        return flags;
     }
 }

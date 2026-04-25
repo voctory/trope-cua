@@ -21,6 +21,8 @@ public sealed class ClickTool : IDriverTool
             ("x", JsonArgs.Prop("number", "Window-local screenshot X.")),
             ("y", JsonArgs.Prop("number", "Window-local screenshot Y.")),
             ("action", JsonArgs.Prop("string", "UIA action name: press, show_menu, pick, confirm, cancel, open.")),
+            ("modifier", JsonArgs.Prop("array", "Modifier keys held during pixel clicks: ctrl, shift, alt/option, win/cmd.")),
+            ("modifiers", JsonArgs.Prop("array", "Alias for modifier.")),
             ("count", JsonArgs.Prop("integer", "Click count. Pixel path only.")),
             ("from_zoom", JsonArgs.Prop("boolean", "When true, x/y are pixel coordinates in the last zoom image for this pid.")),
             ("debug_image_out", JsonArgs.Prop("string", "Optional path. For pixel clicks, capture the target window, draw a red crosshair at the received x/y in resized screenshot coordinates, and write a PNG before dispatch. Requires window_id; incompatible with from_zoom.")),
@@ -41,6 +43,9 @@ public sealed class ClickTool : IDriverTool
         var action = JsonArgs.OptionalString(args, "action") ?? "press";
         var fromZoom = JsonArgs.OptionalBool(args, "from_zoom");
         var debugImageOut = JsonArgs.OptionalString(args, "debug_image_out");
+        var modifiers = JsonArgs.OptionalStringArray(args, "modifier");
+        if (modifiers.Length == 0)
+            modifiers = JsonArgs.OptionalStringArray(args, "modifiers");
 
         if (index is not null && (x is not null || y is not null))
             return ToolResult.Error("Provide either element_index or x/y, not both.");
@@ -158,7 +163,7 @@ public sealed class ClickTool : IDriverTool
             var resolved = WindowMessageInput.ResolvePointTarget(window.Hwnd, clickX, clickY);
 
             var hit = context.State.UiaTree.HitTest(pid, window.WindowId, resolved.ScreenPoint);
-            if (hit is { IsClickAction: true })
+            if (hit is { IsClickAction: true } && modifiers.Length == 0)
             {
                 await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
                 if (BrowserWindowClassifier.IsLikelyBrowser(window))
@@ -167,7 +172,7 @@ public sealed class ClickTool : IDriverTool
                     if (hitCdpPort is not null)
                     {
                         var hitCdp = new CdpBrowserBridge(context.State.UiaTree);
-                        receipt = await hitCdp.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, hitCdpPort, cancellationToken).ConfigureAwait(false)
+                        receipt = await hitCdp.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, hitCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
                                   ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {hitCdpPort}.");
                         if (receipt.Ok)
                             await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
@@ -207,10 +212,10 @@ public sealed class ClickTool : IDriverTool
             var cdpPort = JsonArgs.OptionalInt(args, "cdp_port") ?? context.State.Config.ChromiumDebuggingPort;
             var cdp = new CdpBrowserBridge(context.State.UiaTree);
             await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
-            receipt = await cdp.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, cdpPort, cancellationToken).ConfigureAwait(false)
+            receipt = await cdp.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, cdpPort, cancellationToken, modifiers).ConfigureAwait(false)
                       ?? (BrowserWindowClassifier.IsLikelyBrowser(window)
                           ? ActionReceipt.Failure("requires_cdp_or_uia_hit_test", "Browser web content did not expose an actionable UIA target and no CDP port was configured; refusing to report a blind PostMessage click as delivered.")
-                          : (await WindowMessageInput.ClickAsync(window.Hwnd, clickX, clickY, count, rightButton: false, cancellationToken).ConfigureAwait(false)).Receipt);
+                          : (await WindowMessageInput.ClickAsync(window.Hwnd, clickX, clickY, count, rightButton: false, cancellationToken, modifiers).ConfigureAwait(false)).Receipt);
 
             if (receipt.Ok)
             {
