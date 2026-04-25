@@ -39,6 +39,22 @@ public static class Program
             return 0;
         }
 
+        if (command == "daemon-status")
+        {
+            var result = await new Mcp.NamedPipeDaemon(registry, context).TryStatusAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false)
+                         ?? ToolResult.Error($"daemon not running on named pipe {Mcp.NamedPipeDaemon.PipeName}");
+            PrintResult(result);
+            return result.IsError ? 1 : 0;
+        }
+
+        if (command == "daemon-stop" || command == "daemon-shutdown")
+        {
+            var result = await new Mcp.NamedPipeDaemon(registry, context).TryShutdownAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false)
+                         ?? ToolResult.Error($"daemon not running on named pipe {Mcp.NamedPipeDaemon.PipeName}");
+            PrintResult(result);
+            return result.IsError ? 1 : 0;
+        }
+
         if (command == "tools")
         {
             foreach (var tool in registry.Tools)
@@ -75,6 +91,8 @@ public static class Program
         Console.WriteLine("cua-driver-win <tool> [json]");
         Console.WriteLine("cua-driver-win mcp");
         Console.WriteLine("cua-driver-win serve");
+        Console.WriteLine("cua-driver-win daemon-status");
+        Console.WriteLine("cua-driver-win daemon-stop");
         Console.WriteLine("cua-driver-win call <tool> [json]");
         Console.WriteLine();
         Console.WriteLine("Tools:");
