@@ -18,7 +18,7 @@ internal static class UiAutomationActions
                 var rect = element.Current.BoundingRectangle;
                 if (!rect.IsEmpty)
                 {
-                    var hwnd = NativeHwnd(element);
+                    var hwnd = AutomationElementNative.HwndOrZero(element);
                     if (hwnd != IntPtr.Zero)
                     {
                         var frame = NativeMethods.GetBestWindowRect(hwnd);
@@ -122,7 +122,7 @@ internal static class UiAutomationActions
                 return guard.Finish(ActionReceipt.Success("uia.value.set"));
             }
 
-            var hwnd = NativeHwnd(element);
+            var hwnd = AutomationElementNative.HwndOrZero(element);
             if (hwnd != IntPtr.Zero)
                 return WindowMessageInput.SetText(hwnd, value);
 
@@ -180,18 +180,5 @@ internal static class UiAutomationActions
 
         value = null;
         return false;
-    }
-
-    private static IntPtr NativeHwnd(AutomationElement element)
-    {
-        try
-        {
-            var h = element.Current.NativeWindowHandle;
-            return h == 0 ? IntPtr.Zero : new IntPtr(h);
-        }
-        catch
-        {
-            return IntPtr.Zero;
-        }
     }
 }

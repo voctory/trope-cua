@@ -1,5 +1,6 @@
 using System.Windows.Automation;
 using CuaDriver.Win.Tooling;
+using CuaDriver.Win.Uia;
 using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
@@ -60,19 +61,12 @@ internal static class AgentCursorTooling
     private static IntPtr TargetForElement(AutomationElement element, IntPtr fallbackHwnd)
     {
         var fallback = TargetRoot(fallbackHwnd);
-        try
+        var native = AutomationElementNative.HwndOrZero(element);
+        if (native != IntPtr.Zero)
         {
-            var native = element.Current.NativeWindowHandle;
-            if (native != 0)
-            {
-                var root = TargetRoot(new IntPtr(native));
-                if (root != IntPtr.Zero)
-                    return root;
-            }
-        }
-        catch
-        {
-            // Use the root window supplied by the tool when UIA cannot expose a native HWND.
+            var root = TargetRoot(native);
+            if (root != IntPtr.Zero)
+                return root;
         }
 
         return fallback;
