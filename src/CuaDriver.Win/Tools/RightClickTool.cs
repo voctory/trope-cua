@@ -47,6 +47,7 @@ public sealed class RightClickTool : IDriverTool
             if (window.Pid != pid)
                 return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
             var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
+            await AgentCursorTooling.MoveToElementAsync(context, element, cancellationToken).ConfigureAwait(false);
             if (BrowserWindowClassifier.IsLikelyBrowser(window))
             {
                 var rect = element.Current.BoundingRectangle;
@@ -55,12 +56,11 @@ public sealed class RightClickTool : IDriverTool
                 {
                     var localX = rect.X + rect.Width / 2 - window.Bounds.X;
                     var localY = rect.Y + rect.Height / 2 - window.Bounds.Y;
-                    await context.State.AgentCursor.MoveToAsync(
-                        new POINT((int)Math.Round(rect.X + rect.Width / 2), (int)Math.Round(rect.Y + rect.Height / 2)),
-                        cancellationToken).ConfigureAwait(false);
                     var cdp = new CdpBrowserBridge(context.State.UiaTree);
                     receipt = await cdp.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, 1, rightButton: true, cdpPort, cancellationToken).ConfigureAwait(false)
                               ?? ActionReceipt.Failure("cdp.input.dispatch_mouse.right", $"No page tab found on CDP port {cdpPort}.");
+                    if (receipt.Ok)
+                        await AgentCursorTooling.PulseAtElementAsync(context, element, cancellationToken).ConfigureAwait(false);
                     return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
                 }
 
@@ -68,6 +68,8 @@ public sealed class RightClickTool : IDriverTool
                 return ToolResult.Text("❌ " + receipt.ToJson(), true);
             }
             receipt = await UiAutomationActions.InvokeElementAsync(element, "show_menu", cancellationToken).ConfigureAwait(false);
+            if (receipt.Ok)
+                await AgentCursorTooling.PulseAtElementAsync(context, element, cancellationToken).ConfigureAwait(false);
         }
         else
         {

@@ -18,7 +18,7 @@ public sealed class SetValueTool : IDriverTool
         Destructive: true,
         Idempotent: true);
 
-    public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
+    public async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
         var pid = JsonArgs.RequiredInt(args, "pid");
         var windowId = JsonArgs.RequiredLong(args, "window_id");
@@ -26,6 +26,8 @@ public sealed class SetValueTool : IDriverTool
         var value = JsonArgs.RequiredString(args, "value");
 
         var element = context.State.UiaTree.GetCachedElement(pid, windowId, index);
+        await AgentCursorTooling.MoveToElementAsync(context, element, cancellationToken).ConfigureAwait(false);
+
         ActionReceipt receipt;
         if (double.TryParse(value, out var number))
         {
@@ -38,6 +40,6 @@ public sealed class SetValueTool : IDriverTool
             receipt = UiAutomationActions.SetValue(element, value);
         }
 
-        return Task.FromResult(ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok));
+        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
     }
 }

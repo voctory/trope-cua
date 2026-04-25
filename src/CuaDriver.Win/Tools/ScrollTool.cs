@@ -63,9 +63,14 @@ public sealed class ScrollTool : IDriverTool
         if (index is not null)
         {
             var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
+            await AgentCursorTooling.MoveToElementAsync(context, element, ct).ConfigureAwait(false);
             var elementHwnd = ElementHwnd(element);
             if (elementHwnd != IntPtr.Zero)
                 targetHwnd = elementHwnd;
+        }
+        else
+        {
+            await context.State.AgentCursor.MoveToAsync(WindowMessageInput.CenterOf(window.Hwnd), ct).ConfigureAwait(false);
         }
 
         ActionReceipt receipt = ActionReceipt.Success("hwnd.key.scroll");

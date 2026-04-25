@@ -76,6 +76,7 @@ public sealed class ClickTool : IDriverTool
                 return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
 
             var element = context.State.UiaTree.GetCachedElement(pid, windowId!.Value, index.Value);
+            await AgentCursorTooling.MoveToElementAsync(context, element, cancellationToken).ConfigureAwait(false);
             if (BrowserWindowClassifier.IsLikelyBrowser(window))
             {
                 var rect = element.Current.BoundingRectangle;
@@ -86,14 +87,11 @@ public sealed class ClickTool : IDriverTool
                     {
                         var localX = rect.X + rect.Width / 2 - window.Bounds.X;
                         var localY = rect.Y + rect.Height / 2 - window.Bounds.Y;
-                        await context.State.AgentCursor.MoveToAsync(
-                            new POINT((int)Math.Round(rect.X + rect.Width / 2), (int)Math.Round(rect.Y + rect.Height / 2)),
-                            cancellationToken).ConfigureAwait(false);
                         var cdp = new CdpBrowserBridge(context.State.UiaTree);
                         receipt = await cdp.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, count, rightButton: false, cdpPort, cancellationToken).ConfigureAwait(false)
                                   ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {cdpPort}.");
                         if (receipt.Ok)
-                            await PulseCursorAtElementAsync(context, element, cancellationToken).ConfigureAwait(false);
+                            await AgentCursorTooling.PulseAtElementAsync(context, element, cancellationToken).ConfigureAwait(false);
                         return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
                     }
                 }
@@ -103,10 +101,9 @@ public sealed class ClickTool : IDriverTool
                 return ToolResult.Text("❌ " + receipt.ToJson(), true);
             }
 
-            await MoveCursorToElementAsync(context, element, cancellationToken).ConfigureAwait(false);
             receipt = await UiAutomationActions.InvokeElementAsync(element, action, cancellationToken).ConfigureAwait(false);
             context.State.LastUiaTextTarget[(pid, windowId.Value)] = element;
-            await PulseCursorAtElementAsync(context, element, cancellationToken).ConfigureAwait(false);
+            await AgentCursorTooling.PulseAtElementAsync(context, element, cancellationToken).ConfigureAwait(false);
         }
         else
         {
@@ -227,39 +224,4 @@ public sealed class ClickTool : IDriverTool
         return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
     }
 
-    private static async Task MoveCursorToElementAsync(ToolContext context, AutomationElement element, CancellationToken ct)
-    {
-        try
-        {
-            var rect = element.Current.BoundingRectangle;
-            if (!rect.IsEmpty)
-            {
-                await context.State.AgentCursor.MoveToAsync(
-                    new POINT((int)Math.Round(rect.X + rect.Width / 2), (int)Math.Round(rect.Y + rect.Height / 2)),
-                    ct).ConfigureAwait(false);
-            }
-        }
-        catch
-        {
-            // Cursor overlay is best effort.
-        }
-    }
-
-    private static async Task PulseCursorAtElementAsync(ToolContext context, AutomationElement element, CancellationToken ct)
-    {
-        try
-        {
-            var rect = element.Current.BoundingRectangle;
-            if (!rect.IsEmpty)
-            {
-                await context.State.AgentCursor.ClickPulseAsync(
-                    new POINT((int)Math.Round(rect.X + rect.Width / 2), (int)Math.Round(rect.Y + rect.Height / 2)),
-                    ct).ConfigureAwait(false);
-            }
-        }
-        catch
-        {
-            // Cursor overlay is best effort.
-        }
-    }
 }
