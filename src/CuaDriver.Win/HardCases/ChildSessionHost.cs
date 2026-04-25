@@ -1,7 +1,5 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Globalization;
-using System.Text.Json.Nodes;
 using System.Windows.Forms;
 using CuaDriver.Win.Win32;
 
@@ -67,28 +65,15 @@ internal static class ChildSessionHost
     {
         lock (Gate)
         {
-            var child = ChildSessionBroker.GetChildSessionId();
-            var host = _host;
-            if (host?.IsRunning == true)
-                return $"host_running=true child_session_id={(child?.ToString(CultureInfo.InvariantCulture) ?? "none")} state=\"{host.State}\"";
-
-            return $"host_running=false child_session_id={(child?.ToString(CultureInfo.InvariantCulture) ?? "none")}";
+            return SnapshotLocked().ToStatusText();
         }
     }
 
-    public static JsonObject StatusObject()
+    public static System.Text.Json.Nodes.JsonObject StatusObject()
     {
         lock (Gate)
         {
-            var child = ChildSessionBroker.GetChildSessionId();
-            var host = _host;
-            return new JsonObject
-            {
-                ["host_running"] = host?.IsRunning == true,
-                ["child_session_id"] = child,
-                ["state"] = host?.IsRunning == true ? host.State : "stopped",
-                ["log"] = host is null ? new JsonArray() : JsonArrayFrom(host.LogSnapshot())
-            };
+            return SnapshotLocked().ToJsonObject();
         }
     }
 
@@ -110,12 +95,15 @@ internal static class ChildSessionHost
         return host.Stop(out message);
     }
 
-    private static JsonArray JsonArrayFrom(IEnumerable<string> values)
+    private static ChildSessionHostSnapshot SnapshotLocked()
     {
-        var arr = new JsonArray();
-        foreach (var value in values)
-            arr.Add(value);
-        return arr;
+        var child = ChildSessionBroker.GetChildSessionId();
+        var host = _host;
+        return new ChildSessionHostSnapshot(
+            host?.IsRunning == true,
+            child,
+            host?.IsRunning == true ? host.State : "stopped",
+            host is null ? [] : host.LogSnapshot());
     }
 
     private sealed class HostInstance
