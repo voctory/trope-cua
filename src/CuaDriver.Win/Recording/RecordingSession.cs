@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -195,7 +194,7 @@ public sealed class RecordingSession
                 : 1.0;
             using var ms = new MemoryStream(capture.Data);
             using var image = Image.FromStream(ms);
-            image.Save(path, ImageFormat.Png);
+            AtomicFile.WriteAllBytes(path, ImageEncoding.EncodePng(image));
             return true;
         }
         catch
@@ -224,7 +223,7 @@ public sealed class RecordingSession
             using var outline = new Pen(Color.White, 2);
             graphics.FillEllipse(fill, x - 8, y - 8, 16, 16);
             graphics.DrawEllipse(outline, x - 8, y - 8, 16, 16);
-            bitmap.Save(destination, ImageFormat.Png);
+            AtomicFile.WriteAllBytes(destination, ImageEncoding.EncodePng(bitmap));
         }
         catch
         {

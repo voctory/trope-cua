@@ -1,6 +1,5 @@
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.IO;
 using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Capture;
@@ -88,26 +87,9 @@ public static class WindowCapture
     {
         return NormalizeFormat(format) switch
         {
-            "png" => (EncodePng(bitmap), "image/png"),
-            _ => (EncodeJpeg(bitmap, quality), "image/jpeg")
+            "png" => (ImageEncoding.EncodePng(bitmap), "image/png"),
+            _ => (ImageEncoding.EncodeJpeg(bitmap, quality), "image/jpeg")
         };
-    }
-
-    private static byte[] EncodePng(Bitmap bitmap)
-    {
-        using var ms = new MemoryStream();
-        bitmap.Save(ms, ImageFormat.Png);
-        return ms.ToArray();
-    }
-
-    private static byte[] EncodeJpeg(Bitmap bitmap, long quality)
-    {
-        using var ms = new MemoryStream();
-        var encoder = ImageCodecInfo.GetImageEncoders().First(c => c.MimeType == "image/jpeg");
-        using var parameters = new EncoderParameters(1);
-        parameters.Param[0] = new EncoderParameter(Encoder.Quality, Math.Clamp(quality, 1, 95));
-        bitmap.Save(ms, encoder, parameters);
-        return ms.ToArray();
     }
 
     private static string NormalizeFormat(string format)

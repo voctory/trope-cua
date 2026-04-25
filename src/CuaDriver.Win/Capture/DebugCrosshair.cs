@@ -1,6 +1,5 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
 using System.IO;
 using CuaDriver.Win.Win32;
 
@@ -39,6 +38,6 @@ public static class DebugCrosshair
         var dotRadius = Math.Max(1.5f, lineWidth * 1.5f);
         graphics.FillEllipse(fill, cx - dotRadius, cy - dotRadius, dotRadius * 2, dotRadius * 2);
 
-        bitmap.Save(resolvedPath, ImageFormat.Png);
+        AtomicFile.WriteAllBytes(resolvedPath, ImageEncoding.EncodePng(bitmap));
     }
 }

@@ -1,5 +1,4 @@
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Capture;
@@ -65,7 +64,7 @@ public sealed class ZoomTool : IDriverTool
                 return Task.FromResult(ToolResult.Error("Crop region is empty after clamping to image bounds."));
 
             using var cropped = full.Clone(new Rectangle(cropX, cropY, cropW, cropH), full.PixelFormat);
-            var data = EncodeJpeg(cropped, 90);
+            var data = ImageEncoding.EncodeJpeg(cropped, 90);
             context.State.ZoomContexts[pid] = new ZoomContext(cropX, cropY, cropW, cropH, ratio, window.WindowId);
             var structured = new JsonObject
             {
@@ -112,15 +111,5 @@ public sealed class ZoomTool : IDriverTool
         {
             return Task.FromResult(ToolResult.Error($"Zoom failed: {ex.Message}"));
         }
-    }
-
-    private static byte[] EncodeJpeg(Bitmap bitmap, long quality)
-    {
-        using var ms = new MemoryStream();
-        var encoder = ImageCodecInfo.GetImageEncoders().First(c => c.MimeType == "image/jpeg");
-        using var parameters = new EncoderParameters(1);
-        parameters.Param[0] = new EncoderParameter(Encoder.Quality, Math.Clamp(quality, 1, 100));
-        bitmap.Save(ms, encoder, parameters);
-        return ms.ToArray();
     }
 }
