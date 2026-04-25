@@ -36,3 +36,6 @@ def test_mcp_tool_schemas_advertise_required_and_alternatives():
     launch = tools["launch_app"]["inputSchema"]
     assert {"required": ["path"]} in launch["anyOf"]
     assert {"required": ["app_id"]} in launch["anyOf"]
+
+    zoom = tools["zoom"]["inputSchema"]
+    assert "window_id" in zoom["properties"]

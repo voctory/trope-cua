@@ -118,7 +118,7 @@ internal static class ToolDescriptions
     public const string Zoom = """
         Zoom into a rectangular region of a window screenshot at native resolution. Use this when get_window_state returned a resized image and you need to read small text, identify icons, or verify details.
 
-        Coordinates x1, y1, x2, y2 are in the same pixel space as the screenshot returned by get_window_state. The tool maps the region back through the stored resize ratio, captures at native resolution, adds 20 percent padding, and stores a zoom context. To click something in the returned zoom image, call click with from_zoom=true and x/y in the zoom image coordinate space.
+        Coordinates x1, y1, x2, y2 are in the same pixel space as the screenshot returned by get_window_state. Pass window_id when the pid has multiple windows so the zoom uses the exact prior screenshot context. The tool maps the region back through the stored resize ratio, captures at native resolution, adds 20 percent padding, and stores a zoom context. To click something in the returned zoom image, call click with from_zoom=true and x/y in the zoom image coordinate space.
 
         Requires get_window_state(pid, window_id) earlier in this session so the resize ratio is known.
         """;

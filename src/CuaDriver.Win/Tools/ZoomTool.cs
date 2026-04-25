@@ -16,6 +16,7 @@ public sealed class ZoomTool : IDriverTool
         ToolDescriptions.Zoom,
         JsonArgs.RequiredSchema(["pid", "x1", "y1", "x2", "y2"],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
+            ("window_id", JsonArgs.Prop("integer", "Target HWND from the prior get_window_state screenshot. Recommended when pid has multiple windows.")),
             ("x1", JsonArgs.Prop("number", "Left edge in resized screenshot pixels.")),
             ("y1", JsonArgs.Prop("number", "Top edge in resized screenshot pixels.")),
             ("x2", JsonArgs.Prop("number", "Right edge in resized screenshot pixels.")),
@@ -30,15 +31,20 @@ public sealed class ZoomTool : IDriverTool
         var y1 = JsonArgs.RequiredDouble(args, "y1");
         var x2 = JsonArgs.RequiredDouble(args, "x2");
         var y2 = JsonArgs.RequiredDouble(args, "y2");
+        var windowId = JsonArgs.OptionalLong(args, "window_id");
 
         if (x2 <= x1 || y2 <= y1)
             return Task.FromResult(ToolResult.Error("Invalid region: x2 must be > x1 and y2 must be > y1."));
         if (x2 - x1 > MaxZoomWidth)
             return Task.FromResult(ToolResult.Error($"Zoom region too wide: {(int)(x2 - x1)} px > {(int)MaxZoomWidth} px max."));
 
-        var window = WindowEnumerator.MainWindowForPid(pid);
+        var window = windowId is not null
+            ? WindowEnumerator.Find(windowId.Value)
+            : WindowEnumerator.MainWindowForPid(pid);
         if (window is null)
-            return Task.FromResult(ToolResult.Error($"No capturable window for pid {pid}."));
+            return Task.FromResult(ToolResult.Error(windowId is null ? $"No capturable window for pid {pid}." : $"No window with window_id {windowId.Value}."));
+        if (window.Pid != pid)
+            return Task.FromResult(ToolResult.Error($"window_id {window.WindowId} belongs to pid {window.Pid}, not pid {pid}."));
 
         try
         {
