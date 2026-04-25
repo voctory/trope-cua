@@ -153,26 +153,24 @@ internal sealed class ClickTool : IDriverTool
             }
         }
 
-        double clickX;
-        double clickY;
+        PixelTargetPoint point;
         if (fromZoom)
         {
             if (!context.State.ZoomContexts.TryGetValue(pid, out var zoom))
                 return ToolResult.Error($"from_zoom=true but no zoom context for pid {pid}. Call zoom first.");
             if (zoom.WindowId != window.WindowId)
                 return ToolResult.Error($"from_zoom context belongs to window_id {zoom.WindowId}, not {window.WindowId}.");
-            clickX = zoom.OriginX + x!.Value;
-            clickY = zoom.OriginY + y!.Value;
+            point = ToolCoordinates.ResolveNativePixelTarget(pid, window, zoom.OriginX + x!.Value, zoom.OriginY + y!.Value);
         }
         else
         {
-            var native = ToolCoordinates.ToNativePoint(context, pid, window, x!.Value, y!.Value);
-            clickX = native.X;
-            clickY = native.Y;
+            point = ToolCoordinates.ResolvePixelTarget(context, pid, window, x!.Value, y!.Value);
         }
-        var resolved = WindowMessageInput.ResolvePointTarget(window.Hwnd, clickX, clickY);
 
-        var hit = UiAutomationTree.HitTest(pid, window.WindowId, resolved.ScreenPoint);
+        var clickX = point.LocalX;
+        var clickY = point.LocalY;
+        var resolved = point.Resolved;
+        var hit = point.Hit;
         if (hit is { IsClickAction: true } && modifiers.Length == 0)
         {
             await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);

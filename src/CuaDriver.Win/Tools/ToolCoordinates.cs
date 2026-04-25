@@ -1,5 +1,7 @@
 using System.Windows.Automation;
+using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
+using CuaDriver.Win.Uia;
 using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
@@ -7,6 +9,8 @@ namespace CuaDriver.Win.Tools;
 internal sealed record NativePoint(double X, double Y);
 
 internal sealed record ElementCenterPoint(POINT ScreenPoint, double LocalX, double LocalY);
+
+internal sealed record PixelTargetPoint(double LocalX, double LocalY, WindowMessageDispatch Resolved, UiaHitTestResult? Hit);
 
 internal static class ToolCoordinates
 {
@@ -18,6 +22,30 @@ internal static class ToolCoordinates
         var ratio = ResizeRatio(context, pid, window);
         return new NativePoint(x * ratio, y * ratio);
     }
+
+    public static PixelTargetPoint ResolvePixelTarget(ToolContext context, int pid, WindowInfo window, double x, double y)
+    {
+        var native = ToNativePoint(context, pid, window, x, y);
+        var resolved = ResolveNativePointTarget(window, native.X, native.Y);
+        var hit = UiAutomationTree.HitTest(pid, window.WindowId, resolved.ScreenPoint);
+        return new PixelTargetPoint(native.X, native.Y, resolved, hit);
+    }
+
+    public static PixelTargetPoint ResolveNativePixelTarget(int pid, WindowInfo window, double localX, double localY)
+    {
+        var resolved = ResolveNativePointTarget(window, localX, localY);
+        var hit = UiAutomationTree.HitTest(pid, window.WindowId, resolved.ScreenPoint);
+        return new PixelTargetPoint(localX, localY, resolved, hit);
+    }
+
+    public static WindowMessageDispatch ResolvePointTarget(ToolContext context, int pid, WindowInfo window, double x, double y)
+    {
+        var native = ToNativePoint(context, pid, window, x, y);
+        return ResolveNativePointTarget(window, native.X, native.Y);
+    }
+
+    public static WindowMessageDispatch ResolveNativePointTarget(WindowInfo window, double localX, double localY) =>
+        WindowMessageInput.ResolvePointTarget(window.Hwnd, localX, localY);
 
     public static ElementCenterPoint? ElementCenter(AutomationElement element, WindowInfo window)
     {

@@ -62,12 +62,11 @@ internal sealed class RightClickTool : IDriverTool
             if (!ToolWindows.TryFindMainOrForPid(target.Pid, target.WindowId, out var window, out var error))
                 return error!;
 
-            var native = ToolCoordinates.ToNativePoint(context, target.Pid, window, target.X!.Value, target.Y!.Value);
-            var clickX = native.X;
-            var clickY = native.Y;
-            var resolved = WindowMessageInput.ResolvePointTarget(window.Hwnd, clickX, clickY);
-
-            var hit = UiAutomationTree.HitTest(target.Pid, window.WindowId, resolved.ScreenPoint);
+            var point = ToolCoordinates.ResolvePixelTarget(context, target.Pid, window, target.X!.Value, target.Y!.Value);
+            var clickX = point.LocalX;
+            var clickY = point.LocalY;
+            var resolved = point.Resolved;
+            var hit = point.Hit;
             if (hit is { IsClickAction: true } && target.Modifiers.Length == 0)
             {
                 await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);

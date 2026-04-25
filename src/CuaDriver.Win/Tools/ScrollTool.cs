@@ -91,13 +91,12 @@ internal sealed class ScrollTool : IDriverTool
         WindowMessageDispatch resolved;
         if (x is not null && y is not null)
         {
-            var native = ToolCoordinates.ToNativePoint(context, pid, window, x.Value, y.Value);
-            resolved = WindowMessageInput.ResolvePointTarget(window.Hwnd, native.X, native.Y);
+            resolved = ToolCoordinates.ResolvePointTarget(context, pid, window, x.Value, y.Value);
         }
         else
         {
             var center = WindowMessageInput.CenterLocal(window.Hwnd);
-            resolved = WindowMessageInput.ResolvePointTarget(window.Hwnd, center.X, center.Y);
+            resolved = ToolCoordinates.ResolveNativePointTarget(window, center.X, center.Y);
         }
 
         ActionReceipt receipt;
