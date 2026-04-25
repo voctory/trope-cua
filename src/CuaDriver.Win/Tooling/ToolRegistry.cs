@@ -48,9 +48,7 @@ internal sealed class ToolRegistry
         var shouldKeepAgentCursorAlive = !tool.Definition.Name.Equals("get_agent_cursor_state", StringComparison.OrdinalIgnoreCase);
         if (shouldKeepAgentCursorAlive)
             context.State.AgentCursor.KeepAlive();
-        var shouldRecord = ActionToolNames.Contains(tool.Definition.Name);
-        var actionStartTimestamp = shouldRecord ? Stopwatch.GetTimestamp() : 0;
-        var recordedArgs = shouldRecord ? (JsonObject)args.DeepClone() : null;
+        var recording = RecordingScope.Capture(tool.Definition.Name, args);
         ToolResult result;
         try
         {
@@ -61,12 +59,28 @@ internal sealed class ToolRegistry
             result = ToolResult.Error($"{ex.GetType().Name}: {ex.Message}");
         }
 
-        if (shouldRecord && recordedArgs is not null && context.State.Recording.IsEnabled)
-            context.State.Recording.Record(tool.Definition.Name, recordedArgs, result, context, actionStartTimestamp);
+        RecordIfEnabled(recording, result, context);
 
         if (shouldKeepAgentCursorAlive)
             context.State.AgentCursor.KeepAlive();
         return result;
+    }
+
+    private static void RecordIfEnabled(RecordingScope recording, ToolResult result, ToolContext context)
+    {
+        if (recording.Args is not null && context.State.Recording.IsEnabled)
+            context.State.Recording.Record(recording.ToolName, recording.Args, result, context, recording.StartTimestamp);
+    }
+
+    private readonly record struct RecordingScope(string ToolName, JsonObject? Args, long StartTimestamp)
+    {
+        public static RecordingScope Capture(string toolName, JsonObject args)
+        {
+            if (!ActionToolNames.Contains(toolName))
+                return new RecordingScope(toolName, null, 0);
+
+            return new RecordingScope(toolName, (JsonObject)args.DeepClone(), Stopwatch.GetTimestamp());
+        }
     }
 
     public static ToolRegistry CreateDefault(DriverState state)
