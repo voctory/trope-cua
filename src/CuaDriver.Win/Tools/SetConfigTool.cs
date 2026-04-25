@@ -52,6 +52,9 @@ public sealed class SetConfigTool : IDriverTool
             "agent_cursor.motion.arc_size" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { ArcSize = NumberValue(value) } } },
             "agent_cursor.motion.arc_flow" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { ArcFlow = NumberValue(value) } } },
             "agent_cursor.motion.spring" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { Spring = NumberValue(value) } } },
+            "agent_cursor.motion.glide_duration_ms" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { GlideDurationMs = NumberValue(value) } } },
+            "agent_cursor.motion.dwell_after_click_ms" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { DwellAfterClickMs = NumberValue(value) } } },
+            "agent_cursor.motion.idle_hide_ms" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { IdleHideMs = NumberValue(value) } } },
             _ => throw new ArgumentException($"Unknown config key: {key}")
         };
     }
@@ -69,9 +72,9 @@ public sealed class SetConfigTool : IDriverTool
                 motion.ArcSize,
                 motion.ArcFlow,
                 motion.Spring,
-                glideDurationMs: null,
-                dwellAfterClickMs: null,
-                idleHideMs: null);
+                motion.GlideDurationMs,
+                motion.DwellAfterClickMs,
+                motion.IdleHideMs);
         }
     }
 

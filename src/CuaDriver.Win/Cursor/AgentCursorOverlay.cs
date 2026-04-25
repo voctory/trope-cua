@@ -32,7 +32,7 @@ public sealed record AgentCursorMotion
     public double DwellAfterClickMs { get; init; } = 400;
 
     [JsonPropertyName("idle_hide_ms")]
-    public double IdleHideMs { get; init; } = 8000;
+    public double IdleHideMs { get; init; } = 0;
 
     [JsonPropertyName("press_duration_ms")]
     public double PressDurationMs { get; init; } = 650;
@@ -40,11 +40,14 @@ public sealed record AgentCursorMotion
     public static AgentCursorMotion Default { get; } = new();
 }
 
+public sealed record CursorSnapshot(bool Visible, int? ScreenX, int? ScreenY);
+
 public sealed class AgentCursorOverlay
 {
     private readonly object _gate = new();
     private OverlayForm? _form;
     private Thread? _thread;
+    private ManualResetEventSlim? _threadReady;
     private bool _enabled = true;
     private AgentCursorMotion _motion = AgentCursorMotion.Default;
 
@@ -66,23 +69,27 @@ public sealed class AgentCursorOverlay
 
     public void SetEnabled(bool enabled)
     {
-        var shouldPost = false;
         lock (_gate)
         {
-            if (_enabled == enabled && _form is null)
-                return;
             _enabled = enabled;
-            shouldPost = _form is not null;
         }
 
-        if (!shouldPost)
+        if (enabled)
+        {
+            EnsureThread();
+            var fallback = CurrentCursorPosition();
+            Post(form =>
+            {
+                form.SetEnabled(true);
+                form.EnsureVisibleAt(fallback.X, fallback.Y, Motion);
+            });
             return;
+        }
 
         Post(form =>
         {
-            form.SetEnabled(enabled);
-            if (!enabled)
-                form.HideCursor();
+            form.SetEnabled(false);
+            form.HideCursor();
         });
     }
 
@@ -108,12 +115,19 @@ public sealed class AgentCursorOverlay
                 Spring = Clamp(spring ?? _motion.Spring, 0.3, 1),
                 GlideDurationMs = Clamp(glideDurationMs ?? _motion.GlideDurationMs, 50, 5000),
                 DwellAfterClickMs = Clamp(dwellAfterClickMs ?? _motion.DwellAfterClickMs, 0, 5000),
-                IdleHideMs = Clamp(idleHideMs ?? _motion.IdleHideMs, 100, 60000),
+                IdleHideMs = Clamp(idleHideMs ?? _motion.IdleHideMs, 0, 60000),
             };
             _motion = next;
         }
 
-        Post(form => form.SetMotion(next));
+        var enabled = Enabled;
+        var fallback = CurrentCursorPosition();
+        Post(form =>
+        {
+            form.SetMotion(next);
+            if (enabled)
+                form.EnsureVisibleAt(fallback.X, fallback.Y, next);
+        });
         return next;
     }
 
@@ -148,9 +162,19 @@ public sealed class AgentCursorOverlay
     public string StateJson()
     {
         var formReady = false;
+        var visible = false;
+        int? screenX = null;
+        int? screenY = null;
         lock (_gate)
         {
             formReady = _form is not null && !_form.IsDisposed;
+            if (formReady)
+            {
+                var snapshot = _form!.Snapshot();
+                visible = snapshot.Visible;
+                screenX = snapshot.ScreenX;
+                screenY = snapshot.ScreenY;
+            }
         }
 
         return JsonSerializer.Serialize(new
@@ -158,40 +182,51 @@ public sealed class AgentCursorOverlay
             enabled = Enabled,
             route = "winforms.click_through_overlay",
             ready = formReady,
+            visible,
+            screen_x = screenX,
+            screen_y = screenY,
+            persistent = Motion.IdleHideMs <= 0,
             motion = Motion
         }, JsonUtil.SerializerOptions);
     }
 
     private void EnsureThread()
     {
+        ManualResetEventSlim ready;
         lock (_gate)
         {
             if (_thread is { IsAlive: true })
-                return;
-
-            using var ready = new ManualResetEventSlim(false);
-            _thread = new Thread(() =>
             {
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
-                var form = new OverlayForm();
-                form.SetMotion(Motion);
-                _ = form.Handle;
-                lock (_gate)
+                ready = _threadReady ?? new ManualResetEventSlim(true);
+            }
+            else
+            {
+                ready = new ManualResetEventSlim(false);
+                _threadReady = ready;
+                _thread = new Thread(() =>
                 {
-                    _form = form;
-                }
-                ready.Set();
-                Application.Run(new ApplicationContext());
-            })
-            {
-                IsBackground = true,
-                Name = "cua-driver-agent-cursor",
-            };
-            _thread.SetApartmentState(ApartmentState.STA);
-            _thread.Start();
-            ready.Wait(TimeSpan.FromSeconds(2));
+                    Application.EnableVisualStyles();
+                    Application.SetCompatibleTextRenderingDefault(false);
+                    var form = new OverlayForm();
+                    form.SetMotion(Motion);
+                    _ = form.Handle;
+                    lock (_gate)
+                    {
+                        _form = form;
+                    }
+                    ready.Set();
+                    Application.Run(new ApplicationContext());
+                })
+                {
+                    IsBackground = true,
+                    Name = "cua-driver-agent-cursor",
+                };
+                _thread.SetApartmentState(ApartmentState.STA);
+                _thread.Start();
+            }
         }
+
+        ready.Wait(TimeSpan.FromSeconds(2));
     }
 
     private bool Post(Action<OverlayForm> action)
@@ -221,6 +256,18 @@ public sealed class AgentCursorOverlay
     }
 
     private static double Clamp(double value, double min, double max) => Math.Min(max, Math.Max(min, value));
+
+    private static POINT CurrentCursorPosition()
+    {
+        if (NativeMethods.GetCursorPos(out var point))
+            return point;
+
+        var left = NativeMethods.GetSystemMetrics(NativeMethods.SM_XVIRTUALSCREEN);
+        var top = NativeMethods.GetSystemMetrics(NativeMethods.SM_YVIRTUALSCREEN);
+        var width = NativeMethods.GetSystemMetrics(NativeMethods.SM_CXVIRTUALSCREEN);
+        var height = NativeMethods.GetSystemMetrics(NativeMethods.SM_CYVIRTUALSCREEN);
+        return new POINT(left + width / 2, top + height / 2);
+    }
 
     private sealed class OverlayForm : Form
     {
@@ -297,6 +344,30 @@ public sealed class AgentCursorOverlay
             _enabled = enabled;
             if (!enabled)
                 HideCursor();
+        }
+
+        public void EnsureVisibleAt(int screenX, int screenY, AgentCursorMotion motion)
+        {
+            if (!_enabled)
+                return;
+
+            _motion = motion;
+            if (!_hasPosition)
+            {
+                _current = ToLocal(screenX, screenY);
+                _start = _current;
+                _target = _current;
+                _control1 = _current;
+                _control2 = _current;
+                _hasPosition = true;
+            }
+
+            _visibleCursor = true;
+            _lastActivityAt = DateTime.UtcNow;
+            if (!Visible)
+                Show();
+            TopMost = true;
+            Invalidate();
         }
 
         public void HideCursor()
@@ -415,9 +486,16 @@ public sealed class AgentCursorOverlay
             if (!_isGliding && _pulseStartedMs <= 0)
             {
                 var idleMs = (now - _lastActivityAt).TotalMilliseconds;
-                if (idleMs >= _motion.IdleHideMs)
+                if (_motion.IdleHideMs > 0 && idleMs >= _motion.IdleHideMs)
                     HideCursor();
             }
+        }
+
+        public CursorSnapshot Snapshot()
+        {
+            return _hasPosition
+                ? new CursorSnapshot(_visibleCursor, (int)Math.Round(_current.X + _virtualBounds.Left), (int)Math.Round(_current.Y + _virtualBounds.Top))
+                : new CursorSnapshot(_visibleCursor, null, null);
         }
 
         private PointF ToLocal(int screenX, int screenY) => new(screenX - _virtualBounds.Left, screenY - _virtualBounds.Top);

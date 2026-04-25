@@ -76,6 +76,9 @@ public sealed record DriverConfig
             "agent_cursor.motion.arc_size" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { ArcSize = double.Parse(value) } } },
             "agent_cursor.motion.arc_flow" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { ArcFlow = double.Parse(value) } } },
             "agent_cursor.motion.spring" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { Spring = double.Parse(value) } } },
+            "agent_cursor.motion.glide_duration_ms" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { GlideDurationMs = double.Parse(value) } } },
+            "agent_cursor.motion.dwell_after_click_ms" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { DwellAfterClickMs = double.Parse(value) } } },
+            "agent_cursor.motion.idle_hide_ms" => this with { AgentCursor = AgentCursor with { Motion = AgentCursor.Motion with { IdleHideMs = double.Parse(value) } } },
             _ => throw new ArgumentException($"Unknown config key: {key}")
         };
     }
@@ -118,6 +121,15 @@ public sealed record AgentCursorMotionConfig
 
     [JsonPropertyName("spring")]
     public double Spring { get; init; } = 0.72;
+
+    [JsonPropertyName("glide_duration_ms")]
+    public double GlideDurationMs { get; init; } = 750;
+
+    [JsonPropertyName("dwell_after_click_ms")]
+    public double DwellAfterClickMs { get; init; } = 400;
+
+    [JsonPropertyName("idle_hide_ms")]
+    public double IdleHideMs { get; init; } = 0;
 }
 
 public sealed class DriverState
@@ -135,7 +147,6 @@ public sealed class DriverState
 
     public DriverState()
     {
-        AgentCursor.SetEnabled(Config.AgentCursor.Enabled);
         var motion = Config.AgentCursor.Motion;
         AgentCursor.UpdateMotion(
             motion.StartHandle,
@@ -143,9 +154,10 @@ public sealed class DriverState
             motion.ArcSize,
             motion.ArcFlow,
             motion.Spring,
-            glideDurationMs: null,
-            dwellAfterClickMs: null,
-            idleHideMs: null);
+            motion.GlideDurationMs,
+            motion.DwellAfterClickMs,
+            motion.IdleHideMs);
+        AgentCursor.SetEnabled(Config.AgentCursor.Enabled);
     }
 }
 
