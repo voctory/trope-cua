@@ -11,6 +11,8 @@ namespace CuaDriver.Win.Recording;
 
 internal sealed record RecordingState(bool Enabled, string? OutputDirectory, int NextTurn, string? LastError);
 
+internal sealed record RecordingTurn(string Directory, long SessionStartTimestamp);
+
 internal sealed class RecordingSession
 {
     private readonly object _gate = new();
@@ -74,34 +76,25 @@ internal sealed class RecordingSession
         ToolContext context,
         long actionStartTimestamp)
     {
-        string turnDir;
-        int turnIndex;
-        long sessionStartTimestamp;
-        lock (_gate)
-        {
-            if (!_enabled || _outputDirectory is null)
-                return;
-
-            turnIndex = _nextTurn++;
-            turnDir = Path.Combine(_outputDirectory, $"turn-{turnIndex:00000}");
-            sessionStartTimestamp = _sessionStartTimestamp;
-        }
+        var turn = ReserveTurn();
+        if (turn is null)
+            return;
 
         try
         {
-            Directory.CreateDirectory(turnDir);
+            Directory.CreateDirectory(turn.Directory);
             var pid = JsonArgs.TryOptionalInt(arguments, "pid");
             var window = ResolveWindow(arguments, pid);
             var clickPoint = ResolveClickPoint(arguments, context, window);
 
-            WriteActionJson(turnDir, toolName, arguments, result, pid, window, clickPoint, sessionStartTimestamp, actionStartTimestamp);
+            WriteActionJson(turn.Directory, toolName, arguments, result, pid, window, clickPoint, turn.SessionStartTimestamp, actionStartTimestamp);
 
             if (pid is not null && window is not null)
             {
-                WriteAppStateJson(turnDir, pid.Value, window.WindowId, context);
-                var screenshotPath = Path.Combine(turnDir, "screenshot.png");
+                WriteAppStateJson(turn.Directory, pid.Value, window.WindowId, context);
+                var screenshotPath = Path.Combine(turn.Directory, "screenshot.png");
                 if (WriteScreenshotPng(screenshotPath, window, context) && clickPoint is not null)
-                    WriteClickMarker(Path.Combine(turnDir, "click.png"), screenshotPath, clickPoint.Value, window);
+                    WriteClickMarker(Path.Combine(turn.Directory, "click.png"), screenshotPath, clickPoint.Value, window);
             }
 
             SetLastError(null);
@@ -117,6 +110,20 @@ internal sealed class RecordingSession
     {
         lock (_gate)
             _lastError = lastError;
+    }
+
+    private RecordingTurn? ReserveTurn()
+    {
+        lock (_gate)
+        {
+            if (!_enabled || _outputDirectory is null)
+                return null;
+
+            var turnIndex = _nextTurn++;
+            return new RecordingTurn(
+                Path.Combine(_outputDirectory, $"turn-{turnIndex:00000}"),
+                _sessionStartTimestamp);
+        }
     }
 
     private static void WriteActionJson(
