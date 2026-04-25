@@ -61,6 +61,8 @@ public sealed class AgentCursorOverlay
     private const double IdleRotationPeriodSeconds = 2.4;
     private const double IdleRotationAmplitudeRadians = 0.10;
     private const double SameTargetTipTolerance = 3.0;
+    private const double DefaultGlideDurationMs = 750;
+    private const float InitialOffscreenPosition = -200f;
 
     private readonly object _gate = new();
     private OverlayForm? _form;
@@ -295,7 +297,7 @@ public sealed class AgentCursorOverlay
         private readonly Rectangle _virtualBounds;
         private AgentCursorMotion _motion = AgentCursorMotion.Default;
         private PointF _current;
-        private DateTime _lastFrameAt = DateTime.UtcNow;
+        private long _lastFrameTimestamp = Stopwatch.GetTimestamp();
         private double _heading = RestingHeadingRadians;
         private PlannedPath? _path;
         private Trip? _trip;
@@ -312,6 +314,7 @@ public sealed class AgentCursorOverlay
         private IntPtr _pinnedTargetHwnd;
         private long _lastPinAtMs;
         private string _layering = "normal";
+        private readonly bool _timerResolutionRaised;
 
         public OverlayForm()
         {
@@ -327,7 +330,8 @@ public sealed class AgentCursorOverlay
             TopMost = false;
             Text = OverlayWindowTitle;
             StartPosition = FormStartPosition.Manual;
-            _current = new PointF(-180, -180);
+            _current = new PointF(InitialOffscreenPosition, InitialOffscreenPosition);
+            _timerResolutionRaised = NativeMethods.timeBeginPeriod(1) == 0;
 
             _timer = new System.Windows.Forms.Timer { Interval = 8 };
             _timer.Tick += (_, _) =>
@@ -335,7 +339,12 @@ public sealed class AgentCursorOverlay
                 StepAnimation();
             };
             _timer.Start();
-            FormClosed += (_, _) => Application.ExitThread();
+            FormClosed += (_, _) =>
+            {
+                if (_timerResolutionRaised)
+                    NativeMethods.timeEndPeriod(1);
+                Application.ExitThread();
+            };
         }
 
         protected override bool ShowWithoutActivation => true;
@@ -417,7 +426,7 @@ public sealed class AgentCursorOverlay
             var target = VisualPositionForTip(targetTip, scale);
             if (!_hasPosition)
             {
-                _current = InitialPosition(target);
+                _current = InitialPosition(scale);
                 _heading = RestingHeadingRadians;
                 _hasPosition = true;
             }
@@ -437,7 +446,7 @@ public sealed class AgentCursorOverlay
                     _isGliding = false;
                     _distanceSoFar = 0;
                     _lastActivityAt = DateTime.UtcNow;
-                    _lastFrameAt = _lastActivityAt;
+                    _lastFrameTimestamp = Stopwatch.GetTimestamp();
                     _visibleCursor = true;
                     _pulseStartedMs = 0;
                     arrival.TrySetResult();
@@ -459,12 +468,12 @@ public sealed class AgentCursorOverlay
                 Math.Max(1, TurnRadius * scale),
                 RestingHeadingRadians,
                 target);
-            _trip = TripFor(_path.Value, _motion.GlideDurationMs, scale);
+            _trip = TripFor(_motion.GlideDurationMs, scale);
             _spring = null;
             _springTarget = null;
             _distanceSoFar = 0;
-            _lastFrameAt = DateTime.UtcNow;
-            _lastActivityAt = _lastFrameAt;
+            _lastFrameTimestamp = Stopwatch.GetTimestamp();
+            _lastActivityAt = DateTime.UtcNow;
             _visibleCursor = true;
             _pulseStartedMs = 0;
 
@@ -516,9 +525,10 @@ public sealed class AgentCursorOverlay
 
             ReapplyWindowLayer(force: false);
 
+            var nowTimestamp = Stopwatch.GetTimestamp();
+            var dt = Math.Min(0.05, Math.Max(0, (nowTimestamp - _lastFrameTimestamp) / (double)Stopwatch.Frequency));
+            _lastFrameTimestamp = nowTimestamp;
             var now = DateTime.UtcNow;
-            var dt = Math.Min(0.05, Math.Max(0.001, (now - _lastFrameAt).TotalSeconds));
-            _lastFrameAt = now;
 
             if (_path is { } path && _trip is { } trip)
             {
@@ -794,12 +804,8 @@ public sealed class AgentCursorOverlay
             }
         }
 
-        private static PointF InitialPosition(PointF target)
-        {
-            var x = Math.Min(-140, target.X - 260);
-            var y = Math.Min(-140, target.Y - 220);
-            return new PointF(x, y);
-        }
+        private static PointF InitialPosition(float scale) =>
+            new(InitialOffscreenPosition * scale, InitialOffscreenPosition * scale);
 
         private static void DrawBloom(Graphics g, PointF p, float scale, double breath)
         {
@@ -970,12 +976,9 @@ public sealed class AgentCursorOverlay
             g.SmoothingMode = SmoothingMode.AntiAlias;
         }
 
-        private static Trip TripFor(PlannedPath path, double glideDurationMs, float scale)
+        private static Trip TripFor(double glideDurationMs, float scale)
         {
-            var durationSeconds = Math.Clamp(glideDurationMs / 1000, 0.05, 5);
-            var desiredAverageSpeed = path.Length / durationSeconds;
-            var macAverageSpeed = ((PeakSpeed + MinStartSpeed + MinEndSpeed) / 3) * scale;
-            var speedScale = macAverageSpeed <= 0 ? 1 : Math.Max(0.1, desiredAverageSpeed / macAverageSpeed);
+            var speedScale = DefaultGlideDurationMs / Math.Clamp(glideDurationMs, 50, 5000);
             return new Trip(PeakSpeed * scale * speedScale, MinStartSpeed * scale * speedScale, MinEndSpeed * scale * speedScale);
         }
 

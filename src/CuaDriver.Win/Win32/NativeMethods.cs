@@ -153,6 +153,12 @@ internal static class NativeMethods
         ref BLENDFUNCTION pblend,
         int dwFlags);
 
+    [DllImport("winmm.dll")]
+    public static extern uint timeBeginPeriod(uint uPeriod);
+
+    [DllImport("winmm.dll")]
+    public static extern uint timeEndPeriod(uint uPeriod);
+
     public const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
     public const uint GA_ROOT = 2;
     public const uint GW_HWNDPREV = 3;
