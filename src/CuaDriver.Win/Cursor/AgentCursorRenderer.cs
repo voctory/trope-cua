@@ -8,6 +8,12 @@ namespace CuaDriver.Win.Cursor;
 internal static class AgentCursorRenderer
 {
     public const int Supersample = 3;
+    private const int BreathSteps = 16;
+    private const int ScaleSteps = 100;
+
+    private static readonly object GlowCacheGate = new();
+    // Movement pins breath at 1.0, so caching avoids regenerating Gaussian bitmaps on every animation frame.
+    private static readonly Dictionary<GlowCacheKey, GlowSprite> GlowCache = new();
 
     public static void ConfigureHighQuality(Graphics g)
     {
@@ -20,21 +26,33 @@ internal static class AgentCursorRenderer
 
     public static void DrawBloom(Graphics g, PointF p, float scale, double breath)
     {
-        DrawGaussianGlow(
+        DrawCachedGaussianGlow(
             g,
             p,
-            (float)((64 + 3 * breath) * scale),
-            (float)((19.5 + breath) * scale),
-            Color.FromArgb(188, 232, 252),
-            centerAlpha: (int)Math.Round(70 + 16 * breath));
+            layer: 0,
+            scale,
+            breath,
+            baseRadius: 64,
+            radiusBreath: 3,
+            baseSigma: 19.5f,
+            sigmaBreath: 1,
+            color: Color.FromArgb(188, 232, 252),
+            baseAlpha: 70,
+            alphaBreath: 16);
 
-        DrawGaussianGlow(
+        DrawCachedGaussianGlow(
             g,
             p,
-            (float)((30 + breath) * scale),
-            (float)((8.5 + 0.5 * breath) * scale),
-            Color.FromArgb(238, 248, 255),
-            centerAlpha: (int)Math.Round(42 + 10 * breath));
+            layer: 1,
+            scale,
+            breath,
+            baseRadius: 30,
+            radiusBreath: 1,
+            baseSigma: 8.5f,
+            sigmaBreath: 0.5f,
+            color: Color.FromArgb(238, 248, 255),
+            baseAlpha: 42,
+            alphaBreath: 10);
     }
 
     public static void DrawCursor(Graphics g, PointF p, double heading, float scale)
@@ -75,16 +93,68 @@ internal static class AgentCursorRenderer
         g.DrawPath(outline, path);
     }
 
-    private static void DrawGaussianGlow(
+    private static void DrawCachedGaussianGlow(
         Graphics g,
         PointF p,
+        int layer,
+        float scale,
+        double breath,
+        float baseRadius,
+        float radiusBreath,
+        float baseSigma,
+        float sigmaBreath,
+        Color color,
+        int baseAlpha,
+        int alphaBreath)
+    {
+        var key = GlowCacheKey.From(layer, scale, breath);
+        var sprite = GetOrCreateGlowSprite(
+            key,
+            baseRadius,
+            radiusBreath,
+            baseSigma,
+            sigmaBreath,
+            color,
+            baseAlpha,
+            alphaBreath);
+        var dest = new RectangleF(p.X - sprite.Radius, p.Y - sprite.Radius, sprite.Radius * 2, sprite.Radius * 2);
+        g.DrawImage(sprite.Bitmap, dest);
+    }
+
+    private static GlowSprite GetOrCreateGlowSprite(
+        GlowCacheKey key,
+        float baseRadius,
+        float radiusBreath,
+        float baseSigma,
+        float sigmaBreath,
+        Color color,
+        int baseAlpha,
+        int alphaBreath)
+    {
+        lock (GlowCacheGate)
+        {
+            if (GlowCache.TryGetValue(key, out var cached))
+                return cached;
+
+            var scale = key.Scale / (float)ScaleSteps;
+            var breath = key.Breath / (float)BreathSteps;
+            var radius = (baseRadius + radiusBreath * breath) * scale;
+            var sigma = (baseSigma + sigmaBreath * breath) * scale;
+            var centerAlpha = (int)Math.Round(baseAlpha + alphaBreath * breath);
+            var created = CreateGaussianGlow(radius, sigma, color, centerAlpha);
+            GlowCache[key] = created;
+            return created;
+        }
+    }
+
+    private static GlowSprite CreateGaussianGlow(
         float radius,
         float sigma,
         Color color,
         int centerAlpha)
     {
         if (radius <= 0 || sigma <= 0 || centerAlpha <= 0)
-            return;
+            return new GlowSprite(new Bitmap(1, 1, PixelFormat.Format32bppPArgb), 0);
 
         var renderScale = Supersample;
         var diameter = Math.Max(1, (int)Math.Ceiling(radius * 2 * renderScale));
@@ -94,7 +164,7 @@ internal static class AgentCursorRenderer
         var maxRadiusSquared = maxRadius * maxRadius;
         var sigmaDenominator = 2 * sigmaPixels * sigmaPixels;
 
-        using var bitmap = new Bitmap(diameter, diameter, PixelFormat.Format32bppPArgb);
+        var bitmap = new Bitmap(diameter, diameter, PixelFormat.Format32bppPArgb);
         var rect = new Rectangle(0, 0, diameter, diameter);
         var data = bitmap.LockBits(rect, ImageLockMode.WriteOnly, PixelFormat.Format32bppPArgb);
         try
@@ -133,7 +203,18 @@ internal static class AgentCursorRenderer
             bitmap.UnlockBits(data);
         }
 
-        var dest = new RectangleF(p.X - radius, p.Y - radius, radius * 2, radius * 2);
-        g.DrawImage(bitmap, dest);
+        return new GlowSprite(bitmap, radius);
     }
+
+    private readonly record struct GlowCacheKey(int Layer, int Scale, int Breath)
+    {
+        public static GlowCacheKey From(int layer, float scale, double breath)
+        {
+            var scaleKey = Math.Clamp((int)Math.Round(scale * ScaleSteps), 1, 400);
+            var breathKey = Math.Clamp((int)Math.Round(Math.Clamp(breath, 0, 1) * BreathSteps), 0, BreathSteps);
+            return new GlowCacheKey(layer, scaleKey, breathKey);
+        }
+    }
+
+    private sealed record GlowSprite(Bitmap Bitmap, float Radius);
 }
