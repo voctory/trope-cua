@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -49,7 +48,6 @@ public sealed record CursorSnapshot(bool Visible, int? ScreenX, int? ScreenY, lo
 public sealed class AgentCursorOverlay
 {
     private const string OverlayWindowTitlePrefix = "CuaDriverWin.AgentCursorOverlay";
-    private const string DefaultInstanceId = "default";
     private const double RestingHeadingRadians = Math.PI / 4;
     private const float CursorTipOffset = 16f;
     private const float SurfaceHalfSize = 76f;
@@ -295,24 +293,10 @@ public sealed class AgentCursorOverlay
     private static double Clamp(double value, double min, double max) => Math.Min(max, Math.Max(min, value));
 
     private static bool IsDefaultOverlayTitle(string title) =>
-        title.Equals(OverlayWindowTitleFor(DefaultInstanceId), StringComparison.Ordinal);
+        title.Equals(OverlayWindowTitleFor(DriverInstance.DefaultId), StringComparison.Ordinal);
 
     private static string OverlayWindowTitleFor(string? instanceId) =>
-        $"{OverlayWindowTitlePrefix}.{NormalizeInstanceId(instanceId)}";
-
-    private static string NormalizeInstanceId(string? instanceId)
-    {
-        var normalized = string.IsNullOrWhiteSpace(instanceId)
-            ? Environment.GetEnvironmentVariable("CUA_DRIVER_INSTANCE") ?? DefaultInstanceId
-            : instanceId.Trim();
-        if (string.IsNullOrWhiteSpace(normalized))
-            normalized = DefaultInstanceId;
-
-        foreach (var ch in Path.GetInvalidFileNameChars().Concat(['\\', '/', ':', ';', ' ']))
-            normalized = normalized.Replace(ch, '_');
-
-        return normalized.Length > 64 ? normalized[..64] : normalized;
-    }
+        $"{OverlayWindowTitlePrefix}.{DriverInstance.Resolve(instanceId)}";
 
     private static POINT CurrentCursorPosition()
     {

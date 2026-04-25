@@ -26,10 +26,10 @@ public sealed class NamedPipeDaemon
     {
         _registry = registry;
         _context = context;
-        _instanceId = NormalizeInstanceId(instanceId ?? Environment.GetEnvironmentVariable("CUA_DRIVER_INSTANCE") ?? "default");
+        _instanceId = DriverInstance.Resolve(instanceId);
     }
 
-    public static string PipeName => PipeNameFor(Environment.GetEnvironmentVariable("CUA_DRIVER_INSTANCE") ?? "default");
+    public static string PipeName => PipeNameFor(Environment.GetEnvironmentVariable("CUA_DRIVER_INSTANCE") ?? DriverInstance.DefaultId);
 
     public string InstancePipeName => PipeNameFor(_instanceId);
 
@@ -178,7 +178,7 @@ public sealed class NamedPipeDaemon
         ["uptime_ms"] = (long)(DateTimeOffset.UtcNow - _startedAt).TotalMilliseconds
     };
 
-    public static string PipeNameFor(string? instanceId) => $"cua-driver-win-{UserKey()}-{NormalizeInstanceId(instanceId ?? "default")}";
+    public static string PipeNameFor(string? instanceId) => $"cua-driver-win-{UserKey()}-{DriverInstance.Normalize(instanceId)}";
 
     public static ToolResult ListInstances()
     {
@@ -216,15 +216,7 @@ public sealed class NamedPipeDaemon
         return sid;
     }
 
-    private static string DaemonMutexNameFor(string instanceId) => $@"Local\cua-driver-win-{UserKey()}-{NormalizeInstanceId(instanceId)}";
-
-    private static string NormalizeInstanceId(string instanceId)
-    {
-        var normalized = string.IsNullOrWhiteSpace(instanceId) ? "default" : instanceId.Trim();
-        foreach (var ch in Path.GetInvalidFileNameChars().Concat(['\\', '/', ':', ';', ' ']))
-            normalized = normalized.Replace(ch, '_');
-        return normalized.Length > 64 ? normalized[..64] : normalized;
-    }
+    private static string DaemonMutexNameFor(string instanceId) => $@"Local\cua-driver-win-{UserKey()}-{DriverInstance.Normalize(instanceId)}";
 
     private void WriteInstanceRecord()
     {
@@ -299,5 +291,5 @@ public sealed class NamedPipeDaemon
 
     private static string DaemonRegistryDirectory => Path.Combine(DriverConfig.ConfigDirectory, "daemons");
 
-    private static string InstanceRecordPath(string instanceId) => Path.Combine(DaemonRegistryDirectory, $"{NormalizeInstanceId(instanceId)}.json");
+    private static string InstanceRecordPath(string instanceId) => Path.Combine(DaemonRegistryDirectory, $"{DriverInstance.Normalize(instanceId)}.json");
 }
