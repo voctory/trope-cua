@@ -266,6 +266,44 @@ public static class JsonArgs
         };
     }
 
+    public static JsonObject RequiredSchema(string[] required, params (string Key, JsonNode Value)[] properties)
+    {
+        var schema = Schema(properties);
+        var requiredArray = new JsonArray();
+        foreach (var name in required)
+            requiredArray.Add(name);
+        schema["required"] = requiredArray;
+        return schema;
+    }
+
+    public static JsonObject SchemaWithAnyOf(string[] required, string[][] anyOf, params (string Key, JsonNode Value)[] properties)
+    {
+        var schema = RequiredSchema(required, properties);
+        var alternatives = new JsonArray();
+        foreach (var alternative in anyOf)
+        {
+            var requiredArray = new JsonArray();
+            foreach (var name in alternative)
+                requiredArray.Add(name);
+            alternatives.Add(new JsonObject { ["required"] = requiredArray });
+        }
+        schema["anyOf"] = alternatives;
+        return schema;
+    }
+
+    public static JsonObject EnumProp(string description, params string[] values)
+    {
+        var enumValues = new JsonArray();
+        foreach (var value in values)
+            enumValues.Add(value);
+        return new JsonObject
+        {
+            ["type"] = "string",
+            ["description"] = description,
+            ["enum"] = enumValues
+        };
+    }
+
     public static JsonObject Prop(string type, string description)
         => new() { ["type"] = type, ["description"] = description };
 }

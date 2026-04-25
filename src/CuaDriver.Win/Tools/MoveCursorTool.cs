@@ -10,7 +10,7 @@ public sealed class MoveCursorTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "move_cursor",
         "Move the visual agent cursor to a screen point. This never moves the parent-session cursor unless allow_parent_cursor=true.",
-        JsonArgs.Schema(
+        JsonArgs.RequiredSchema(["x", "y"],
             ("x", JsonArgs.Prop("integer", "Screen X.")),
             ("y", JsonArgs.Prop("integer", "Screen Y.")),
             ("window_id", JsonArgs.Prop("integer", "Optional target HWND used to layer the visual cursor just above that window.")),

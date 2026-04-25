@@ -8,7 +8,7 @@ public sealed class SetAgentCursorEnabledTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "set_agent_cursor_enabled",
         "Enable or disable the click-through visual agent cursor overlay. This never moves the real parent-session cursor.",
-        JsonArgs.Schema(("enabled", JsonArgs.Prop("boolean", "Requested state."))),
+        JsonArgs.RequiredSchema(["enabled"], ("enabled", JsonArgs.Prop("boolean", "Requested state."))),
         Destructive: true);
 
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
@@ -90,7 +90,7 @@ public sealed class SetRecordingTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "set_recording",
         "Toggle trajectory recording. When enabled, subsequent action tools write turn-NNNNN folders with action.json, app_state.json, screenshot.png, and click.png when applicable.",
-        JsonArgs.Schema(
+        JsonArgs.RequiredSchema(["enabled"],
             ("enabled", JsonArgs.Prop("boolean", "True to start recording subsequent action tool calls; false to stop.")),
             ("output_dir", JsonArgs.Prop("string", "Directory where turn folders are written. Required when enabled=true.")),
             ("video_experimental", JsonArgs.Prop("boolean", "Accepted for Mac compatibility; Windows currently records trajectory files only."))),

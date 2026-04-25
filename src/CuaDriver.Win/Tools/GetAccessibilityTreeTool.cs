@@ -8,7 +8,7 @@ public sealed class GetAccessibilityTreeTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "get_accessibility_tree",
         "Alias of get_window_state in ax mode for one call.",
-        JsonArgs.Schema(
+        JsonArgs.RequiredSchema(["pid", "window_id"],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
             ("query", JsonArgs.Prop("string", "Optional tree filter."))),

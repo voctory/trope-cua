@@ -12,7 +12,7 @@ public sealed class RightClickTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "right_click",
         ToolDescriptions.RightClick,
-        JsonArgs.Schema(
+        JsonArgs.SchemaWithAnyOf(["pid"], [["element_index"], ["x", "y"]],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
             ("element_index", JsonArgs.Prop("integer", "Element index from get_window_state.")),

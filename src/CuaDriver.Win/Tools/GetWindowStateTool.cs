@@ -10,7 +10,7 @@ public sealed class GetWindowStateTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "get_window_state",
         ToolDescriptions.GetWindowState,
-        JsonArgs.Schema(
+        JsonArgs.RequiredSchema(["pid", "window_id"],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND as returned by list_windows.")),
             ("query", JsonArgs.Prop("string", "Optional case-insensitive tree filter."))),

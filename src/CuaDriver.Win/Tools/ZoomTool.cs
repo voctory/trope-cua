@@ -14,7 +14,7 @@ public sealed class ZoomTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "zoom",
         ToolDescriptions.Zoom,
-        JsonArgs.Schema(
+        JsonArgs.RequiredSchema(["pid", "x1", "y1", "x2", "y2"],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("x1", JsonArgs.Prop("number", "Left edge in resized screenshot pixels.")),
             ("y1", JsonArgs.Prop("number", "Top edge in resized screenshot pixels.")),

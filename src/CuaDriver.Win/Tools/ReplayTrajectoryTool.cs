@@ -10,7 +10,7 @@ public sealed class ReplayTrajectoryTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "replay_trajectory",
         "Replay a recorded trajectory by invoking each turn-NNNNN/action.json tool call in lexical order.",
-        JsonArgs.Schema(
+        JsonArgs.RequiredSchema(["dir"],
             ("dir", JsonArgs.Prop("string", "Trajectory directory previously written by set_recording.")),
             ("delay_ms", JsonArgs.Prop("integer", "Milliseconds to sleep between turns. Default 500.")),
             ("stop_on_error", JsonArgs.Prop("boolean", "Stop replay on the first tool error. Default true."))),

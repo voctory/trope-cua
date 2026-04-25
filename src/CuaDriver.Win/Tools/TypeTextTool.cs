@@ -13,7 +13,7 @@ public sealed class TypeTextTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "type_text",
         ToolDescriptions.TypeText,
-        JsonArgs.Schema(
+        JsonArgs.RequiredSchema(["pid", "text"],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
             ("element_index", JsonArgs.Prop("integer", "Optional element index for UIA ValuePattern.")),

@@ -13,7 +13,7 @@ public sealed class LaunchAppTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "launch_app",
         ToolDescriptions.LaunchApp,
-        JsonArgs.Schema(
+        JsonArgs.SchemaWithAnyOf([], [["path"], ["exe"], ["name"], ["app_id"]],
             ("path", JsonArgs.Prop("string", "Executable, document, shortcut, or URL to launch.")),
             ("exe", JsonArgs.Prop("string", "Executable name or path.")),
             ("name", JsonArgs.Prop("string", "Alias for exe.")),

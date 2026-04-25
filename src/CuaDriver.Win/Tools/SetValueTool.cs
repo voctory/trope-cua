@@ -11,7 +11,7 @@ public sealed class SetValueTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "set_value",
         ToolDescriptions.SetValue,
-        JsonArgs.Schema(
+        JsonArgs.RequiredSchema(["pid", "window_id", "element_index", "value"],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
             ("element_index", JsonArgs.Prop("integer", "Element index from get_window_state.")),

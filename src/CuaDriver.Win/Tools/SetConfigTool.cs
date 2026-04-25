@@ -9,7 +9,7 @@ public sealed class SetConfigTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "set_config",
         "Set persistent config key. Keys: capture_mode, max_image_dimension, chromium_debugging_port, allow_parent_sendinput, agent_cursor.enabled, agent_cursor.motion.*.",
-        JsonArgs.Schema(
+        JsonArgs.RequiredSchema(["key", "value"],
             ("key", JsonArgs.Prop("string", "Config key.")),
             ("value", JsonArgs.Prop("string", "Config value. JSON strings, numbers, booleans, and null are accepted."))),
         Destructive: true,

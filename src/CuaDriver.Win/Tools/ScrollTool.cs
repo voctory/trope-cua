@@ -13,11 +13,11 @@ public sealed class ScrollTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "scroll",
         ToolDescriptions.Scroll,
-        JsonArgs.Schema(
+        JsonArgs.RequiredSchema(["pid"],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
-            ("direction", JsonArgs.Prop("string", "Mac-compatible direction: up, down, left, or right.")),
+            ("direction", JsonArgs.EnumProp("Mac-compatible direction.", "up", "down", "left", "right")),
             ("amount", JsonArgs.Prop("integer", "Number of key or wheel repetitions. Default: 3 for direction mode.")),
-            ("by", JsonArgs.Prop("string", "Scroll granularity for direction mode: line or page. Default: line.")),
+            ("by", JsonArgs.EnumProp("Scroll granularity for direction mode. Default: line.", "line", "page")),
             ("element_index", JsonArgs.Prop("integer", "Optional element index from get_window_state. With direction mode, targets that element's native HWND when available.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND. Required when element_index is used.")),
             ("x", JsonArgs.Prop("number", "Optional window-local screenshot X for Windows wheel mode.")),

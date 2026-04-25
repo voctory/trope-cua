@@ -14,7 +14,7 @@ public sealed class ClickTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "click",
         ToolDescriptions.Click,
-        JsonArgs.Schema(
+        JsonArgs.SchemaWithAnyOf(["pid"], [["element_index"], ["x", "y"]],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND. Required for element_index; recommended for pixel clicks.")),
             ("element_index", JsonArgs.Prop("integer", "Element index from get_window_state.")),

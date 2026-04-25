@@ -11,7 +11,7 @@ public sealed class PressKeyTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "press_key",
         ToolDescriptions.PressKey,
-        JsonArgs.Schema(
+        JsonArgs.RequiredSchema(["pid", "key"],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND. Required when element_index is used.")),
             ("key", JsonArgs.Prop("string", "Key name, e.g. enter, escape, tab, a, f5.")),

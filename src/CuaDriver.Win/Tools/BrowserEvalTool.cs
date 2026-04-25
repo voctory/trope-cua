@@ -9,7 +9,7 @@ public sealed class BrowserEvalTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "browser_eval",
         "Chromium CDP Runtime.evaluate with userGesture=true for browser activation-gated flows. Requires cdp_port or config chromium_debugging_port.",
-        JsonArgs.Schema(
+        JsonArgs.RequiredSchema(["expression"],
             ("expression", JsonArgs.Prop("string", "JavaScript expression.")),
             ("cdp_port", JsonArgs.Prop("integer", "Chromium remote debugging port."))),
         Destructive: true,

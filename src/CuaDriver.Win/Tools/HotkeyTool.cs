@@ -10,7 +10,7 @@ public sealed class HotkeyTool : IDriverTool
     public ToolDefinition Definition { get; } = new(
         "hotkey",
         ToolDescriptions.Hotkey,
-        JsonArgs.Schema(
+        JsonArgs.SchemaWithAnyOf(["pid"], [["keys"], ["key"]],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
             ("keys", JsonArgs.Prop("array", "Modifier(s) and one non-modifier key, e.g. [\"ctrl\", \"c\"]. Mac-compatible shape.")),
