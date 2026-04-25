@@ -23,26 +23,31 @@ internal sealed class HotkeyTool : IDriverTool
     public async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
         var pid = JsonArgs.RequiredInt(args, "pid");
-        var keys = JsonArgs.OptionalStringArray(args, "keys");
-        string key;
-        string[] modifiers;
-        if (keys.Length > 0)
-        {
-            if (keys.Length < 2)
-                return ToolResult.Error("keys must include at least one modifier and one non-modifier key.");
-            key = keys.Last();
-            modifiers = keys.Take(keys.Length - 1).ToArray();
-        }
-        else
-        {
-            key = JsonArgs.RequiredString(args, "key");
-            modifiers = JsonArgs.OptionalStringArray(args, "modifiers", "modifier");
-        }
+        var parseError = TryParseKeys(args, out var key, out var modifiers);
+        if (parseError is not null)
+            return parseError;
 
         if (!ToolWindows.TryFindMainOrForPid(pid, JsonArgs.OptionalLong(args, "window_id"), out var window, out var error))
             return error!;
 
         var receipt = await WindowMessageInput.PressKeyAsync(window.Hwnd, key, modifiers, cancellationToken).ConfigureAwait(false);
         return ActionToolResult.FromReceipt(receipt);
+    }
+
+    private static ToolResult? TryParseKeys(JsonObject args, out string key, out string[] modifiers)
+    {
+        var keys = JsonArgs.OptionalStringArray(args, "keys");
+        if (keys.Length > 0)
+        {
+            key = keys.LastOrDefault() ?? "";
+            modifiers = keys.Take(Math.Max(0, keys.Length - 1)).ToArray();
+            return keys.Length < 2
+                ? ToolResult.Error("keys must include at least one modifier and one non-modifier key.")
+                : null;
+        }
+
+        key = JsonArgs.RequiredString(args, "key");
+        modifiers = JsonArgs.OptionalStringArray(args, "modifiers", "modifier");
+        return null;
     }
 }
