@@ -101,9 +101,13 @@ public sealed class McpServer
 
     private async Task<JsonObject> ToolsCallAsync(JsonObject request, CancellationToken ct)
     {
-        var p = request["params"] as JsonObject ?? new JsonObject();
+        var p = request["params"] is null
+            ? new JsonObject()
+            : request["params"] as JsonObject ?? throw new McpRequestException(-32602, "tools/call params must be a JSON object");
         var name = p["name"]?.GetValue<string>() ?? throw new McpRequestException(-32602, "tools/call missing params.name");
-        var args = p["arguments"] as JsonObject ?? new JsonObject();
+        var args = p["arguments"] is null
+            ? new JsonObject()
+            : p["arguments"] as JsonObject ?? throw new McpRequestException(-32602, "tools/call params.arguments must be a JSON object");
         var result = (await _registry.InvokeAsync(name, args, _context, ct).ConfigureAwait(false)).WithInferredStructuredContent();
 
         var content = new JsonArray();
