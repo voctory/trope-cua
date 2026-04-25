@@ -36,7 +36,7 @@ internal static class CdpBrowserBridge
             await client.ConnectAsync(new Uri(wsUrl), ct).ConfigureAwait(false);
 
             var button = rightButton ? "right" : "left";
-            var modifierMask = CdpModifierMask(modifiers);
+            var modifierMask = CdpInputModifiers.Mask(modifiers);
             var normalizedCount = Math.Max(1, count);
             for (var i = 1; i <= normalizedCount; i++)
             {
@@ -173,34 +173,6 @@ internal static class CdpBrowserBridge
 
         // Fallback: assume caller's pixel coordinate is already content-relative.
         return (x, y);
-    }
-
-    private static int CdpModifierMask(IReadOnlyCollection<string>? modifiers)
-    {
-        if (modifiers is null || modifiers.Count == 0)
-            return 0;
-
-        var mask = 0;
-        foreach (var modifier in modifiers)
-        {
-            switch (ModifierKeys.Normalize(modifier))
-            {
-                case ModifierKey.Alt:
-                    mask |= 1;
-                    break;
-                case ModifierKey.Control:
-                    mask |= 2;
-                    break;
-                case ModifierKey.Meta:
-                    mask |= 4;
-                    break;
-                case ModifierKey.Shift:
-                    mask |= 8;
-                    break;
-            }
-        }
-
-        return mask;
     }
 
 }
