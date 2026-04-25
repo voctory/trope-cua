@@ -30,8 +30,6 @@ public sealed class NamedPipeDaemon
         _instanceId = DriverInstance.Resolve(instanceId);
     }
 
-    public static string PipeName => PipeNameFor(Environment.GetEnvironmentVariable("CUA_DRIVER_INSTANCE") ?? DriverInstance.DefaultId);
-
     public string InstancePipeName => PipeNameFor(_instanceId);
 
     public async Task RunAsync(CancellationToken ct)
