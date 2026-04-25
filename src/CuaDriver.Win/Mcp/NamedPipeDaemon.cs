@@ -104,28 +104,23 @@ public sealed class NamedPipeDaemon
     public async Task<ToolResult?> TryCallAsync(string name, JsonObject args, TimeSpan timeout, CancellationToken ct)
     {
         var response = await TryRequestAsync(new DaemonRequest("call", name, args), timeout, ct).ConfigureAwait(false);
-        if (response is null)
-            return null;
-        if (response.Result is not null)
-            return response.Result;
-        if (!string.IsNullOrWhiteSpace(response.Error))
-            return ToolResult.Error(response.Error);
-        return null;
+        return ResultFromResponse(response);
     }
 
     public async Task<ToolResult?> TryStatusAsync(TimeSpan timeout, CancellationToken ct)
     {
         var response = await TryRequestAsync(new DaemonRequest("status", null, null), timeout, ct).ConfigureAwait(false);
-        if (response is null)
-            return null;
-        if (response.Result is not null)
-            return response.Result;
-        return string.IsNullOrWhiteSpace(response.Error) ? null : ToolResult.Error(response.Error);
+        return ResultFromResponse(response);
     }
 
     public async Task<ToolResult?> TryShutdownAsync(TimeSpan timeout, CancellationToken ct)
     {
         var response = await TryRequestAsync(new DaemonRequest("shutdown", null, null), timeout, ct).ConfigureAwait(false);
+        return ResultFromResponse(response);
+    }
+
+    private static ToolResult? ResultFromResponse(DaemonResponse? response)
+    {
         if (response is null)
             return null;
         if (response.Result is not null)
