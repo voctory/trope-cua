@@ -5,30 +5,33 @@ namespace CuaDriver.Win.Input;
 public sealed class NoRegressionGuard : IDisposable
 {
     private readonly POINT _cursorBefore;
+    private readonly bool _cursorBeforeKnown;
     private readonly IntPtr _foregroundBefore;
     private readonly ForegroundSampler _foregroundSampler;
 
-    private NoRegressionGuard(POINT cursorBefore, IntPtr foregroundBefore)
+    private NoRegressionGuard(POINT cursorBefore, bool cursorBeforeKnown, IntPtr foregroundBefore)
     {
         _cursorBefore = cursorBefore;
+        _cursorBeforeKnown = cursorBeforeKnown;
         _foregroundBefore = foregroundBefore;
         _foregroundSampler = new ForegroundSampler(foregroundBefore);
     }
 
     public static NoRegressionGuard Capture()
     {
-        NativeMethods.GetCursorPos(out var cursor);
+        var cursorKnown = NativeMethods.GetCursorPos(out var cursor);
         var foreground = NativeMethods.GetForegroundWindow();
-        return new NoRegressionGuard(cursor, foreground);
+        return new NoRegressionGuard(cursor, cursorKnown, foreground);
     }
 
     public ActionReceipt Finish(ActionReceipt receipt, bool allowCursorMove = false, bool allowForegroundChange = false)
     {
-        NativeMethods.GetCursorPos(out var cursorAfter);
+        var cursorAfterKnown = NativeMethods.GetCursorPos(out var cursorAfter);
         var foregroundAfter = NativeMethods.GetForegroundWindow();
         var transientForegroundChanged = _foregroundSampler.Stop();
 
-        var cursorMoved = cursorAfter.X != _cursorBefore.X || cursorAfter.Y != _cursorBefore.Y;
+        var cursorProbeFailed = !_cursorBeforeKnown || !cursorAfterKnown;
+        var cursorMoved = cursorProbeFailed || cursorAfter.X != _cursorBefore.X || cursorAfter.Y != _cursorBefore.Y;
         var foregroundChanged = foregroundAfter != _foregroundBefore || transientForegroundChanged;
         if (foregroundChanged && !allowForegroundChange)
             RestoreForeground();
@@ -45,7 +48,7 @@ public sealed class NoRegressionGuard : IDisposable
         if (receipt.Ok && !allowed)
         {
             ok = false;
-            reason = $"No-regression guard detected {(cursorMoved ? "cursor movement" : "")}{(cursorMoved && foregroundChanged ? " and " : "")}{(foregroundChanged ? "foreground change" : "")}.";
+            reason = BuildGuardFailureReason(cursorProbeFailed, cursorMoved, foregroundChanged);
         }
 
         return receipt with
@@ -59,6 +62,21 @@ public sealed class NoRegressionGuard : IDisposable
     }
 
     public void Dispose() => _foregroundSampler.Dispose();
+
+    private static string BuildGuardFailureReason(bool cursorProbeFailed, bool cursorMoved, bool foregroundChanged)
+    {
+        var failures = new List<string>();
+        if (cursorProbeFailed)
+            failures.Add("cursor position could not be verified");
+        else if (cursorMoved)
+            failures.Add("cursor movement");
+        if (foregroundChanged)
+            failures.Add("foreground change");
+        if (failures.Count == 0)
+            failures.Add("unsafe route state");
+
+        return "No-regression guard detected " + string.Join(" and ", failures) + ".";
+    }
 
     private void RestoreForeground()
     {
