@@ -28,18 +28,14 @@ internal sealed class TypeTextTool : IDriverTool
 
     internal static async Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, bool streamCharacters, CancellationToken cancellationToken)
     {
-        var pid = JsonArgs.RequiredInt(args, "pid");
-        var text = JsonArgs.RequiredString(args, "text");
-        var windowId = JsonArgs.OptionalLong(args, "window_id");
-        var index = JsonArgs.OptionalInt(args, "element_index");
-        var delayMs = Math.Clamp(JsonArgs.OptionalInt(args, "delay_ms") ?? 30, 0, 200);
+        var target = TypeTextArgs.Parse(args);
 
         ActionReceipt receipt;
-        if (index is not null)
+        if (target.ElementIndex is not null)
         {
-            if (windowId is null)
+            if (target.WindowId is null)
                 return ToolResult.Error("window_id is required for element_index type_text.");
-            if (!ToolWindows.TryFindForPid(pid, windowId.Value, out var window, out var error))
+            if (!ToolWindows.TryFindForPid(target.Pid, target.WindowId.Value, out var window, out var error))
                 return error!;
 
             var cdpPort = BrowserToolArgs.CdpPort(args, context);
@@ -51,39 +47,39 @@ internal sealed class TypeTextTool : IDriverTool
                 return ActionToolResult.FromReceipt(refused);
             }
 
-            var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
+            var element = context.State.UiaTree.GetCachedElement(target.Pid, target.WindowId.Value, target.ElementIndex.Value);
             await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
             if (BrowserWindowClassifier.IsLikelyChromium(window) && cdpPort is not null)
             {
-                receipt = await TypeViaBrowserCdpAsync(context, window, element, text, delayMs, cdpPort.Value, cancellationToken).ConfigureAwait(false);
+                receipt = await TypeViaBrowserCdpAsync(context, window, element, target.Text, target.DelayMs, cdpPort.Value, cancellationToken).ConfigureAwait(false);
                 return ActionToolResult.FromReceipt(receipt);
             }
 
-            receipt = await TypeViaElementAsync(context, window.Hwnd, element, text, delayMs, streamCharacters, cancellationToken).ConfigureAwait(false);
+            receipt = await TypeViaElementAsync(context, window.Hwnd, element, target.Text, target.DelayMs, streamCharacters, cancellationToken).ConfigureAwait(false);
         }
         else
         {
-            if (!ToolWindows.TryFindMainOrForPid(pid, windowId, out var window, out var error))
+            if (!ToolWindows.TryFindMainOrForPid(target.Pid, target.WindowId, out var window, out var error))
                 return error!;
 
-            if (context.State.LastUiaTextTarget.TryGetValue((pid, window.WindowId), out var textElement))
+            if (context.State.LastUiaTextTarget.TryGetValue((target.Pid, window.WindowId), out var textElement))
             {
                 await AgentCursorTooling.MoveToElementAsync(context, textElement, window.Hwnd, cancellationToken).ConfigureAwait(false);
                 var targetCdpPort = BrowserToolArgs.CdpPort(args, context);
                 if (BrowserWindowClassifier.IsLikelyChromium(window) && targetCdpPort is not null)
                 {
-                    var browserReceipt = await TypeViaBrowserCdpAsync(context, window, textElement, text, delayMs, targetCdpPort.Value, cancellationToken).ConfigureAwait(false);
+                    var browserReceipt = await TypeViaBrowserCdpAsync(context, window, textElement, target.Text, target.DelayMs, targetCdpPort.Value, cancellationToken).ConfigureAwait(false);
                     if (browserReceipt.Ok)
                         return ActionToolResult.FromReceipt(browserReceipt, "uia.last_text_target.");
                 }
 
-                var setReceipt = await TypeViaElementAsync(context, window.Hwnd, textElement, text, delayMs, streamCharacters, cancellationToken).ConfigureAwait(false);
+                var setReceipt = await TypeViaElementAsync(context, window.Hwnd, textElement, target.Text, target.DelayMs, streamCharacters, cancellationToken).ConfigureAwait(false);
                 if (setReceipt.Ok)
                     return ActionToolResult.FromReceipt(setReceipt, "uia.last_text_target.");
             }
 
             var cdpPort = BrowserToolArgs.CdpPort(args, context);
-            var cdpReceipt = await CdpBrowserBridge.TryTypeTextAsync(cdpPort, window.WindowId, text, delayMs, cancellationToken).ConfigureAwait(false);
+            var cdpReceipt = await CdpBrowserBridge.TryTypeTextAsync(cdpPort, window.WindowId, target.Text, target.DelayMs, cancellationToken).ConfigureAwait(false);
             if (cdpReceipt is not null)
             {
                 receipt = cdpReceipt;
@@ -96,10 +92,10 @@ internal sealed class TypeTextTool : IDriverTool
                 }
                 else
                 {
-                    var target = context.State.LastTargetHwnd.TryGetValue((pid, window.WindowId), out var clickedTarget)
+                    var hwnd = context.State.LastTargetHwnd.TryGetValue((target.Pid, window.WindowId), out var clickedTarget)
                         ? clickedTarget
                         : WindowMessageInput.FindTextInputTarget(window.Hwnd);
-                    receipt = await WindowMessageInput.TypeTextAsync(target, text, cancellationToken, delayMs).ConfigureAwait(false);
+                    receipt = await WindowMessageInput.TypeTextAsync(hwnd, target.Text, cancellationToken, target.DelayMs).ConfigureAwait(false);
                 }
             }
         }
@@ -232,4 +228,13 @@ internal sealed class TypeTextTool : IDriverTool
         return receipt;
     }
 
+    private sealed record TypeTextArgs(int Pid, long? WindowId, int? ElementIndex, string Text, int DelayMs)
+    {
+        public static TypeTextArgs Parse(JsonObject args) => new(
+            JsonArgs.RequiredInt(args, "pid"),
+            JsonArgs.OptionalLong(args, "window_id"),
+            JsonArgs.OptionalInt(args, "element_index"),
+            JsonArgs.RequiredString(args, "text"),
+            Math.Clamp(JsonArgs.OptionalInt(args, "delay_ms") ?? 30, 0, 200));
+    }
 }
