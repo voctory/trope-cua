@@ -5,3 +5,5 @@ artifacts/
 *.user
 *.suo
 TestResults/
+.pytest_cache/
+__pycache__/
