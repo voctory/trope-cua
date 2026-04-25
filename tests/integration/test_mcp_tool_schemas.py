@@ -73,6 +73,12 @@ def test_mcp_tool_descriptions_steer_away_from_foreground_routes():
     assert "visual agent cursor overlay" in move_cursor["description"]
     assert "should not be used as an input route" in move_cursor["description"]
 
+    set_config_value_schema = tools["set_config"]["inputSchema"]["properties"]["value"]
+    assert {"type": "string"} in set_config_value_schema["anyOf"]
+    assert {"type": "number"} in set_config_value_schema["anyOf"]
+    assert {"type": "boolean"} in set_config_value_schema["anyOf"]
+    assert {"type": "null"} in set_config_value_schema["anyOf"]
+
     for blocked in ("M" + "ac", "mac" + "OS"):
         for tool in tools.values():
             assert blocked not in tool["description"]

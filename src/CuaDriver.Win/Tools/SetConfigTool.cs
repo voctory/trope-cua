@@ -12,7 +12,7 @@ public sealed class SetConfigTool : IDriverTool
         "Set persistent config key. Keys: capture_mode, max_image_dimension, chromium_debugging_port, allow_parent_sendinput, agent_cursor.enabled, agent_cursor.motion.*.",
         JsonArgs.RequiredSchema(["key", "value"],
             ("key", JsonArgs.Prop("string", "Config key.")),
-            ("value", JsonArgs.Prop("string", "Config value. JSON strings, numbers, booleans, and null are accepted."))),
+            ("value", ConfigValueSchema())),
         Destructive: true,
         Idempotent: true);
 
@@ -104,4 +104,16 @@ public sealed class SetConfigTool : IDriverTool
     private static bool BoolValue(JsonNode value) =>
         value.GetValueKind() == JsonValueKind.True ||
         (value.GetValueKind() != JsonValueKind.False && bool.Parse(StringValue(value)));
+
+    private static JsonObject ConfigValueSchema() => new()
+    {
+        ["description"] = "Config value. JSON strings, numbers, booleans, and null are accepted.",
+        ["anyOf"] = new JsonArray
+        {
+            new JsonObject { ["type"] = "string" },
+            new JsonObject { ["type"] = "number" },
+            new JsonObject { ["type"] = "boolean" },
+            new JsonObject { ["type"] = "null" }
+        }
+    };
 }
