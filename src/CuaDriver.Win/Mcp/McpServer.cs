@@ -104,7 +104,7 @@ public sealed class McpServer
         var p = request["params"] as JsonObject ?? new JsonObject();
         var name = p["name"]?.GetValue<string>() ?? throw new McpRequestException(-32602, "tools/call missing params.name");
         var args = p["arguments"] as JsonObject ?? new JsonObject();
-        var result = await _registry.InvokeAsync(name, args, _context, ct).ConfigureAwait(false);
+        var result = (await _registry.InvokeAsync(name, args, _context, ct).ConfigureAwait(false)).WithInferredStructuredContent();
 
         var content = new JsonArray();
         foreach (var block in result.Content)
@@ -117,30 +117,10 @@ public sealed class McpServer
         }
 
         var response = new JsonObject { ["content"] = content, ["isError"] = result.IsError };
-        var structured = result.StructuredContent?.DeepClone() as JsonObject ?? TryExtractStructuredContent(result);
+        var structured = result.StructuredContent?.DeepClone() as JsonObject;
         if (structured is not null)
             response["structuredContent"] = structured;
         return response;
-    }
-
-    private static JsonObject? TryExtractStructuredContent(ToolResult result)
-    {
-        var text = result.Content.FirstOrDefault(block => block.Type == "text")?.Text;
-        if (string.IsNullOrWhiteSpace(text))
-            return null;
-
-        var jsonStart = text.IndexOf('{');
-        if (jsonStart < 0)
-            return null;
-
-        try
-        {
-            return JsonNode.Parse(text[jsonStart..]) as JsonObject;
-        }
-        catch
-        {
-            return null;
-        }
     }
 
     private static JsonObject Response(JsonNode? id, JsonObject result)
