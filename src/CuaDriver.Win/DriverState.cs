@@ -15,7 +15,6 @@ public sealed class DriverState
     public ConcurrentDictionary<(int Pid, long WindowId), AutomationElement> LastUiaTextTarget { get; } = new();
     public AgentCursorOverlay AgentCursor { get; }
     public RecordingSession Recording { get; } = new();
-    public DateTimeOffset StartedAt { get; } = DateTimeOffset.UtcNow;
 
     public DriverState(string? instanceId = null)
     {
