@@ -28,9 +28,8 @@ public sealed class MoveCursorTool : IDriverTool
         IntPtr? targetHwnd = null;
         if (windowId is not null)
         {
-            var window = WindowEnumerator.Find(windowId.Value);
-            if (window is null)
-                return ToolResult.Error($"No window with window_id {windowId.Value}.");
+            if (!ToolWindows.TryFind(windowId.Value, out var window, out var error))
+                return error!;
             targetHwnd = window.Hwnd;
         }
 

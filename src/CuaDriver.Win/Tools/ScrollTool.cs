@@ -4,7 +4,6 @@ using CuaDriver.Win.Browser;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
 using CuaDriver.Win.Uia;
-using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
@@ -49,20 +48,13 @@ public sealed class ScrollTool : IDriverTool
         var windowId = JsonArgs.OptionalLong(args, "window_id");
         if (index is not null && windowId is null)
             return ToolResult.Error("window_id is required when element_index is used.");
-        windowId ??= WindowEnumerator.MainWindowForPid(pid)?.WindowId;
-        if (windowId is null)
-            return ToolResult.Error($"No window found for pid {pid}.");
-
-        var window = WindowEnumerator.Find(windowId.Value);
-        if (window is null)
-            return ToolResult.Error($"No window with window_id {windowId.Value}.");
-        if (window.Pid != pid)
-            return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
+        if (!ToolWindows.TryFindMainOrForPid(pid, windowId, out var window, out var error))
+            return error!;
 
         var targetHwnd = window.Hwnd;
         if (index is not null)
         {
-            var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
+            var element = context.State.UiaTree.GetCachedElement(pid, window.WindowId, index.Value);
             await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, ct).ConfigureAwait(false);
             var elementHwnd = ElementHwnd(element);
             if (elementHwnd != IntPtr.Zero)
@@ -91,22 +83,15 @@ public sealed class ScrollTool : IDriverTool
         if ((x is null) != (y is null))
             return ToolResult.Error("Provide both x and y for wheel scrolling, or neither.");
 
-        var windowId = JsonArgs.OptionalLong(args, "window_id") ?? WindowEnumerator.MainWindowForPid(pid)?.WindowId;
-        if (windowId is null)
-            return ToolResult.Error($"No window found for pid {pid}.");
-
-        var window = WindowEnumerator.Find(windowId.Value);
-        if (window is null)
-            return ToolResult.Error($"No window with window_id {windowId.Value}.");
-        if (window.Pid != pid)
-            return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
+        if (!ToolWindows.TryFindMainOrForPid(pid, JsonArgs.OptionalLong(args, "window_id"), out var window, out var error))
+            return error!;
 
         var delta = JsonArgs.OptionalInt(args, "delta") ?? -120;
 
         WindowMessageDispatch resolved;
         if (x is not null && y is not null)
         {
-            var ratio = context.State.ImageResizeRatio.TryGetValue((pid, windowId.Value), out var r) ? r : 1.0;
+            var ratio = context.State.ImageResizeRatio.TryGetValue((pid, window.WindowId), out var r) ? r : 1.0;
             resolved = WindowMessageInput.ResolvePointTarget(window.Hwnd, x.Value * ratio, y.Value * ratio);
         }
         else
@@ -116,7 +101,7 @@ public sealed class ScrollTool : IDriverTool
         }
 
         ActionReceipt receipt;
-        var scrollHit = UiAutomationTree.FindScrollableAtPoint(pid, windowId.Value, resolved.ScreenPoint);
+        var scrollHit = UiAutomationTree.FindScrollableAtPoint(pid, window.WindowId, resolved.ScreenPoint);
         if (scrollHit is not null)
         {
             await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);

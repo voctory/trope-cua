@@ -49,11 +49,8 @@ public sealed class DoubleClickTool : IDriverTool
             return await new ClickTool().InvokeAsync(args, context, cancellationToken).ConfigureAwait(false);
         }
 
-        var window = WindowEnumerator.Find(windowId!.Value);
-        if (window is null)
-            return ToolResult.Error($"No window with window_id {windowId.Value}.");
-        if (window.Pid != pid)
-            return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
+        if (!ToolWindows.TryFindForPid(pid, windowId!.Value, out var window, out var error))
+            return error!;
 
         var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
         var rect = element.Current.BoundingRectangle;

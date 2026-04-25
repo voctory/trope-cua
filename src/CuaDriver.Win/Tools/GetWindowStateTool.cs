@@ -3,7 +3,6 @@ using System.Text;
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Capture;
 using CuaDriver.Win.Tooling;
-using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
@@ -32,11 +31,8 @@ public sealed class GetWindowStateTool : IDriverTool
         var windowId = JsonArgs.RequiredLong(args, "window_id");
         var query = JsonArgs.OptionalString(args, "query");
 
-        var window = WindowEnumerator.Find(windowId);
-        if (window is null)
-            return Task.FromResult(ToolResult.Error($"No window with window_id {windowId}."));
-        if (window.Pid != pid)
-            return Task.FromResult(ToolResult.Error($"window_id {windowId} belongs to pid {window.Pid}, not pid {pid}."));
+        if (!ToolWindows.TryFindForPid(pid, windowId, out var window, out var error))
+            return Task.FromResult(error!);
 
         var mode = _modeOverride ?? context.State.Config.CaptureMode;
         var content = new List<ContentBlock>();
