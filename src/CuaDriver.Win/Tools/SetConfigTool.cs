@@ -19,8 +19,8 @@ public sealed class SetConfigTool : IDriverTool
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
         var key = JsonArgs.RequiredString(args, "key");
-        if (!args.TryGetPropertyValue("value", out var value) || value is null)
-            return Task.FromResult(ToolResult.Error("Missing required field value. Pass null explicitly to clear nullable config values such as chromium_debugging_port."));
+        if (!args.TryGetPropertyValue("value", out var value))
+            return Task.FromResult(ToolResult.Error("Missing required field value."));
 
         try
         {
@@ -39,7 +39,7 @@ public sealed class SetConfigTool : IDriverTool
         }
     }
 
-    private static DriverConfig WithValue(DriverConfig config, string key, JsonNode value)
+    private static DriverConfig WithValue(DriverConfig config, string key, JsonNode? value)
     {
         if (key == "agent_cursor" || key == "agent_cursor.motion")
             throw new ArgumentException($"{key} is a subtree, not a leaf.");
@@ -82,28 +82,41 @@ public sealed class SetConfigTool : IDriverTool
         }
     }
 
-    private static bool IsNullOrBlank(JsonNode value) =>
-        value.GetValueKind() == JsonValueKind.Null || string.IsNullOrWhiteSpace(StringValue(value));
+    private static bool IsNullOrBlank(JsonNode? value) =>
+        value is null || value.GetValueKind() == JsonValueKind.Null || string.IsNullOrWhiteSpace(StringValue(value));
 
-    private static string StringValue(JsonNode value) =>
-        value.GetValueKind() == JsonValueKind.String ? value.GetValue<string>() : value.ToJsonString();
-
-    private static int IntValue(JsonNode value) =>
-        value.GetValueKind() == JsonValueKind.Number ? value.GetValue<int>() : int.Parse(StringValue(value), CultureInfo.InvariantCulture);
-
-    private static double NumberValue(JsonNode value)
+    private static string StringValue(JsonNode? value)
     {
-        var number = value.GetValueKind() == JsonValueKind.Number
-            ? value.GetValue<double>()
-            : double.Parse(StringValue(value), CultureInfo.InvariantCulture);
+        var node = RequireValue(value);
+        return node.GetValueKind() == JsonValueKind.String ? node.GetValue<string>() : node.ToJsonString();
+    }
+
+    private static int IntValue(JsonNode? value)
+    {
+        var node = RequireValue(value);
+        return node.GetValueKind() == JsonValueKind.Number ? node.GetValue<int>() : int.Parse(StringValue(node), CultureInfo.InvariantCulture);
+    }
+
+    private static double NumberValue(JsonNode? value)
+    {
+        var node = RequireValue(value);
+        var number = node.GetValueKind() == JsonValueKind.Number
+            ? node.GetValue<double>()
+            : double.Parse(StringValue(node), CultureInfo.InvariantCulture);
         if (!double.IsFinite(number))
             throw new ArgumentException("Config number values must be finite.");
         return number;
     }
 
-    private static bool BoolValue(JsonNode value) =>
-        value.GetValueKind() == JsonValueKind.True ||
-        (value.GetValueKind() != JsonValueKind.False && bool.Parse(StringValue(value)));
+    private static bool BoolValue(JsonNode? value)
+    {
+        var node = RequireValue(value);
+        return node.GetValueKind() == JsonValueKind.True ||
+            (node.GetValueKind() != JsonValueKind.False && bool.Parse(StringValue(node)));
+    }
+
+    private static JsonNode RequireValue(JsonNode? value) =>
+        value ?? throw new ArgumentException("Config value cannot be null for this key.");
 
     private static JsonObject ConfigValueSchema() => new()
     {

@@ -46,3 +46,18 @@ def test_set_config_rejects_invalid_chromium_port(tmp_path):
     assert result["isError"] is True
     assert "TCP port must be between" in result["content"][0]["text"]
     assert not (tmp_path / "config.json").exists()
+
+
+def test_set_config_clears_nullable_chromium_port(tmp_path):
+    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+
+    result = call("set_config", {"key": "chromium_debugging_port", "value": 9222}, extra_env=env)
+    assert result["isError"] is False
+    assert result["structuredContent"]["chromium_debugging_port"] == 9222
+
+    cleared = call("set_config", {"key": "chromium_debugging_port", "value": None}, extra_env=env)
+    assert cleared["isError"] is False
+    assert cleared["structuredContent"]["chromium_debugging_port"] is None
+
+    loaded = call("get_config", extra_env=env)
+    assert loaded["structuredContent"]["chromium_debugging_port"] is None
