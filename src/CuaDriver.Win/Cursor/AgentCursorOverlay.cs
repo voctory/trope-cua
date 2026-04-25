@@ -186,7 +186,9 @@ public sealed class AgentCursorOverlay
             formReady = _form is not null && !_form.IsDisposed;
             if (formReady)
             {
-                var snapshot = _form!.Snapshot();
+                var snapshot = _form!.InvokeRequired
+                    ? (CursorSnapshot)_form.Invoke(new Func<CursorSnapshot>(_form.Snapshot))
+                    : _form.Snapshot();
                 visible = snapshot.Visible;
                 screenX = snapshot.ScreenX;
                 screenY = snapshot.ScreenY;
@@ -383,7 +385,8 @@ public sealed class AgentCursorOverlay
                 return;
 
             _motion = motion;
-            PinToTarget(targetHwnd);
+            if (!PinToTarget(targetHwnd))
+                return;
             if (!_hasPosition)
             {
                 _current = VisualPositionForTip(ToLocal(screenX, screenY), DpiScaleForPoint(screenX, screenY));
@@ -434,7 +437,11 @@ public sealed class AgentCursorOverlay
 
             _motion = motion;
             CancelFadeOut();
-            PinToTarget(targetHwnd);
+            if (!PinToTarget(targetHwnd))
+            {
+                arrival.TrySetResult();
+                return;
+            }
             var scale = DpiScaleForPoint(screenX, screenY);
             var targetTip = ToLocal(screenX, screenY);
             var target = VisualPositionForTip(targetTip, scale);
@@ -682,11 +689,20 @@ public sealed class AgentCursorOverlay
             ReapplyWindowLayer(force: true);
         }
 
-        private void PinToTarget(IntPtr targetHwnd)
+        private bool PinToTarget(IntPtr targetHwnd)
         {
+            var requestedTarget = targetHwnd != IntPtr.Zero;
             _pinnedTargetHwnd = NormalizeTargetHwnd(targetHwnd);
             _lastPinAtMs = 0;
+            if (requestedTarget && _pinnedTargetHwnd == IntPtr.Zero)
+            {
+                _layering = "target_missing";
+                BeginFadeOut();
+                return false;
+            }
+
             _layering = _pinnedTargetHwnd == IntPtr.Zero ? "normal" : "target_pinned";
+            return true;
         }
 
         private void ReapplyWindowLayer(bool force)
