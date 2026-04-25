@@ -1,7 +1,6 @@
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
-using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
@@ -41,15 +40,8 @@ public sealed class HotkeyTool : IDriverTool
                 modifiers = JsonArgs.OptionalStringArray(args, "modifier");
         }
 
-        var windowId = JsonArgs.OptionalLong(args, "window_id") ?? WindowEnumerator.MainWindowForPid(pid)?.WindowId;
-        if (windowId is null)
-            return ToolResult.Error($"No window found for pid {pid}.");
-
-        var window = WindowEnumerator.Find(windowId.Value);
-        if (window is null)
-            return ToolResult.Error($"No window with window_id {windowId.Value}.");
-        if (window.Pid != pid)
-            return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
+        if (!ToolWindows.TryFindMainOrForPid(pid, JsonArgs.OptionalLong(args, "window_id"), out var window, out var error))
+            return error!;
 
         var receipt = await WindowMessageInput.PressKeyAsync(window.Hwnd, key, modifiers, cancellationToken).ConfigureAwait(false);
         return ActionToolResult.FromReceipt(receipt);

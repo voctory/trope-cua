@@ -2,7 +2,6 @@ using System.Text.Json.Nodes;
 using System.Windows.Automation;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
-using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
@@ -34,24 +33,17 @@ public sealed class PressKeyTool : IDriverTool
         var windowId = JsonArgs.OptionalLong(args, "window_id");
         if (index is not null && windowId is null)
             return ToolResult.Error("window_id is required when element_index is used.");
-        windowId ??= WindowEnumerator.MainWindowForPid(pid)?.WindowId;
-        if (windowId is null)
-            return ToolResult.Error($"No window found for pid {pid}.");
-
-        var window = WindowEnumerator.Find(windowId.Value);
-        if (window is null)
-            return ToolResult.Error($"No window with window_id {windowId.Value}.");
-        if (window.Pid != pid)
-            return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
+        if (!ToolWindows.TryFindMainOrForPid(pid, windowId, out var window, out var error))
+            return error!;
 
         var targetHwnd = window.Hwnd;
         if (index is not null)
         {
-            var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
+            var element = context.State.UiaTree.GetCachedElement(pid, window.WindowId, index.Value);
             var elementHwnd = ElementHwnd(element);
             if (elementHwnd != IntPtr.Zero)
                 targetHwnd = elementHwnd;
-            context.State.LastUiaTextTarget[(pid, windowId.Value)] = element;
+            context.State.LastUiaTextTarget[(pid, window.WindowId)] = element;
         }
 
         var receipt = await WindowMessageInput.PressKeyAsync(targetHwnd, key, modifiers, cancellationToken).ConfigureAwait(false);

@@ -2,7 +2,6 @@ using System.Text.Json.Nodes;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
 using CuaDriver.Win.Uia;
-using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
@@ -26,11 +25,8 @@ public sealed class SetValueTool : IDriverTool
         var index = JsonArgs.RequiredInt(args, "element_index");
         var value = JsonArgs.RequiredString(args, "value");
 
-        var window = WindowEnumerator.Find(windowId);
-        if (window is null)
-            return ToolResult.Error($"No window with window_id {windowId}.");
-        if (window.Pid != pid)
-            return ToolResult.Error($"window_id {windowId} belongs to pid {window.Pid}, not pid {pid}.");
+        if (!ToolWindows.TryFindForPid(pid, windowId, out var window, out var error))
+            return error!;
 
         var targetHwnd = window.Hwnd;
         var element = context.State.UiaTree.GetCachedElement(pid, windowId, index);

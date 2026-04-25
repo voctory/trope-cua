@@ -42,3 +42,13 @@ def test_scroll_rejects_partial_wheel_coordinates():
 
     assert result["isError"] is True
     assert "both x and y" in result["content"][0]["text"]
+
+
+def test_window_scoped_tools_report_missing_window():
+    result = call(
+        "set_value",
+        {"pid": 1, "window_id": 999999999, "element_index": 1, "value": "x"},
+    )
+
+    assert result["isError"] is True
+    assert "No window with window_id 999999999" in result["content"][0]["text"]
