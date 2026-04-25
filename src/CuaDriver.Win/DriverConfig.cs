@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace CuaDriver.Win;
@@ -70,6 +71,10 @@ public sealed record DriverConfig
     {
         AtomicFile.WriteAllText(ConfigPath, JsonSerializer.Serialize(this, JsonUtil.SerializerOptions));
     }
+
+    public JsonObject ToJsonObject() =>
+        JsonSerializer.SerializeToNode(this, JsonUtil.SerializerOptions)?.AsObject()
+        ?? new JsonObject();
 
     public DriverConfig Normalize() => this with
     {
