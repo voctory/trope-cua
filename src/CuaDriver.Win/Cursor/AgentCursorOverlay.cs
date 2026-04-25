@@ -34,7 +34,7 @@ public sealed record AgentCursorMotion
     public double DwellAfterClickMs { get; init; } = 400;
 
     [JsonPropertyName("idle_hide_ms")]
-    public double IdleHideMs { get; init; } = 8000;
+    public double IdleHideMs { get; init; } = 20000;
 
     [JsonPropertyName("press_duration_ms")]
     public double PressDurationMs { get; init; } = 650;
@@ -60,6 +60,7 @@ public sealed class AgentCursorOverlay
     private const double IdleBreathPeriodSeconds = 1.8;
     private const double IdleRotationPeriodSeconds = 2.4;
     private const double IdleRotationAmplitudeRadians = 0.10;
+    private const double SameTargetTipTolerance = 3.0;
 
     private readonly object _gate = new();
     private OverlayForm? _form;
@@ -192,6 +193,11 @@ public sealed class AgentCursorOverlay
             persistent = Motion.IdleHideMs <= 0,
             motion = Motion
         }, JsonUtil.SerializerOptions);
+    }
+
+    public void KeepAlive()
+    {
+        Post(form => form.KeepAlive());
     }
 
     private void EnsureThread()
@@ -374,6 +380,12 @@ public sealed class AgentCursorOverlay
             Hide();
         }
 
+        public void KeepAlive()
+        {
+            if (_enabled && _visibleCursor)
+                _lastActivityAt = DateTime.UtcNow;
+        }
+
         public void GlideTo(int screenX, int screenY, AgentCursorMotion motion, TaskCompletionSource arrival)
         {
             if (!_enabled)
@@ -384,12 +396,38 @@ public sealed class AgentCursorOverlay
 
             _motion = motion;
             var scale = DpiScaleForPoint(screenX, screenY);
-            var target = VisualPositionForTip(ToLocal(screenX, screenY), scale);
+            var targetTip = ToLocal(screenX, screenY);
+            var target = VisualPositionForTip(targetTip, scale);
             if (!_hasPosition)
             {
                 _current = InitialPosition(target);
                 _heading = RestingHeadingRadians;
                 _hasPosition = true;
+            }
+            else
+            {
+                var currentTip = TipPointFromVisualPosition(_current, scale, _heading);
+                if (Hypot(currentTip.X - targetTip.X, currentTip.Y - targetTip.Y) <= SameTargetTipTolerance * scale)
+                {
+                    _arrival?.TrySetResult();
+                    _arrival = arrival;
+                    _current = target;
+                    _heading = RestingHeadingRadians;
+                    _path = null;
+                    _trip = null;
+                    _spring = null;
+                    _springTarget = null;
+                    _isGliding = false;
+                    _distanceSoFar = 0;
+                    _lastActivityAt = DateTime.UtcNow;
+                    _lastFrameAt = _lastActivityAt;
+                    _visibleCursor = true;
+                    _pulseStartedMs = 0;
+                    arrival.TrySetResult();
+                    _arrival = null;
+                    ShowOverlay();
+                    return;
+                }
             }
 
             _arrival?.TrySetResult();

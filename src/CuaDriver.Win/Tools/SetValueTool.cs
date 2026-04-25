@@ -33,11 +33,15 @@ public sealed class SetValueTool : IDriverTool
         {
             receipt = UiAutomationActions.SetRangeValue(element, number);
             if (!receipt.Ok)
+                receipt = MsaaActions.SetEditableTextAtElement(new IntPtr(windowId), element, value);
+            if (!receipt.Ok)
                 receipt = UiAutomationActions.SetValue(element, value);
         }
         else
         {
-            receipt = UiAutomationActions.SetValue(element, value);
+            receipt = MsaaActions.SetEditableTextAtElement(new IntPtr(windowId), element, value);
+            if (!receipt.Ok)
+                receipt = UiAutomationActions.SetValue(element, value);
         }
 
         return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);

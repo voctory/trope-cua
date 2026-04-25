@@ -30,6 +30,8 @@ public sealed class NoRegressionGuard
 
         var cursorMoved = cursorAfter.X != _cursorBefore.X || cursorAfter.Y != _cursorBefore.Y;
         var foregroundChanged = foregroundAfter != _foregroundBefore || transientForegroundChanged;
+        if (foregroundChanged && !allowForegroundChange)
+            RestoreForeground();
 
         var backgroundSafe = receipt.BackgroundSafe
                              && (!cursorMoved || allowCursorMove)
@@ -51,6 +53,37 @@ public sealed class NoRegressionGuard
             BackgroundSafe = backgroundSafe,
             Reason = reason
         };
+    }
+
+    private void RestoreForeground()
+    {
+        if (_foregroundBefore == IntPtr.Zero || !NativeMethods.IsWindow(_foregroundBefore))
+            return;
+
+        var currentForeground = NativeMethods.GetForegroundWindow();
+        var currentThread = NativeMethods.GetCurrentThreadId();
+        var previousForegroundThread = NativeMethods.GetWindowThreadProcessId(_foregroundBefore, out _);
+        var currentForegroundThread = currentForeground == IntPtr.Zero
+            ? 0
+            : NativeMethods.GetWindowThreadProcessId(currentForeground, out _);
+
+        try
+        {
+            if (previousForegroundThread != 0 && previousForegroundThread != currentThread)
+                NativeMethods.AttachThreadInput(currentThread, previousForegroundThread, true);
+            if (currentForegroundThread != 0 && currentForegroundThread != currentThread)
+                NativeMethods.AttachThreadInput(currentThread, currentForegroundThread, true);
+
+            NativeMethods.SetForegroundWindow(_foregroundBefore);
+            Thread.Sleep(50);
+        }
+        finally
+        {
+            if (currentForegroundThread != 0 && currentForegroundThread != currentThread)
+                NativeMethods.AttachThreadInput(currentThread, currentForegroundThread, false);
+            if (previousForegroundThread != 0 && previousForegroundThread != currentThread)
+                NativeMethods.AttachThreadInput(currentThread, previousForegroundThread, false);
+        }
     }
 
     private sealed class ForegroundSampler

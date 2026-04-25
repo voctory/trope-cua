@@ -129,7 +129,7 @@ public sealed record AgentCursorMotionConfig
     public double DwellAfterClickMs { get; init; } = 400;
 
     [JsonPropertyName("idle_hide_ms")]
-    public double IdleHideMs { get; init; } = 8000;
+    public double IdleHideMs { get; init; } = 20000;
 }
 
 public sealed class DriverState

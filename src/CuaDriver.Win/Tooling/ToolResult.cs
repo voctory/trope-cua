@@ -116,6 +116,9 @@ public sealed class ToolRegistry
         if (!TryGet(name, out var tool))
             return ToolResult.Error($"Unknown tool: {name}");
 
+        var shouldKeepAgentCursorAlive = !tool.Definition.Name.Equals("get_agent_cursor_state", StringComparison.OrdinalIgnoreCase);
+        if (shouldKeepAgentCursorAlive)
+            context.State.AgentCursor.KeepAlive();
         var shouldRecord = ActionToolNames.Contains(tool.Definition.Name);
         var actionStartTimestamp = shouldRecord ? Stopwatch.GetTimestamp() : 0;
         var recordedArgs = shouldRecord ? (JsonObject)args.DeepClone() : null;
@@ -132,6 +135,8 @@ public sealed class ToolRegistry
         if (shouldRecord && recordedArgs is not null && context.State.Recording.IsEnabled)
             context.State.Recording.Record(tool.Definition.Name, recordedArgs, result, context, actionStartTimestamp);
 
+        if (shouldKeepAgentCursorAlive)
+            context.State.AgentCursor.KeepAlive();
         return result;
     }
 

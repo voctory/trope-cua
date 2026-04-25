@@ -37,7 +37,9 @@ public sealed class TypeTextTool : IDriverTool
                 return ToolResult.Error("window_id is required for element_index type_text.");
             var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
             await AgentCursorTooling.MoveToElementAsync(context, element, cancellationToken).ConfigureAwait(false);
-            receipt = UiAutomationActions.SetValue(element, text);
+            receipt = MsaaActions.SetEditableTextAtElement(new IntPtr(windowId.Value), element, text);
+            if (!receipt.Ok)
+                receipt = UiAutomationActions.SetValue(element, text);
         }
         else
         {
@@ -58,7 +60,9 @@ public sealed class TypeTextTool : IDriverTool
             if (context.State.LastUiaTextTarget.TryGetValue((pid, windowId.Value), out var textElement))
             {
                 await AgentCursorTooling.MoveToElementAsync(context, textElement, cancellationToken).ConfigureAwait(false);
-                var setReceipt = UiAutomationActions.SetValue(textElement, text);
+                var setReceipt = MsaaActions.SetEditableTextAtElement(window.Hwnd, textElement, text);
+                if (!setReceipt.Ok)
+                    setReceipt = UiAutomationActions.SetValue(textElement, text);
                 if (setReceipt.Ok)
                     return ToolResult.Text("✅ " + (setReceipt with { Route = "uia.last_text_target." + setReceipt.Route }).ToJson());
             }

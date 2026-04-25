@@ -9,8 +9,10 @@ namespace CuaDriver.Win.Uia;
 public static class MsaaActions
 {
     private const int ChildIdSelf = 0;
+    private const int Ia2TextOffsetLength = -1;
     private static readonly Guid IidAccessible2 = new("E89F726E-C4F4-4C19-BB19-B647D7FA8478");
     private static readonly Guid IidAccessibleAction = new("B70D9F59-3B5A-4DBA-AB9E-22012F607DF5");
+    private static readonly Guid IidAccessibleEditableText = new("A59AA09A-7011-4b65-939D-32B1FB5547E3");
 
     public static ActionReceipt DoDefaultActionAtElement(IntPtr rootHwnd, AutomationElement element)
     {
@@ -138,6 +140,60 @@ public static class MsaaActions
         catch (Exception ex)
         {
             return guard.Finish(ActionReceipt.Failure("msaa.default_action", ex.Message));
+        }
+    }
+
+    public static ActionReceipt SetEditableTextAtElement(IntPtr rootHwnd, AutomationElement element, string value)
+    {
+        var guard = NoRegressionGuard.Capture();
+
+        try
+        {
+            var rect = element.Current.BoundingRectangle;
+            if (rect.IsEmpty)
+                return guard.Finish(ActionReceipt.Failure("ia2.editable_text", "Element has no bounding rectangle."));
+
+            var point = new POINT(
+                (int)Math.Round(rect.X + rect.Width / 2),
+                (int)Math.Round(rect.Y + rect.Height / 2));
+
+            var iid = NativeMethods.IID_IAccessible;
+            var hr = NativeMethods.AccessibleObjectFromWindow(
+                rootHwnd,
+                NativeMethods.OBJID_CLIENT,
+                ref iid,
+                out var root);
+            if (hr < 0 || root is null)
+                return guard.Finish(ActionReceipt.Failure("ia2.editable_text", $"AccessibleObjectFromWindow failed with HRESULT 0x{hr:X8}."));
+
+            var target = HitTestDeep(root, point.X, point.Y, depth: 0);
+            if (target is null)
+                return guard.Finish(ActionReceipt.Failure("ia2.editable_text", "MSAA hit-test found no editable object."));
+
+            var current = target.Accessible;
+            var lastHr = 0;
+            for (var depth = 0; current is not null && depth < 8; depth++)
+            {
+                var editable = AsAccessibleEditableText(current);
+                if (editable is not null)
+                {
+                    var replacement = value;
+                    lastHr = editable.replaceText(0, Ia2TextOffsetLength, ref replacement);
+                    if (lastHr == 0)
+                        return guard.Finish(ActionReceipt.Success("ia2.editable_text.replace_text"));
+                }
+
+                current = TryGetParent(current);
+            }
+
+            var reason = lastHr == 0
+                ? "Element exposes no IAccessibleEditableText interface."
+                : $"IAccessibleEditableText.replaceText failed with HRESULT 0x{lastHr:X8}.";
+            return guard.Finish(ActionReceipt.Failure("ia2.editable_text", reason));
+        }
+        catch (Exception ex)
+        {
+            return guard.Finish(ActionReceipt.Failure("ia2.editable_text", ex.Message));
         }
     }
 
@@ -344,6 +400,49 @@ public static class MsaaActions
         }
     }
 
+    private static IAccessibleEditableText? AsAccessibleEditableText(object? value)
+    {
+        if (value is null)
+            return null;
+
+        if (value is IAccessibleEditableText editable)
+            return editable;
+
+        if (!Marshal.IsComObject(value))
+            return null;
+
+        IntPtr unknown = IntPtr.Zero;
+        IntPtr editablePtr = IntPtr.Zero;
+        try
+        {
+            unknown = Marshal.GetIUnknownForObject(value);
+            var iid = IidAccessibleEditableText;
+            if (Marshal.QueryInterface(unknown, ref iid, out editablePtr) != 0 || editablePtr == IntPtr.Zero)
+            {
+                if (value is not IServiceProvider serviceProvider)
+                    return null;
+
+                var service = IidAccessible2;
+                iid = IidAccessibleEditableText;
+                if (serviceProvider.QueryService(ref service, ref iid, out editablePtr) != 0 || editablePtr == IntPtr.Zero)
+                    return null;
+            }
+
+            return Marshal.GetObjectForIUnknown(editablePtr) as IAccessibleEditableText;
+        }
+        catch
+        {
+            return null;
+        }
+        finally
+        {
+            if (editablePtr != IntPtr.Zero)
+                Marshal.Release(editablePtr);
+            if (unknown != IntPtr.Zero)
+                Marshal.Release(unknown);
+        }
+    }
+
     [ComImport]
     [Guid("B70D9F59-3B5A-4DBA-AB9E-22012F607DF5")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -354,6 +453,33 @@ public static class MsaaActions
 
         [PreserveSig]
         int doAction(int actionIndex);
+    }
+
+    [ComImport]
+    [Guid("A59AA09A-7011-4b65-939D-32B1FB5547E3")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IAccessibleEditableText
+    {
+        [PreserveSig]
+        int copyText(int startOffset, int endOffset);
+
+        [PreserveSig]
+        int deleteText(int startOffset, int endOffset);
+
+        [PreserveSig]
+        int insertText(int offset, [MarshalAs(UnmanagedType.BStr)] ref string text);
+
+        [PreserveSig]
+        int cutText(int startOffset, int endOffset);
+
+        [PreserveSig]
+        int pasteText(int offset);
+
+        [PreserveSig]
+        int replaceText(int startOffset, int endOffset, [MarshalAs(UnmanagedType.BStr)] ref string text);
+
+        [PreserveSig]
+        int setAttributes(int startOffset, int endOffset, [MarshalAs(UnmanagedType.BStr)] ref string attributes);
     }
 
     [ComImport]
