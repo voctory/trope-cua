@@ -55,6 +55,14 @@ public static class JsonArgs
     public static string? OptionalString(JsonObject args, string name)
         => TryGet(args, name, out var node) ? node.GetValue<string>() : null;
 
+    public static int? TryOptionalInt(JsonObject args, string name) => TryOptionalValue<int>(args, name);
+
+    public static long? TryOptionalLong(JsonObject args, string name) => TryOptionalValue<long>(args, name);
+
+    public static double? TryOptionalDouble(JsonObject args, string name) => TryOptionalValue<double>(args, name);
+
+    public static bool? TryOptionalBool(JsonObject args, string name) => TryOptionalValue<bool>(args, name);
+
     public static string[] OptionalStringArray(JsonObject args, string name)
     {
         if (!args.TryGetPropertyValue(name, out var node) || node is null)
@@ -73,6 +81,19 @@ public static class JsonArgs
 
     private static bool TryGet(JsonObject args, string name, [NotNullWhen(true)] out JsonNode? node) =>
         args.TryGetPropertyValue(name, out node) && node is not null;
+
+    private static T? TryOptionalValue<T>(JsonObject args, string name)
+        where T : struct
+    {
+        try
+        {
+            return TryGet(args, name, out var node) ? node.GetValue<T>() : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
     public static JsonObject Schema(params (string Key, JsonNode Value)[] properties)
     {

@@ -90,7 +90,7 @@ public sealed class RecordingSession
         try
         {
             Directory.CreateDirectory(turnDir);
-            var pid = TryGetInt(arguments, "pid");
+            var pid = JsonArgs.TryOptionalInt(arguments, "pid");
             var window = ResolveWindow(arguments, pid);
             var clickPoint = ResolveClickPoint(arguments, context, window);
 
@@ -233,7 +233,7 @@ public sealed class RecordingSession
 
     private static WindowInfo? ResolveWindow(JsonObject arguments, int? pid)
     {
-        var windowId = TryGetLong(arguments, "window_id");
+        var windowId = JsonArgs.TryOptionalLong(arguments, "window_id");
         if (windowId is not null)
             return WindowEnumerator.Find(windowId.Value);
         return pid is null ? null : WindowEnumerator.MainWindowForPid(pid.Value);
@@ -244,11 +244,11 @@ public sealed class RecordingSession
         if (window is null)
             return null;
 
-        var x = TryGetDouble(arguments, "x");
-        var y = TryGetDouble(arguments, "y");
+        var x = JsonArgs.TryOptionalDouble(arguments, "x");
+        var y = JsonArgs.TryOptionalDouble(arguments, "y");
         if (x is not null && y is not null)
         {
-            if (TryGetBool(arguments, "from_zoom") == true &&
+            if (JsonArgs.TryOptionalBool(arguments, "from_zoom") == true &&
                 context.State.ZoomContexts.TryGetValue(window.Pid, out var zoom) &&
                 zoom.WindowId == window.WindowId)
             {
@@ -263,7 +263,7 @@ public sealed class RecordingSession
                 (float)(window.Bounds.Y + y.Value * ratio));
         }
 
-        var index = TryGetInt(arguments, "element_index");
+        var index = JsonArgs.TryOptionalInt(arguments, "element_index");
         if (index is not null)
         {
             try
@@ -330,29 +330,5 @@ public sealed class RecordingSession
         if (start <= 0 || end < start)
             return 0;
         return (long)((end - start) * 1000.0 / Stopwatch.Frequency);
-    }
-
-    private static int? TryGetInt(JsonObject obj, string key)
-    {
-        try { return obj.TryGetPropertyValue(key, out var node) && node is not null ? node.GetValue<int>() : null; }
-        catch { return null; }
-    }
-
-    private static long? TryGetLong(JsonObject obj, string key)
-    {
-        try { return obj.TryGetPropertyValue(key, out var node) && node is not null ? node.GetValue<long>() : null; }
-        catch { return null; }
-    }
-
-    private static double? TryGetDouble(JsonObject obj, string key)
-    {
-        try { return obj.TryGetPropertyValue(key, out var node) && node is not null ? node.GetValue<double>() : null; }
-        catch { return null; }
-    }
-
-    private static bool? TryGetBool(JsonObject obj, string key)
-    {
-        try { return obj.TryGetPropertyValue(key, out var node) && node is not null ? node.GetValue<bool>() : null; }
-        catch { return null; }
     }
 }
