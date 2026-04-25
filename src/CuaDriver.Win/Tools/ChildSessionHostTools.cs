@@ -48,7 +48,20 @@ public sealed class ChildSessionStartTool : IDriverTool
         {
             lines.Add("requires_elevation=true");
             lines.Add("next_step=\"Run the driver once elevated to enable child sessions, then start the child-session host from the normal background daemon.\"");
-            return ToolResult.Text(string.Join(Environment.NewLine, lines), StartStructured(false, "enable_child_sessions_failed", null, false, lines), isError: true);
+            return ToolResult.Text(
+                string.Join(Environment.NewLine, lines),
+                StartStructured(
+                    false,
+                    "enable_child_sessions_failed",
+                    null,
+                    false,
+                    backgroundSafe: false,
+                    cursorPositionVerified: cursorBeforeKnown,
+                    cursorMoved: false,
+                    foregroundChanged: false,
+                    foregroundRestored: false,
+                    lines),
+                isError: true);
         }
 
         var options = new ChildSessionHostOptions(
@@ -61,6 +74,8 @@ public sealed class ChildSessionStartTool : IDriverTool
 
         var cursorAfterKnown = NativeMethods.GetCursorPos(out var cursorAfter);
         var foregroundAfter = NativeMethods.GetForegroundWindow();
+        var cursorPositionVerified = cursorBeforeKnown && cursorAfterKnown;
+        var cursorMoved = !cursorPositionVerified || cursorBefore.X != cursorAfter.X || cursorBefore.Y != cursorAfter.Y;
         var foregroundChanged = foregroundBefore != IntPtr.Zero && foregroundAfter != foregroundBefore;
         var foregroundRestored = false;
         if (foregroundChanged)
@@ -69,36 +84,65 @@ public sealed class ChildSessionStartTool : IDriverTool
                                  && SpinWait.SpinUntil(() => NativeMethods.GetForegroundWindow() == foregroundBefore, TimeSpan.FromMilliseconds(50));
         }
 
+        var backgroundSafe = result.Ok && !cursorMoved && !foregroundChanged;
         lines.Add($"ok={result.Ok}");
         lines.Add("route=rdp.activex.child_session");
         lines.Add("lane=child_session");
-        lines.Add("background_safe=true");
+        lines.Add($"background_safe={backgroundSafe}");
         lines.Add($"host_running={result.HostRunning}");
         lines.Add($"child_session_id={(result.ChildSessionId?.ToString(CultureInfo.InvariantCulture) ?? "none")}");
         lines.Add($"status=\"{result.Status}\"");
-        lines.Add($"cursor_moved={(cursorBeforeKnown && cursorAfterKnown && (cursorBefore.X != cursorAfter.X || cursorBefore.Y != cursorAfter.Y))}");
+        lines.Add($"cursor_position_verified={cursorPositionVerified}");
+        lines.Add($"cursor_moved={cursorMoved}");
         lines.Add($"foreground_changed={foregroundChanged}");
         lines.Add($"foreground_restored={foregroundRestored}");
         foreach (var logLine in result.Log)
             lines.Add($"log=\"{logLine}\"");
 
-        return ToolResult.Text(string.Join(Environment.NewLine, lines), StartStructured(result.Ok, result.Status, result.ChildSessionId, result.HostRunning, result.Log), isError: !result.Ok);
+        return ToolResult.Text(
+            string.Join(Environment.NewLine, lines),
+            StartStructured(
+                result.Ok,
+                result.Status,
+                result.ChildSessionId,
+                result.HostRunning,
+                backgroundSafe,
+                cursorPositionVerified,
+                cursorMoved,
+                foregroundChanged,
+                foregroundRestored,
+                result.Log),
+            isError: !backgroundSafe);
     }
 
-    private static JsonObject StartStructured(bool ok, string status, int? childSessionId, bool hostRunning, IEnumerable<string> log) => new()
-    {
-        ["ok"] = ok,
-        ["route"] = "rdp.activex.child_session",
-        ["lane"] = "child_session",
-        ["background_safe"] = true,
-        ["status"] = status,
-        ["host_running"] = hostRunning,
-        ["child_session_id"] = childSessionId,
-        ["parent_session_id"] = ChildSessionBroker.CurrentProcessSessionId(),
-        ["active_console_session_id"] = ChildSessionBroker.ActiveConsoleSessionId(),
-        ["child_sessions_enabled"] = ChildSessionBroker.IsEnabled(),
-        ["log"] = ToolJson.Array(log)
-    };
+    private static JsonObject StartStructured(
+        bool ok,
+        string status,
+        int? childSessionId,
+        bool hostRunning,
+        bool backgroundSafe,
+        bool cursorPositionVerified,
+        bool cursorMoved,
+        bool foregroundChanged,
+        bool foregroundRestored,
+        IEnumerable<string> log) => new()
+        {
+            ["ok"] = ok,
+            ["route"] = "rdp.activex.child_session",
+            ["lane"] = "child_session",
+            ["background_safe"] = backgroundSafe,
+            ["cursor_position_verified"] = cursorPositionVerified,
+            ["cursor_moved"] = cursorMoved,
+            ["foreground_changed"] = foregroundChanged,
+            ["foreground_restored"] = foregroundRestored,
+            ["status"] = status,
+            ["host_running"] = hostRunning,
+            ["child_session_id"] = childSessionId,
+            ["parent_session_id"] = ChildSessionBroker.CurrentProcessSessionId(),
+            ["active_console_session_id"] = ChildSessionBroker.ActiveConsoleSessionId(),
+            ["child_sessions_enabled"] = ChildSessionBroker.IsEnabled(),
+            ["log"] = ToolJson.Array(log)
+        };
 }
 
 public sealed class ChildSessionStopTool : IDriverTool
