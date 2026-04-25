@@ -12,7 +12,7 @@ $Out = Join-Path $Root "artifacts\publish"
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
 
 $sc = if ($SelfContained) { "true" } else { "false" }
-dotnet publish $Project -c $Configuration -r $Runtime --self-contained:$sc -o $Out
+dotnet publish $Project -c $Configuration -r $Runtime --self-contained:$sc -p:RestoreLockedMode=true -o $Out
 if ($LASTEXITCODE -ne 0) {
   throw "dotnet publish failed with exit code $LASTEXITCODE"
 }
