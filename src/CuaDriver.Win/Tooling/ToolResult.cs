@@ -26,6 +26,9 @@ public sealed record ToolResult
 
     public static ToolResult Error(string text) => Text("❌ " + text, true);
 
+    public string FirstText(string fallback = "") =>
+        Content.FirstOrDefault(c => c.Type == "text" && c.Text is not null)?.Text ?? fallback;
+
     public string ToCliText()
     {
         var parts = new List<string>();

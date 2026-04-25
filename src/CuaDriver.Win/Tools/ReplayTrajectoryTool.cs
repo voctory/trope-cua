@@ -70,13 +70,13 @@ public sealed class ReplayTrajectoryTool : IDriverTool
                 ["turn"] = turnName,
                 ["tool"] = parsed.Tool,
                 ["ok"] = !result.IsError,
-                ["result_summary"] = FirstText(result),
+                ["result_summary"] = result.FirstText("tool reported an error"),
                 ["result_structured"] = result.StructuredContent?.DeepClone()
             });
             if (result.IsError)
             {
                 failed++;
-                firstFailure ??= new ReplayFailure(turnName, parsed.Tool!, FirstText(result));
+                firstFailure ??= new ReplayFailure(turnName, parsed.Tool!, result.FirstText("tool reported an error"));
                 if (stopOnError)
                     break;
             }
@@ -157,9 +157,6 @@ public sealed class ReplayTrajectoryTool : IDriverTool
             return ParsedAction.Invalid("Failed to parse action.json.");
         }
     }
-
-    private static string FirstText(ToolResult result) =>
-        result.Content.FirstOrDefault(c => c.Type == "text" && c.Text is not null)?.Text ?? "tool reported an error";
 
     private sealed record ParsedAction(bool IsValid, string? Tool, JsonObject Arguments, string? Error)
     {

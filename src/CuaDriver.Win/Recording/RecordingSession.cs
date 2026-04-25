@@ -136,7 +136,7 @@ public sealed class RecordingSession
         {
             ["tool"] = toolName,
             ["arguments"] = arguments.DeepClone(),
-            ["result_summary"] = FirstText(result),
+            ["result_summary"] = result.FirstText(),
             ["result_structured"] = result.StructuredContent?.DeepClone(),
             ["timestamp"] = DateTimeOffset.UtcNow.ToString("O"),
             ["t_ms_from_session_start"] = ElapsedMs(sessionStartTimestamp, now),
@@ -325,9 +325,6 @@ public sealed class RecordingSession
         };
         AtomicFile.WriteAllText(Path.Combine(_outputDirectory!, "session.json"), payload.ToJsonString(JsonUtil.SerializerOptions));
     }
-
-    private static string FirstText(ToolResult result) =>
-        result.Content.FirstOrDefault(c => c.Type == "text" && c.Text is not null)?.Text ?? "";
 
     private static long ElapsedMs(long start, long end)
     {
