@@ -40,6 +40,6 @@ public sealed class BrowserEvalTool : IDriverTool
         }
 
         var receipt = await CdpBrowserBridge.EvaluateUserGestureAsync(port.Value, windowId, expression, cancellationToken).ConfigureAwait(false);
-        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+        return ActionToolResult.FromReceipt(receipt);
     }
 }

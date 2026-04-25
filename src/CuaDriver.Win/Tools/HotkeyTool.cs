@@ -52,6 +52,6 @@ public sealed class HotkeyTool : IDriverTool
             return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
 
         var receipt = await WindowMessageInput.PressKeyAsync(window.Hwnd, key, modifiers, cancellationToken).ConfigureAwait(false);
-        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+        return ActionToolResult.FromReceipt(receipt);
     }
 }

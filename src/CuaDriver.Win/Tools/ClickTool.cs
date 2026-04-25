@@ -87,7 +87,7 @@ public sealed class ClickTool : IDriverTool
                     {
                         if (msaaReceipt.Ok)
                             await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                        return ToolResult.Text((msaaReceipt.Ok ? "✅ " : "❌ ") + msaaReceipt.ToJson(), !msaaReceipt.Ok);
+                        return ActionToolResult.FromReceipt(msaaReceipt);
                     }
 
                     var cdpPort = BrowserToolArgs.CdpPort(args, context);
@@ -99,13 +99,13 @@ public sealed class ClickTool : IDriverTool
                                   ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {cdpPort}.");
                         if (receipt.Ok)
                             await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+                        return ActionToolResult.FromReceipt(receipt);
                     }
                 }
 
                 receipt = BrowserNavigation.RefuseForegroundOnlyLinkRoute(UiAutomationActions.TryGetValue(element))
                           ?? ActionReceipt.Failure("requires_browser_semantic_route", "Browser element did not expose a safe MSAA default action and no CDP port was configured; refusing UIA Invoke because browser providers can foreground the target.");
-                return ToolResult.Text("❌ " + receipt.ToJson(), true);
+                return ActionToolResult.FromReceipt(receipt);
             }
 
             receipt = await UiAutomationActions.InvokeElementAsync(element, action, cancellationToken).ConfigureAwait(false);
@@ -182,7 +182,7 @@ public sealed class ClickTool : IDriverTool
                     {
                         if (msaaReceipt.Ok)
                             await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                        return ToolResult.Text((msaaReceipt.Ok ? "✅ " : "❌ ") + msaaReceipt.ToJson(), !msaaReceipt.Ok);
+                        return ActionToolResult.FromReceipt(msaaReceipt);
                     }
 
                     var hitCdpPort = BrowserToolArgs.CdpPort(args, context);
@@ -192,18 +192,18 @@ public sealed class ClickTool : IDriverTool
                                   ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {hitCdpPort}.");
                         if (receipt.Ok)
                             await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+                        return ActionToolResult.FromReceipt(receipt);
                     }
 
                     var navReceipt = BrowserNavigation.RefuseForegroundOnlyLinkRoute(UiAutomationActions.TryGetValue(hit.Element));
                     if (navReceipt is not null)
                     {
                         receipt = navReceipt with { Route = "uia.hit_test." + navReceipt.Route };
-                        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+                        return ActionToolResult.FromReceipt(receipt);
                     }
 
                     receipt = ActionReceipt.Failure("requires_browser_semantic_route", "Browser UIA hit-test found an actionable element, but it did not expose a safe MSAA default action, URL value, or CDP route; refusing UIA Invoke because browser providers commonly raise/focus the window.");
-                    return ToolResult.Text("❌ " + receipt.ToJson(), true);
+                    return ActionToolResult.FromReceipt(receipt);
                 }
 
                 var hitReceipt = await UiAutomationActions.InvokeElementAsync(hit.Element, action, cancellationToken).ConfigureAwait(false);
@@ -218,7 +218,7 @@ public sealed class ClickTool : IDriverTool
                     receipt = hitReceipt with { Route = "uia.hit_test." + hitReceipt.Route };
                     context.State.LastUiaTextTarget[(pid, window.WindowId)] = hit.Element;
                     await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                    return ToolResult.Text("✅ " + receipt.ToJson(), false);
+                    return ActionToolResult.FromReceipt(receipt);
                 }
             }
 
@@ -233,13 +233,13 @@ public sealed class ClickTool : IDriverTool
                               ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {textCdpPort}.");
                     if (receipt.Ok)
                         await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                    return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+                    return ActionToolResult.FromReceipt(receipt);
                 }
 
                 receipt = ActionReceipt.Failure(
                     "requires_cdp_or_element_text",
                     "Browser text input target was cached for a following type_text call, but no background-safe click/focus route is available without cdp_port; refusing to report this as a delivered click.");
-                return ToolResult.Text("❌ " + receipt.ToJson(), true);
+                return ActionToolResult.FromReceipt(receipt);
             }
 
             await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
@@ -250,7 +250,7 @@ public sealed class ClickTool : IDriverTool
                 {
                     if (msaaReceipt.Ok)
                         await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                    return ToolResult.Text((msaaReceipt.Ok ? "✅ " : "❌ ") + msaaReceipt.ToJson(), !msaaReceipt.Ok);
+                    return ActionToolResult.FromReceipt(msaaReceipt);
                 }
             }
 
@@ -267,7 +267,7 @@ public sealed class ClickTool : IDriverTool
             }
         }
 
-        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+        return ActionToolResult.FromReceipt(receipt);
     }
 
 }

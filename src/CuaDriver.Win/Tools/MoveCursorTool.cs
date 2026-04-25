@@ -37,7 +37,7 @@ public sealed class MoveCursorTool : IDriverTool
         if (!allow)
         {
             await context.State.AgentCursor.MoveToAsync(point, targetHwnd, cancellationToken).ConfigureAwait(false);
-            return ToolResult.Text("✅ " + ActionReceipt.Success("agent_cursor.visual_move").ToJson());
+            return ActionToolResult.FromReceipt(ActionReceipt.Success("agent_cursor.visual_move"));
         }
 
         using var guard = NoRegressionGuard.Capture();
@@ -47,6 +47,6 @@ public sealed class MoveCursorTool : IDriverTool
             ? ActionReceipt.UnsafeSuccess("parent.setcursorpos")
             : ActionReceipt.Failure("parent.setcursorpos", "SetCursorPos failed.");
         var done = guard.Finish(receipt, allowCursorMove: true, allowUnsafeRoute: true);
-        return ToolResult.Text((done.Ok ? "✅ " : "❌ ") + done.ToJson(), !done.Ok);
+        return ActionToolResult.FromReceipt(done);
     }
 }

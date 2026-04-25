@@ -73,14 +73,14 @@ public sealed class DoubleClickTool : IDriverTool
             {
                 if (receipt.Ok)
                     await context.State.AgentCursor.ClickPulseAsync(screenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+                return ActionToolResult.FromReceipt(receipt);
             }
 
             var cdpPort = BrowserToolArgs.CdpPort(args, context);
             if (cdpPort is null)
             {
                 receipt = ActionReceipt.Failure("requires_browser_semantic_route", "Browser element did not expose a safe MSAA/IA2 default action and no CDP port was configured; refusing UIA double-click because browser providers can foreground the target.");
-                return ToolResult.Text("❌ " + receipt.ToJson(), true);
+                return ActionToolResult.FromReceipt(receipt);
             }
 
             receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, 2, rightButton: false, cdpPort, cancellationToken, modifiers).ConfigureAwait(false)
@@ -97,6 +97,6 @@ public sealed class DoubleClickTool : IDriverTool
         if (receipt.Ok)
             await context.State.AgentCursor.ClickPulseAsync(screenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
 
-        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+        return ActionToolResult.FromReceipt(receipt);
     }
 }

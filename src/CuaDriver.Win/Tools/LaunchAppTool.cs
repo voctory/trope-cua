@@ -40,7 +40,7 @@ public sealed class LaunchAppTool : IDriverTool
             var renamed = ActionReceipt.Failure(
                 "foreground_launch_not_background_safe",
                 "allow_foreground was removed from the advertised schema. Parent-session Windows ShellExecute cannot guarantee a background launch. If a human explicitly wants a visible foreground launch, pass unsafe_allow_foreground=true.");
-            return ToolResult.Text("❌ " + renamed.ToJson(), true);
+            return ActionToolResult.FromReceipt(renamed);
         }
 
         var unsafeAllowForeground = JsonArgs.OptionalBool(args, "unsafe_allow_foreground");
@@ -55,7 +55,7 @@ public sealed class LaunchAppTool : IDriverTool
             var denied = ActionReceipt.Failure(
                 "requires_background_launch_lane",
                 "Parent-session Windows launches can foreground the target app. Reuse an existing window, use the child-session/AppBroadcast lane, or pass unsafe_allow_foreground=true only when the user explicitly asks for a visible foreground launch.");
-            return ToolResult.Text("❌ " + denied.ToJson(), true);
+            return ActionToolResult.FromReceipt(denied);
         }
 
         using var guard = NoRegressionGuard.Capture();
@@ -100,7 +100,7 @@ public sealed class LaunchAppTool : IDriverTool
         foreach (var w in windows)
             sb.AppendLine(CultureInfo.InvariantCulture, $"- window_id={w.WindowId} title=\"{w.Title}\" bounds=({w.Bounds.X},{w.Bounds.Y},{w.Bounds.Width},{w.Bounds.Height})");
 
-        var structured = JsonNode.Parse(receipt.ToJson())!.AsObject();
+        var structured = ActionToolResult.StructuredReceipt(receipt);
         structured["requested"] = appId ?? path;
         structured["pid"] = pid;
         if (windows.Length > 0 && windows[0].Pid != pid)

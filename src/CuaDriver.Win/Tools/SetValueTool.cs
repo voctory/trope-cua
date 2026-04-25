@@ -52,6 +52,6 @@ public sealed class SetValueTool : IDriverTool
                 receipt = UiAutomationActions.SetValue(element, value);
         }
 
-        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+        return ActionToolResult.FromReceipt(receipt);
     }
 }

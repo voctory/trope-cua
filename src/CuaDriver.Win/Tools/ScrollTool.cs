@@ -81,7 +81,7 @@ public sealed class ScrollTool : IDriverTool
                 break;
         }
 
-        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+        return ActionToolResult.FromReceipt(receipt);
     }
 
     private static async Task<ToolResult> ScrollByWheelAsync(int pid, JsonObject args, ToolContext context, CancellationToken cancellationToken)
@@ -122,7 +122,7 @@ public sealed class ScrollTool : IDriverTool
             await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
             receipt = UiAutomationActions.Scroll(scrollHit.Element, delta);
             if (receipt.Ok)
-                return ToolResult.Text("✅ " + (receipt with { Route = "uia.hit_test." + receipt.Route }).ToJson());
+                return ActionToolResult.FromReceipt(receipt, "uia.hit_test.");
         }
 
         await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
@@ -130,7 +130,7 @@ public sealed class ScrollTool : IDriverTool
             ? ActionReceipt.Failure("requires_cdp_or_uia_scroll", "Browser content did not expose UIA ScrollPattern and no browser-specific scroll route is configured; refusing blind WM_MOUSEWHEEL.")
             : WindowMessageInput.Scroll(window.Hwnd, resolved.ScreenPoint.X - window.Bounds.X, resolved.ScreenPoint.Y - window.Bounds.Y, delta);
 
-        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+        return ActionToolResult.FromReceipt(receipt);
     }
 
     private static string? ScrollKey(string direction, string by)

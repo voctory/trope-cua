@@ -55,7 +55,7 @@ public sealed class PressKeyTool : IDriverTool
         }
 
         var receipt = await WindowMessageInput.PressKeyAsync(targetHwnd, key, modifiers, cancellationToken).ConfigureAwait(false);
-        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+        return ActionToolResult.FromReceipt(receipt);
     }
 
     private static IntPtr ElementHwnd(AutomationElement element)

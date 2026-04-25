@@ -65,11 +65,11 @@ public sealed class RightClickTool : IDriverTool
                               ?? ActionReceipt.Failure("cdp.input.dispatch_mouse.right", $"No page tab found on CDP port {cdpPort}.");
                     if (receipt.Ok)
                         await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                    return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+                    return ActionToolResult.FromReceipt(receipt);
                 }
 
                 receipt = ActionReceipt.Failure("requires_cdp_or_child_session", "Refusing browser UIA show_menu from element_index because browser providers can foreground the target. Provide cdp_port for Chromium or use the child-session/AppBroadcast lane.");
-                return ToolResult.Text("❌ " + receipt.ToJson(), true);
+                return ActionToolResult.FromReceipt(receipt);
             }
             receipt = await UiAutomationActions.InvokeElementAsync(element, "show_menu", cancellationToken).ConfigureAwait(false);
             if (receipt.Ok)
@@ -108,11 +108,11 @@ public sealed class RightClickTool : IDriverTool
                                   ?? ActionReceipt.Failure("cdp.input.dispatch_mouse.right", $"No page tab found on CDP port {hitCdpPort}.");
                         if (receipt.Ok)
                             await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+                        return ActionToolResult.FromReceipt(receipt);
                     }
 
                     receipt = ActionReceipt.Failure("requires_cdp_or_child_session", "Refusing browser UIA show_menu from hit-test because browser providers can foreground the target. Provide cdp_port for Chromium or use the child-session/AppBroadcast lane.");
-                    return ToolResult.Text("❌ " + receipt.ToJson(), true);
+                    return ActionToolResult.FromReceipt(receipt);
                 }
 
                 var hitReceipt = await UiAutomationActions.InvokeElementAsync(hit.Element, "show_menu", cancellationToken).ConfigureAwait(false);
@@ -120,7 +120,7 @@ public sealed class RightClickTool : IDriverTool
                 {
                     receipt = hitReceipt with { Route = "uia.hit_test." + hitReceipt.Route };
                     await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
-                    return ToolResult.Text("✅ " + receipt.ToJson());
+                    return ActionToolResult.FromReceipt(receipt);
                 }
             }
 
@@ -138,6 +138,6 @@ public sealed class RightClickTool : IDriverTool
             }
         }
 
-        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+        return ActionToolResult.FromReceipt(receipt);
     }
 }

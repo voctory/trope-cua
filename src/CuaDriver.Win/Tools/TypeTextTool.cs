@@ -52,7 +52,7 @@ public sealed class TypeTextTool : IDriverTool
                 var refused = ActionReceipt.Failure(
                     "requires_cdp_or_child_session",
                     "Refusing Chromium UIA/IA2 text setters from the parent session because Chromium can foreground the target while focusing editable web content. Provide cdp_port, configure chromium_debugging_port, or use the child-session/AppBroadcast lane.");
-                return ToolResult.Text("❌ " + refused.ToJson(), true);
+                return ActionToolResult.FromReceipt(refused);
             }
 
             var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
@@ -60,7 +60,7 @@ public sealed class TypeTextTool : IDriverTool
             if (BrowserWindowClassifier.IsLikelyChromium(window) && cdpPort is not null)
             {
                 receipt = await TypeViaBrowserCdpAsync(context, window, element, text, delayMs, cdpPort.Value, cancellationToken).ConfigureAwait(false);
-                return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+                return ActionToolResult.FromReceipt(receipt);
             }
 
             receipt = await TypeViaElementAsync(context, window.Hwnd, element, text, delayMs, streamCharacters, cancellationToken).ConfigureAwait(false);
@@ -89,12 +89,12 @@ public sealed class TypeTextTool : IDriverTool
                 {
                     var browserReceipt = await TypeViaBrowserCdpAsync(context, window, textElement, text, delayMs, targetCdpPort.Value, cancellationToken).ConfigureAwait(false);
                     if (browserReceipt.Ok)
-                        return ToolResult.Text("✅ " + (browserReceipt with { Route = "uia.last_text_target." + browserReceipt.Route }).ToJson());
+                        return ActionToolResult.FromReceipt(browserReceipt, "uia.last_text_target.");
                 }
 
                 var setReceipt = await TypeViaElementAsync(context, window.Hwnd, textElement, text, delayMs, streamCharacters, cancellationToken).ConfigureAwait(false);
                 if (setReceipt.Ok)
-                    return ToolResult.Text("✅ " + (setReceipt with { Route = "uia.last_text_target." + setReceipt.Route }).ToJson());
+                    return ActionToolResult.FromReceipt(setReceipt, "uia.last_text_target.");
             }
 
             var cdpPort = BrowserToolArgs.CdpPort(args, context);
@@ -119,7 +119,7 @@ public sealed class TypeTextTool : IDriverTool
             }
         }
 
-        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
+        return ActionToolResult.FromReceipt(receipt);
     }
 
     private static async Task<ActionReceipt> TypeViaBrowserCdpAsync(
