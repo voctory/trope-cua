@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Browser;
 using CuaDriver.Win.Input;
@@ -141,7 +140,7 @@ public sealed class TypeTextTool : IDriverTool
         bool streamCharacters,
         CancellationToken cancellationToken)
     {
-        var units = TextElements(text);
+        var units = TextElementSplitter.Split(text);
         if (delayMs <= 0 || units.Count <= 1)
             return InsertElementText(rootHwnd, element, text);
 
@@ -233,12 +232,4 @@ public sealed class TypeTextTool : IDriverTool
         return receipt;
     }
 
-    private static List<string> TextElements(string text)
-    {
-        var result = new List<string>();
-        var enumerator = StringInfo.GetTextElementEnumerator(text);
-        while (enumerator.MoveNext())
-            result.Add(enumerator.GetTextElement());
-        return result;
-    }
 }

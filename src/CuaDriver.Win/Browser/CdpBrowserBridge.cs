@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Net.Http;
 using System.Net.WebSockets;
 using System.Text;
@@ -94,7 +93,7 @@ public static class CdpBrowserBridge
 
             using var client = new ClientWebSocket();
             await client.ConnectAsync(new Uri(wsUrl), ct).ConfigureAwait(false);
-            var units = TextElements(text);
+            var units = TextElementSplitter.Split(text);
             if (delayMs <= 0 || units.Count <= 1)
             {
                 await SendAsync(client, "Input.insertText", new JsonObject { ["text"] = text }, ct).ConfigureAwait(false);
@@ -327,12 +326,4 @@ public static class CdpBrowserBridge
 
     private static int _nextId;
 
-    private static List<string> TextElements(string text)
-    {
-        var result = new List<string>();
-        var enumerator = StringInfo.GetTextElementEnumerator(text);
-        while (enumerator.MoveNext())
-            result.Add(enumerator.GetTextElement());
-        return result;
-    }
 }
