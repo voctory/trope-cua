@@ -354,14 +354,4 @@ internal static class ChildSessionHost
         }
 
     }
-
-    private sealed class RdpActiveXControl : AxHost
-    {
-        public RdpActiveXControl(string clsid) : base(clsid)
-        {
-        }
-
-        public object OcxObject => GetOcx() ?? throw new InvalidOperationException("RDP ActiveX control did not expose an OCX object.");
-    }
-
 }
