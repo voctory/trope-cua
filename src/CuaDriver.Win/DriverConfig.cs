@@ -183,6 +183,30 @@ public sealed class DriverState
     public DriverState(string? instanceId = null)
     {
         AgentCursor = new AgentCursorOverlay(instanceId);
+        ApplyLiveConfig();
+    }
+
+    public void SaveConfig(DriverConfig config, string? changedKey = null)
+    {
+        var next = config.Normalize();
+        next.Save();
+        Config = next;
+        ApplyLiveConfig(changedKey);
+    }
+
+    private void ApplyLiveConfig(string? changedKey = null)
+    {
+        if (changedKey is null || changedKey.Equals("agent_cursor.enabled", StringComparison.OrdinalIgnoreCase))
+            AgentCursor.SetEnabled(Config.AgentCursor.Enabled);
+
+        if (changedKey is null ||
+            changedKey.Equals("agent_cursor.motion", StringComparison.OrdinalIgnoreCase) ||
+            changedKey.StartsWith("agent_cursor.motion.", StringComparison.OrdinalIgnoreCase))
+            ApplyAgentCursorMotion();
+    }
+
+    private void ApplyAgentCursorMotion()
+    {
         var motion = Config.AgentCursor.Motion;
         AgentCursor.UpdateMotion(
             motion.StartHandle,
@@ -194,7 +218,6 @@ public sealed class DriverState
             motion.DwellAfterClickMs,
             motion.IdleHideMs,
             motion.PressDurationMs);
-        AgentCursor.SetEnabled(Config.AgentCursor.Enabled);
     }
 }
 

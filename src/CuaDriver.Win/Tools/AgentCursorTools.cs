@@ -15,12 +15,11 @@ public sealed class SetAgentCursorEnabledTool : IDriverTool
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
         var enabled = JsonArgs.RequiredBool(args, "enabled");
-        context.State.AgentCursor.SetEnabled(enabled);
-        context.State.Config = context.State.Config with
+        var next = context.State.Config with
         {
             AgentCursor = context.State.Config.AgentCursor with { Enabled = enabled }
         };
-        context.State.Config.Save();
+        context.State.SaveConfig(next, "agent_cursor.enabled");
         var structured = context.State.AgentCursor.StateObject();
         return Task.FromResult(ToolResult.JsonText("✅ ", structured));
     }
@@ -57,39 +56,32 @@ public sealed class SetAgentCursorMotionTool : IDriverTool
 
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
-        var motion = context.State.AgentCursor.UpdateMotion(
-            JsonArgs.OptionalDouble(args, "start_handle"),
-            JsonArgs.OptionalDouble(args, "end_handle"),
-            JsonArgs.OptionalDouble(args, "arc_size"),
-            JsonArgs.OptionalDouble(args, "arc_flow"),
-            JsonArgs.OptionalDouble(args, "spring"),
-            JsonArgs.OptionalDouble(args, "glide_duration_ms"),
-            JsonArgs.OptionalDouble(args, "dwell_after_click_ms"),
-            JsonArgs.OptionalDouble(args, "idle_hide_ms"),
-            JsonArgs.OptionalDouble(args, "press_duration_ms"));
-
-        context.State.Config = context.State.Config with
+        var motion = UpdatedMotion(context.State.Config.AgentCursor.Motion, args);
+        var next = context.State.Config with
         {
             AgentCursor = context.State.Config.AgentCursor with
             {
-                Motion = context.State.Config.AgentCursor.Motion with
-                {
-                    StartHandle = motion.StartHandle,
-                    EndHandle = motion.EndHandle,
-                    ArcSize = motion.ArcSize,
-                    ArcFlow = motion.ArcFlow,
-                    Spring = motion.Spring,
-                    GlideDurationMs = motion.GlideDurationMs,
-                    DwellAfterClickMs = motion.DwellAfterClickMs,
-                    IdleHideMs = motion.IdleHideMs,
-                    PressDurationMs = motion.PressDurationMs
-                }
+                Motion = motion
             }
         };
-        context.State.Config.Save();
+        context.State.SaveConfig(next, "agent_cursor.motion");
 
-        var structured = JsonSerializer.SerializeToNode(motion, JsonUtil.SerializerOptions)?.AsObject()
+        var structured = JsonSerializer.SerializeToNode(context.State.AgentCursor.Motion, JsonUtil.SerializerOptions)?.AsObject()
                          ?? new JsonObject();
         return Task.FromResult(ToolResult.JsonText("✅ ", structured));
     }
+
+    private static AgentCursorMotionConfig UpdatedMotion(AgentCursorMotionConfig current, JsonObject args) =>
+        (current with
+        {
+            StartHandle = JsonArgs.OptionalDouble(args, "start_handle") ?? current.StartHandle,
+            EndHandle = JsonArgs.OptionalDouble(args, "end_handle") ?? current.EndHandle,
+            ArcSize = JsonArgs.OptionalDouble(args, "arc_size") ?? current.ArcSize,
+            ArcFlow = JsonArgs.OptionalDouble(args, "arc_flow") ?? current.ArcFlow,
+            Spring = JsonArgs.OptionalDouble(args, "spring") ?? current.Spring,
+            GlideDurationMs = JsonArgs.OptionalDouble(args, "glide_duration_ms") ?? current.GlideDurationMs,
+            DwellAfterClickMs = JsonArgs.OptionalDouble(args, "dwell_after_click_ms") ?? current.DwellAfterClickMs,
+            IdleHideMs = JsonArgs.OptionalDouble(args, "idle_hide_ms") ?? current.IdleHideMs,
+            PressDurationMs = JsonArgs.OptionalDouble(args, "press_duration_ms") ?? current.PressDurationMs
+        }).Normalize();
 }

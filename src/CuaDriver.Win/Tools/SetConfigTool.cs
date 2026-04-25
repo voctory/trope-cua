@@ -25,11 +25,9 @@ public sealed class SetConfigTool : IDriverTool
         try
         {
             var next = WithValue(context.State.Config, key, value).Normalize();
-            next.Save();
-            context.State.Config = next;
-            ApplyLiveConfig(key, next, context);
+            context.State.SaveConfig(next, key);
 
-            var structured = JsonSerializer.SerializeToNode(next, JsonUtil.SerializerOptions)?.AsObject()
+            var structured = JsonSerializer.SerializeToNode(context.State.Config, JsonUtil.SerializerOptions)?.AsObject()
                              ?? new JsonObject();
             return Task.FromResult(ToolResult.JsonText("✅ ", structured));
         }
@@ -62,26 +60,6 @@ public sealed class SetConfigTool : IDriverTool
             "agent_cursor.motion.press_duration_ms" => config with { AgentCursor = config.AgentCursor with { Motion = config.AgentCursor.Motion with { PressDurationMs = NumberValue(value) } } },
             _ => throw new ArgumentException($"Unknown config key: {key}")
         };
-    }
-
-    private static void ApplyLiveConfig(string key, DriverConfig config, ToolContext context)
-    {
-        if (key.Equals("agent_cursor.enabled", StringComparison.OrdinalIgnoreCase))
-            context.State.AgentCursor.SetEnabled(config.AgentCursor.Enabled);
-        else if (key.StartsWith("agent_cursor.motion.", StringComparison.OrdinalIgnoreCase))
-        {
-            var motion = config.AgentCursor.Motion;
-            context.State.AgentCursor.UpdateMotion(
-                motion.StartHandle,
-                motion.EndHandle,
-                motion.ArcSize,
-                motion.ArcFlow,
-                motion.Spring,
-                motion.GlideDurationMs,
-                motion.DwellAfterClickMs,
-                motion.IdleHideMs,
-                motion.PressDurationMs);
-        }
     }
 
     private static bool IsNullOrBlank(JsonNode? value) =>
