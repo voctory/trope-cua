@@ -55,6 +55,8 @@ public sealed class AgentCursorOverlay
     private const double PeakSpeed = 900;
     private const double MinStartSpeed = 300;
     private const double MinEndSpeed = 200;
+    private const double LandingSpeed = 55;
+    private const double ArrivalBrakeStart = 0.72;
     private const double SpringStiffness = 400;
     private const double SpringOvershoot = 0.8;
     private const double IdleBreathPeriodSeconds = 1.8;
@@ -533,12 +535,10 @@ public sealed class AgentCursorOverlay
             if (_path is { } path && _trip is { } trip)
             {
                 var u = Math.Min(1.0, _distanceSoFar / Math.Max(path.Length, 1));
-                var profileValue = SmootherSpeedProfile(u);
-                var floorSpeed = u < 0.5 ? trip.MinStart : trip.MinEnd;
-                var currentSpeed = floorSpeed + (trip.Peak - floorSpeed) * profileValue;
-                _distanceSoFar += currentSpeed * dt;
+                var currentSpeed = SpeedAtProgress(trip, u);
+                var nextDistance = _distanceSoFar + currentSpeed * dt;
 
-                if (_distanceSoFar >= path.Length)
+                if (nextDistance >= path.Length)
                 {
                     var endState = path.Sample(path.Length);
                     _spring = new SpringState(
@@ -559,6 +559,7 @@ public sealed class AgentCursorOverlay
                 }
                 else
                 {
+                    _distanceSoFar = nextDistance;
                     var state = path.Sample(_distanceSoFar);
                     _current = new PointF((float)state.X, (float)state.Y);
                     _heading = RotateToward(_heading, state.Heading + Math.PI, 14 * dt);
@@ -869,6 +870,25 @@ public sealed class AgentCursorOverlay
 
         private static double SmootherSpeedProfile(double u) => (30 * u * u * (1 - u) * (1 - u)) / 1.875;
 
+        private static double SpeedAtProgress(Trip trip, double u)
+        {
+            var profileValue = SmootherSpeedProfile(u);
+            var floorSpeed = u < 0.5 ? trip.MinStart : trip.MinEnd;
+            var speed = floorSpeed + (trip.Peak - floorSpeed) * profileValue;
+            if (u <= ArrivalBrakeStart)
+                return speed;
+
+            var brake = Smooth01((u - ArrivalBrakeStart) / (1 - ArrivalBrakeStart));
+            var landing = Math.Min(trip.Landing, trip.MinEnd);
+            return speed + (landing - speed) * brake;
+        }
+
+        private static double Smooth01(double value)
+        {
+            var u = Math.Clamp(value, 0, 1);
+            return u * u * (3 - 2 * u);
+        }
+
         private double BloomBreath()
         {
             if (_path is not null || _spring is not null || _pulseStartedMs > 0)
@@ -979,7 +999,11 @@ public sealed class AgentCursorOverlay
         private static Trip TripFor(double glideDurationMs, float scale)
         {
             var speedScale = DefaultGlideDurationMs / Math.Clamp(glideDurationMs, 50, 5000);
-            return new Trip(PeakSpeed * scale * speedScale, MinStartSpeed * scale * speedScale, MinEndSpeed * scale * speedScale);
+            return new Trip(
+                PeakSpeed * scale * speedScale,
+                MinStartSpeed * scale * speedScale,
+                MinEndSpeed * scale * speedScale,
+                LandingSpeed * scale * speedScale);
         }
 
         private static PlannedPath PlanPath(
@@ -1113,7 +1137,7 @@ public sealed class AgentCursorOverlay
             return result < 0 ? result + tau : result;
         }
 
-        private readonly record struct Trip(double Peak, double MinStart, double MinEnd);
+        private readonly record struct Trip(double Peak, double MinStart, double MinEnd, double Landing);
 
         private struct SpringState(double ox, double oy, double vx, double vy)
         {
