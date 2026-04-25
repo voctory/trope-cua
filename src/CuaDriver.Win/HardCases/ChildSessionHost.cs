@@ -1,12 +1,9 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
-using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
 using System.Windows.Forms;
 using CuaDriver.Win.Win32;
-using Microsoft.Win32;
 
 namespace CuaDriver.Win.HardCases;
 
@@ -277,7 +274,7 @@ internal static class ChildSessionHost
             try
             {
                 _host.SetState("connecting");
-                var clsid = ResolveRdpClientClsid();
+                var clsid = ChildSessionRdpCom.ResolveRdpClientClsid();
                 _host.AddLog($"using RDP ActiveX CLSID {clsid}");
 
                 _rdp = new RdpActiveXControl(clsid) { Dock = DockStyle.Fill };
@@ -287,17 +284,17 @@ internal static class ChildSessionHost
                 _rdp.CreateControl();
 
                 var ocx = _rdp.OcxObject;
-                SetComProperty(ocx, "Server", "localhost");
-                SetComProperty(ocx, "DesktopWidth", _options.Width);
-                SetComProperty(ocx, "DesktopHeight", _options.Height);
-                TrySetComProperty(ocx, "ColorDepth", 32);
-                TryConfigureAdvancedSettings(ocx);
+                ChildSessionRdpCom.SetProperty(ocx, "Server", "localhost");
+                ChildSessionRdpCom.SetProperty(ocx, "DesktopWidth", _options.Width);
+                ChildSessionRdpCom.SetProperty(ocx, "DesktopHeight", _options.Height);
+                ChildSessionRdpCom.TrySetProperty(ocx, "ColorDepth", 32);
+                ChildSessionRdpCom.TryConfigureAdvancedSettings(ocx);
 
-                SetExtendedProperty(ocx, "ConnectToChildSession", true);
-                TrySetExtendedProperty(ocx, "EnableFrameBufferRedirection", true);
-                TrySetExtendedProperty(ocx, "ManualClipboardSyncEnabled", true);
+                ChildSessionRdpCom.SetExtendedProperty(ocx, "ConnectToChildSession", true);
+                ChildSessionRdpCom.TrySetExtendedProperty(ocx, "EnableFrameBufferRedirection", true);
+                ChildSessionRdpCom.TrySetExtendedProperty(ocx, "ManualClipboardSyncEnabled", true);
 
-                InvokeComMethod(ocx, "Connect");
+                ChildSessionRdpCom.InvokeMethod(ocx, "Connect");
                 _host.AddLog("RDP ActiveX Connect() returned");
 
                 _pollTimer = new System.Windows.Forms.Timer { Interval = 250 };
@@ -348,7 +345,7 @@ internal static class ChildSessionHost
             {
                 _pollTimer?.Stop();
                 if (_rdp?.OcxObject is { } ocx)
-                    InvokeComMethod(ocx, "Disconnect");
+                    ChildSessionRdpCom.InvokeMethod(ocx, "Disconnect");
             }
             catch
             {
@@ -356,174 +353,6 @@ internal static class ChildSessionHost
             }
         }
 
-        private static string ResolveRdpClientClsid()
-        {
-            using var curVer = Registry.ClassesRoot.OpenSubKey(@"MsTscAx.MsTscAx\CurVer");
-            var progId = curVer?.GetValue(null) as string;
-            if (!string.IsNullOrWhiteSpace(progId))
-            {
-                using var clsid = Registry.ClassesRoot.OpenSubKey($@"{progId}\CLSID");
-                if (clsid?.GetValue(null) is string registered && !string.IsNullOrWhiteSpace(registered))
-                    return registered;
-            }
-
-            return "{8B918B82-7985-4C24-89DF-C33AD2BBFBCD}";
-        }
-
-        private static void TryConfigureAdvancedSettings(object ocx)
-        {
-            foreach (var propertyName in new[] { "AdvancedSettings9", "AdvancedSettings8", "AdvancedSettings7", "AdvancedSettings6", "AdvancedSettings5", "AdvancedSettings4", "AdvancedSettings3", "AdvancedSettings2", "AdvancedSettings" })
-            {
-                var settings = TryGetComProperty(ocx, propertyName);
-                if (settings is null)
-                    continue;
-
-                TrySetComProperty(settings, "EnableCredSspSupport", true);
-                TrySetComProperty(settings, "SmartSizing", true);
-                TrySetComProperty(settings, "RedirectClipboard", false);
-                TrySetComProperty(settings, "RedirectDrives", false);
-                return;
-            }
-        }
-
-        private static object? TryGetComProperty(object target, string name)
-        {
-            try
-            {
-                return target.GetType().InvokeMember(
-                    name,
-                    BindingFlags.GetProperty | BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase,
-                    null,
-                    target,
-                    null,
-                    CultureInfo.InvariantCulture);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private static void SetComProperty(object target, string name, object value)
-            => target.GetType().InvokeMember(
-                name,
-                BindingFlags.SetProperty | BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase,
-                null,
-                target,
-                [value],
-                CultureInfo.InvariantCulture);
-
-        private static void TrySetComProperty(object target, string name, object value)
-        {
-            try
-            {
-                SetComProperty(target, name, value);
-            }
-            catch
-            {
-                // Optional RDP ActiveX settings vary by installed control version.
-            }
-        }
-
-        private static void InvokeComMethod(object target, string name)
-            => target.GetType().InvokeMember(
-                name,
-                BindingFlags.InvokeMethod | BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase,
-                null,
-                target,
-                null,
-                CultureInfo.InvariantCulture);
-
-        private static void SetExtendedProperty(object ocx, string name, object value)
-        {
-            if (!TrySetExtendedProperty(ocx, name, value))
-                throw new InvalidOperationException($"RDP ActiveX control does not expose IMsRdpExtendedSettings.Property({name}).");
-        }
-
-        private static bool TrySetExtendedProperty(object ocx, string name, object value)
-        {
-            var iid = new Guid("302D8188-0052-4807-806A-362B628F9AC5");
-            var unknown = Marshal.GetIUnknownForObject(ocx);
-            try
-            {
-                var hr = Marshal.QueryInterface(unknown, in iid, out var extended);
-                if (hr != 0 || extended == IntPtr.Zero)
-                    return false;
-
-                try
-                {
-                    var extendedObject = Marshal.GetObjectForIUnknown(extended);
-                    try
-                    {
-                        extendedObject.GetType().InvokeMember(
-                            "Property",
-                            BindingFlags.SetProperty | BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase,
-                            null,
-                            extendedObject,
-                            [name, value],
-                            CultureInfo.InvariantCulture);
-                        return true;
-                    }
-                    catch
-                    {
-                        return TrySetDispatchIndexedProperty(extended, "Property", name, value);
-                    }
-                }
-                finally
-                {
-                    Marshal.Release(extended);
-                }
-            }
-            finally
-            {
-                Marshal.Release(unknown);
-            }
-        }
-
-        private static bool TrySetDispatchIndexedProperty(IntPtr dispatchPointer, string propertyName, string key, object value)
-        {
-            try
-            {
-                var dispatch = (IDispatchRaw)Marshal.GetTypedObjectForIUnknown(dispatchPointer, typeof(IDispatchRaw));
-                var iidNull = Guid.Empty;
-                var dispIds = new int[1];
-                var names = new[] { propertyName };
-                var hr = dispatch.GetIDsOfNames(ref iidNull, names, 1, 0, dispIds);
-                if (hr != 0)
-                    return false;
-
-                const int variantSize = 16;
-                var args = Marshal.AllocCoTaskMem(variantSize * 2);
-                var namedArgs = Marshal.AllocCoTaskMem(sizeof(int));
-                try
-                {
-                    Marshal.GetNativeVariantForObject(value, args);
-                    Marshal.GetNativeVariantForObject(key, IntPtr.Add(args, variantSize));
-                    Marshal.WriteInt32(namedArgs, DispatchPropertyPut);
-
-                    var dispParams = new DISPPARAMS
-                    {
-                        rgvarg = args,
-                        rgdispidNamedArgs = namedArgs,
-                        cArgs = 2,
-                        cNamedArgs = 1
-                    };
-                    hr = dispatch.Invoke(dispIds[0], ref iidNull, 0, DispatchPropertyPutFlag, ref dispParams, IntPtr.Zero, IntPtr.Zero, out _);
-                    return hr == 0;
-                }
-                finally
-                {
-                    _ = VariantClear(args);
-                    _ = VariantClear(IntPtr.Add(args, variantSize));
-                    Marshal.FreeCoTaskMem(args);
-                    Marshal.FreeCoTaskMem(namedArgs);
-                }
-            }
-            catch
-            {
-                return false;
-            }
-        }
     }
 
     private sealed class RdpActiveXControl : AxHost
@@ -535,49 +364,4 @@ internal static class ChildSessionHost
         public object OcxObject => GetOcx() ?? throw new InvalidOperationException("RDP ActiveX control did not expose an OCX object.");
     }
 
-    [ComImport]
-    [Guid("00020400-0000-0000-C000-000000000046")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IDispatchRaw
-    {
-        [PreserveSig]
-        int GetTypeInfoCount(out uint pctinfo);
-
-        [PreserveSig]
-        int GetTypeInfo(uint iTInfo, uint lcid, out IntPtr ppTInfo);
-
-        [PreserveSig]
-        int GetIDsOfNames(
-            ref Guid riid,
-            [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPWStr)] string[] rgszNames,
-            uint cNames,
-            uint lcid,
-            [Out] int[] rgDispId);
-
-        [PreserveSig]
-        int Invoke(
-            int dispIdMember,
-            ref Guid riid,
-            uint lcid,
-            ushort wFlags,
-            ref DISPPARAMS pDispParams,
-            IntPtr pVarResult,
-            IntPtr pExcepInfo,
-            out uint puArgErr);
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct DISPPARAMS
-    {
-        public IntPtr rgvarg;
-        public IntPtr rgdispidNamedArgs;
-        public uint cArgs;
-        public uint cNamedArgs;
-    }
-
-    private const int DispatchPropertyPut = -3;
-    private const ushort DispatchPropertyPutFlag = 4;
-
-    [DllImport("oleaut32.dll")]
-    private static extern int VariantClear(IntPtr pvarg);
 }
