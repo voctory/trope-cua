@@ -115,11 +115,14 @@ public sealed class CdpBrowserBridge
     }
 
     public async Task<ActionReceipt> EvaluateUserGestureAsync(int port, string expression, CancellationToken ct)
+        => await EvaluateUserGestureAsync(port, null, expression, ct).ConfigureAwait(false);
+
+    public async Task<ActionReceipt> EvaluateUserGestureAsync(int port, long? windowId, string expression, CancellationToken ct)
     {
         var guard = NoRegressionGuard.Capture();
         try
         {
-            var wsUrl = await PageWebSocketUrlAsync(port, null, ct).ConfigureAwait(false)
+            var wsUrl = await PageWebSocketUrlAsync(port, windowId, ct).ConfigureAwait(false)
                         ?? throw new InvalidOperationException($"No page tab found on CDP port {port}.");
 
             using var client = new ClientWebSocket();
