@@ -8,4 +8,7 @@ internal sealed record CursorSnapshot(
     string Layering,
     double? RenderFps,
     double? RenderMs,
-    long RenderFrameCount);
+    long RenderFrameCount,
+    bool Thinking,
+    long IdleAnimationMs,
+    double DisplayHeadingRadians);

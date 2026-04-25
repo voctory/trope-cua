@@ -230,6 +230,43 @@ def test_agent_cursor_repeated_same_target_stays_stable(tmp_path):
                 process.wait(timeout=5)
 
 
+def test_agent_cursor_keepalive_preserves_thinking_rotation(tmp_path):
+    instance = f"pytest-cursor-thinking-{uuid.uuid4().hex}"
+    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    process = None
+
+    try:
+        process = start_daemon(instance, env)
+        wait_for_status(instance, env)
+        screen = call_instance(instance, "get_screen_size", extra_env=env)["structuredContent"]
+        x = screen["x"] + min(180, max(0, screen["width"] - 1))
+        y = screen["y"] + min(170, max(0, screen["height"] - 1))
+
+        moved = call_instance(instance, "move_cursor", {"x": x, "y": y}, extra_env=env)
+        assert moved["isError"] is False
+
+        wait_for_cursor_state(instance, env, visible=True, thinking=True)
+        time.sleep(0.25)
+        before = call_instance(instance, "get_agent_cursor_state", extra_env=env)["structuredContent"]
+        assert before["thinking"] is True
+        assert before["idle_animation_ms"] >= 100
+
+        keepalive = call_instance(instance, "get_screen_size", extra_env=env)
+        assert keepalive["isError"] is False
+
+        after = call_instance(instance, "get_agent_cursor_state", extra_env=env)["structuredContent"]
+        assert after["thinking"] is True
+        assert after["idle_animation_ms"] >= before["idle_animation_ms"]
+    finally:
+        stop_daemon(instance, env)
+        if process is not None:
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+
+
 def start_daemon(instance, extra_env=None):
     env = os.environ.copy()
     if extra_env:
@@ -287,18 +324,20 @@ def wait_for_status(instance, extra_env=None):
     raise AssertionError(f"daemon {instance} did not start\nstdout={last_stdout}\nstderr={last_stderr}")
 
 
-def wait_for_cursor_state(instance, extra_env=None, visible=None):
+def wait_for_cursor_state(instance, extra_env=None, visible=None, thinking=None):
     last_state = None
     for _ in range(50):
         result = call_instance(instance, "get_agent_cursor_state", extra_env=extra_env)
         assert result["isError"] is False
         state = result["structuredContent"]
         last_state = state
-        if visible is None or state["visible"] is visible:
+        visible_matches = visible is None or state["visible"] is visible
+        thinking_matches = thinking is None or state["thinking"] is thinking
+        if visible_matches and thinking_matches:
             return state
         time.sleep(0.1)
 
-    raise AssertionError(f"cursor state did not reach visible={visible}: {last_state}")
+    raise AssertionError(f"cursor state did not reach visible={visible} thinking={thinking}: {last_state}")
 
 
 def assert_near(actual, expected, tolerance=8):

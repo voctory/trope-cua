@@ -149,6 +149,9 @@ internal sealed class AgentCursorOverlay
         double? renderFps = null;
         double? renderMs = null;
         long renderFrameCount = 0;
+        var thinking = false;
+        long idleAnimationMs = 0;
+        double? displayHeadingRadians = null;
         AgentCursorMotion motion;
         lock (_gate)
         {
@@ -168,6 +171,9 @@ internal sealed class AgentCursorOverlay
                 renderFps = snapshot.RenderFps;
                 renderMs = snapshot.RenderMs;
                 renderFrameCount = snapshot.RenderFrameCount;
+                thinking = snapshot.Thinking;
+                idleAnimationMs = snapshot.IdleAnimationMs;
+                displayHeadingRadians = snapshot.DisplayHeadingRadians;
             }
         }
 
@@ -184,6 +190,9 @@ internal sealed class AgentCursorOverlay
             ["render_fps"] = renderFps,
             ["render_ms"] = renderMs,
             ["render_frame_count"] = renderFrameCount,
+            ["thinking"] = thinking,
+            ["idle_animation_ms"] = idleAnimationMs,
+            ["display_heading_radians"] = displayHeadingRadians,
             ["persistent"] = motion.IdleHideMs <= 0,
             ["motion"] = motion.ToJsonObject()
         };
@@ -292,6 +301,7 @@ internal sealed class AgentCursorOverlay
         private bool _enabled = true;
         private double _pulseStartedMs;
         private long _lastActivityMs = Environment.TickCount64;
+        private long _idleAnimationStartedMs = Environment.TickCount64;
         private TaskCompletionSource? _arrival;
         private IntPtr _pinnedTargetHwnd;
         private long _lastPinAtMs;
@@ -402,7 +412,7 @@ internal sealed class AgentCursorOverlay
             if (_enabled && _visibleCursor)
             {
                 CancelFadeOut();
-                MarkActivity();
+                MarkVisibilityKeepAlive();
                 ShowOverlay();
             }
         }
@@ -578,7 +588,7 @@ internal sealed class AgentCursorOverlay
                     _trip = null;
                     _distanceSoFar = 0;
                     _isGliding = false;
-                    _lastActivityMs = nowMs;
+                    MarkActivity(nowMs);
                     _arrival?.TrySetResult();
                     _arrival = null;
                 }
@@ -638,7 +648,7 @@ internal sealed class AgentCursorOverlay
             if (_pulseStartedMs > 0 && Environment.TickCount64 - _pulseStartedMs > Math.Max(1, _motion.PressDurationMs))
             {
                 _pulseStartedMs = 0;
-                _lastActivityMs = nowMs;
+                MarkActivity(nowMs);
                 changed = true;
             }
             else if (_pulseStartedMs > 0)
@@ -681,7 +691,10 @@ internal sealed class AgentCursorOverlay
             _layering,
             _renderFps,
             _renderMs,
-            _renderFrameCount);
+            _renderFrameCount,
+            IsThinkingIdle(),
+            IdleAnimationMs(),
+            _displayHeading);
 
         private PointF ToLocal(int screenX, int screenY) => new(screenX - _virtualBounds.Left, screenY - _virtualBounds.Top);
 
@@ -946,9 +959,19 @@ internal sealed class AgentCursorOverlay
             return Math.Sin(seconds / IdleRotationPeriodSeconds * Math.PI * 2) * IdleRotationAmplitudeRadians;
         }
 
-        private void MarkActivity() => _lastActivityMs = Environment.TickCount64;
+        private void MarkActivity() => MarkActivity(Environment.TickCount64);
 
-        private double IdleSeconds() => Math.Max(0, Environment.TickCount64 - _lastActivityMs) / 1000.0;
+        private void MarkActivity(long nowMs)
+        {
+            _lastActivityMs = nowMs;
+            _idleAnimationStartedMs = nowMs;
+        }
+
+        private void MarkVisibilityKeepAlive() => _lastActivityMs = Environment.TickCount64;
+
+        private long IdleAnimationMs() => Math.Max(0, Environment.TickCount64 - _idleAnimationStartedMs);
+
+        private double IdleSeconds() => IdleAnimationMs() / 1000.0;
 
         private bool UpdateDisplayHeading(double dt)
         {
