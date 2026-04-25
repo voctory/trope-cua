@@ -10,10 +10,6 @@ public static class DebugCrosshair
     public static void WriteCrosshair(WindowInfo window, PointF point, int maxImageDimension, string path)
     {
         var resolvedPath = PathHelpers.ExpandUserPath(path);
-        var directory = Path.GetDirectoryName(Path.GetFullPath(resolvedPath));
-        if (!string.IsNullOrWhiteSpace(directory))
-            Directory.CreateDirectory(directory);
-
         var shot = WindowCapture.Capture(window.Hwnd, maxImageDimension, quality: 100);
         using var ms = new MemoryStream(shot.Data);
         using var image = Image.FromStream(ms);
