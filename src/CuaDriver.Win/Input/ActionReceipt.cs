@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace CuaDriver.Win.Input;
@@ -39,7 +40,11 @@ public sealed record ActionReceipt
     public static ActionReceipt Failure(string route, string reason, string lane = "same_session") =>
         new() { Ok = false, Route = route, Lane = lane, BackgroundSafe = false, Session = SessionForLane(lane), Reason = reason };
 
-    public string ToJson() => JsonSerializer.Serialize(this, JsonUtil.SerializerOptions);
+    public JsonObject ToJsonObject() =>
+        JsonSerializer.SerializeToNode(this, JsonUtil.SerializerOptions)?.AsObject()
+        ?? new JsonObject();
+
+    public string ToJson() => ToJsonObject().ToJsonString(JsonUtil.SerializerOptions);
 
     private static string SessionForLane(string lane) => lane == "child_session" ? "child" : "parent";
 }

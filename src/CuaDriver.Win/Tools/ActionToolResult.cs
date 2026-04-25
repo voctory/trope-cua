@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
@@ -9,13 +8,12 @@ internal static class ActionToolResult
 {
     public static ToolResult FromReceipt(ActionReceipt receipt)
     {
-        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), StructuredReceipt(receipt), !receipt.Ok);
+        var structured = receipt.ToJsonObject();
+        return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + structured.ToJsonString(JsonUtil.SerializerOptions), structured, !receipt.Ok);
     }
 
     public static ToolResult FromReceipt(ActionReceipt receipt, string routePrefix) =>
         FromReceipt(receipt with { Route = routePrefix + receipt.Route });
 
-    public static JsonObject StructuredReceipt(ActionReceipt receipt) =>
-        JsonSerializer.SerializeToNode(receipt, JsonUtil.SerializerOptions)?.AsObject()
-        ?? new JsonObject();
+    public static JsonObject StructuredReceipt(ActionReceipt receipt) => receipt.ToJsonObject();
 }
