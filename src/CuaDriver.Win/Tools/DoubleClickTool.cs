@@ -7,7 +7,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class DoubleClickTool : IDriverTool
+internal sealed class DoubleClickTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "double_click",

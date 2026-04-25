@@ -5,7 +5,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class ScreenshotTool : IDriverTool
+internal sealed class ScreenshotTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "screenshot",

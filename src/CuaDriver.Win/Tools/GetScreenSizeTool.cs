@@ -4,7 +4,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class GetScreenSizeTool : IDriverTool
+internal sealed class GetScreenSizeTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new("get_screen_size", "Return virtual desktop bounds.", JsonArgs.Schema(), ReadOnly: true);
 

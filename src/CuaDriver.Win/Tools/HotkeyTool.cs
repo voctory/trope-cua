@@ -4,7 +4,7 @@ using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class HotkeyTool : IDriverTool
+internal sealed class HotkeyTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "hotkey",

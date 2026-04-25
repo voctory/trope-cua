@@ -7,7 +7,7 @@ using CuaDriver.Win.Uia;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class ScrollTool : IDriverTool
+internal sealed class ScrollTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "scroll",

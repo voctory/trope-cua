@@ -5,7 +5,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class MoveCursorTool : IDriverTool
+internal sealed class MoveCursorTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "move_cursor",

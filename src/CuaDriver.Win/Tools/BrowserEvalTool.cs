@@ -5,7 +5,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class BrowserEvalTool : IDriverTool
+internal sealed class BrowserEvalTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "browser_eval",

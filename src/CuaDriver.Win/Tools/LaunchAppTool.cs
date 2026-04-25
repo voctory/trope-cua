@@ -9,7 +9,7 @@ using IOPath = System.IO.Path;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class LaunchAppTool : IDriverTool
+internal sealed class LaunchAppTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "launch_app",

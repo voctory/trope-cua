@@ -6,7 +6,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class ListWindowsTool : IDriverTool
+internal sealed class ListWindowsTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "list_windows",

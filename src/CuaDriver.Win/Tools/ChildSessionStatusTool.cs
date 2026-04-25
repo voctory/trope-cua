@@ -4,7 +4,7 @@ using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class ChildSessionStatusTool : IDriverTool
+internal sealed class ChildSessionStatusTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "child_session_status",

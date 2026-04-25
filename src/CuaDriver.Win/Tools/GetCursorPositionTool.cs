@@ -4,7 +4,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class GetCursorPositionTool : IDriverTool
+internal sealed class GetCursorPositionTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new("get_cursor_position", "Return the real cursor position. Read-only diagnostic.", JsonArgs.Schema(), ReadOnly: true);
 

@@ -5,7 +5,7 @@ using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class SetConfigTool : IDriverTool
+internal sealed class SetConfigTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "set_config",

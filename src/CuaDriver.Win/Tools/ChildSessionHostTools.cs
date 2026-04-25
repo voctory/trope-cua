@@ -7,7 +7,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class ChildSessionStartTool : IDriverTool
+internal sealed class ChildSessionStartTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "child_session_start",
@@ -145,7 +145,7 @@ public sealed class ChildSessionStartTool : IDriverTool
         };
 }
 
-public sealed class ChildSessionStopTool : IDriverTool
+internal sealed class ChildSessionStopTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "child_session_stop",

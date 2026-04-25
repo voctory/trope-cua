@@ -6,7 +6,7 @@ using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class GetWindowStateTool : IDriverTool
+internal sealed class GetWindowStateTool : IDriverTool
 {
     private readonly CaptureMode? _modeOverride;
 

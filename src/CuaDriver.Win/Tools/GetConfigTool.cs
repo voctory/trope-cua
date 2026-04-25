@@ -3,7 +3,7 @@ using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class GetConfigTool : IDriverTool
+internal sealed class GetConfigTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new("get_config", "Return persistent driver config.", JsonArgs.Schema(), ReadOnly: true);
 

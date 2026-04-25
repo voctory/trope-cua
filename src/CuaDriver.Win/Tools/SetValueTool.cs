@@ -5,7 +5,7 @@ using CuaDriver.Win.Uia;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class SetValueTool : IDriverTool
+internal sealed class SetValueTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "set_value",

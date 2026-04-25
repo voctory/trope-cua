@@ -5,7 +5,7 @@ using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class PressKeyTool : IDriverTool
+internal sealed class PressKeyTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "press_key",

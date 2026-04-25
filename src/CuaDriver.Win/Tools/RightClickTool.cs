@@ -6,7 +6,7 @@ using CuaDriver.Win.Uia;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class RightClickTool : IDriverTool
+internal sealed class RightClickTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "right_click",

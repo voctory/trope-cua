@@ -9,7 +9,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class ClickTool : IDriverTool
+internal sealed class ClickTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "click",

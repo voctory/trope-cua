@@ -5,7 +5,7 @@ using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class ReplayTrajectoryTool : IDriverTool
+internal sealed class ReplayTrajectoryTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "replay_trajectory",

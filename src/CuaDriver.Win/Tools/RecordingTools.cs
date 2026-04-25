@@ -4,7 +4,7 @@ using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class SetRecordingTool : IDriverTool
+internal sealed class SetRecordingTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "set_recording",
@@ -45,7 +45,7 @@ public sealed class SetRecordingTool : IDriverTool
     };
 }
 
-public sealed class GetRecordingStateTool : IDriverTool
+internal sealed class GetRecordingStateTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new("get_recording_state", "Return the trajectory recorder state.", JsonArgs.Schema(), ReadOnly: true);
 

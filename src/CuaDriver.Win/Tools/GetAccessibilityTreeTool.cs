@@ -3,7 +3,7 @@ using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class GetAccessibilityTreeTool : IDriverTool
+internal sealed class GetAccessibilityTreeTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "get_accessibility_tree",

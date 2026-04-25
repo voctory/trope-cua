@@ -6,7 +6,7 @@ using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class ZoomTool : IDriverTool
+internal sealed class ZoomTool : IDriverTool
 {
     private const double MaxZoomWidth = 500;
 

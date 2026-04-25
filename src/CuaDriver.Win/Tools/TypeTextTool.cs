@@ -7,7 +7,7 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class TypeTextTool : IDriverTool
+internal sealed class TypeTextTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "type_text",

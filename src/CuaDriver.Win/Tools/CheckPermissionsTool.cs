@@ -6,7 +6,7 @@ using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class CheckPermissionsTool : IDriverTool
+internal sealed class CheckPermissionsTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "check_permissions",

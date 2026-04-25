@@ -4,7 +4,7 @@ using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class AppBroadcastInputProbeTool : IDriverTool
+internal sealed class AppBroadcastInputProbeTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "appbroadcast_input_probe",

@@ -3,7 +3,7 @@ using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Tools;
 
-public sealed class TypeTextCharsTool : IDriverTool
+internal sealed class TypeTextCharsTool : IDriverTool
 {
     public ToolDefinition Definition { get; } = new(
         "type_text_chars",
