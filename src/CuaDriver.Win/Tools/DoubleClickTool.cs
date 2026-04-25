@@ -63,7 +63,7 @@ public sealed class DoubleClickTool : IDriverTool
         var localX = rect.X + rect.Width / 2 - window.Bounds.X;
         var localY = rect.Y + rect.Height / 2 - window.Bounds.Y;
         var screenPoint = new POINT((int)Math.Round(rect.X + rect.Width / 2), (int)Math.Round(rect.Y + rect.Height / 2));
-        await context.State.AgentCursor.MoveToAsync(screenPoint, cancellationToken).ConfigureAwait(false);
+        await context.State.AgentCursor.MoveToAsync(screenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
 
         ActionReceipt receipt;
         if (BrowserWindowClassifier.IsLikelyBrowser(window))
@@ -72,7 +72,7 @@ public sealed class DoubleClickTool : IDriverTool
             if (receipt.Ok || receipt.ForegroundChanged || receipt.CursorMoved)
             {
                 if (receipt.Ok)
-                    await context.State.AgentCursor.ClickPulseAsync(screenPoint, cancellationToken).ConfigureAwait(false);
+                    await context.State.AgentCursor.ClickPulseAsync(screenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                 return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
             }
 
@@ -96,7 +96,7 @@ public sealed class DoubleClickTool : IDriverTool
         }
 
         if (receipt.Ok)
-            await context.State.AgentCursor.ClickPulseAsync(screenPoint, cancellationToken).ConfigureAwait(false);
+            await context.State.AgentCursor.ClickPulseAsync(screenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
 
         return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
     }

@@ -63,14 +63,14 @@ public sealed class ScrollTool : IDriverTool
         if (index is not null)
         {
             var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
-            await AgentCursorTooling.MoveToElementAsync(context, element, ct).ConfigureAwait(false);
+            await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, ct).ConfigureAwait(false);
             var elementHwnd = ElementHwnd(element);
             if (elementHwnd != IntPtr.Zero)
                 targetHwnd = elementHwnd;
         }
         else
         {
-            await context.State.AgentCursor.MoveToAsync(WindowMessageInput.CenterOf(window.Hwnd), ct).ConfigureAwait(false);
+            await context.State.AgentCursor.MoveToAsync(WindowMessageInput.CenterOf(window.Hwnd), window.Hwnd, ct).ConfigureAwait(false);
         }
 
         ActionReceipt receipt = ActionReceipt.Success("hwnd.key.scroll");
@@ -116,13 +116,13 @@ public sealed class ScrollTool : IDriverTool
         var scrollHit = context.State.UiaTree.FindScrollableAtPoint(pid, windowId.Value, resolved.ScreenPoint);
         if (scrollHit is not null)
         {
-            await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
+            await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
             receipt = UiAutomationActions.Scroll(scrollHit.Element, delta);
             if (receipt.Ok)
                 return ToolResult.Text("✅ " + (receipt with { Route = "uia.hit_test." + receipt.Route }).ToJson());
         }
 
-        await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
+        await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
         receipt = BrowserWindowClassifier.IsLikelyBrowser(window)
             ? ActionReceipt.Failure("requires_cdp_or_uia_scroll", "Browser content did not expose UIA ScrollPattern and no browser-specific scroll route is configured; refusing blind WM_MOUSEWHEEL.")
             : WindowMessageInput.Scroll(window.Hwnd, resolved.ScreenPoint.X - window.Bounds.X, resolved.ScreenPoint.Y - window.Bounds.Y, delta);

@@ -39,7 +39,7 @@ public sealed class TypeTextTool : IDriverTool
             if (windowId is null)
                 return ToolResult.Error("window_id is required for element_index type_text.");
             var element = context.State.UiaTree.GetCachedElement(pid, windowId.Value, index.Value);
-            await AgentCursorTooling.MoveToElementAsync(context, element, cancellationToken).ConfigureAwait(false);
+            await AgentCursorTooling.MoveToElementAsync(context, element, new IntPtr(windowId.Value), cancellationToken).ConfigureAwait(false);
             receipt = await TypeViaElementAsync(context, new IntPtr(windowId.Value), element, text, delayMs, cancellationToken).ConfigureAwait(false);
         }
         else
@@ -60,7 +60,7 @@ public sealed class TypeTextTool : IDriverTool
 
             if (context.State.LastUiaTextTarget.TryGetValue((pid, windowId.Value), out var textElement))
             {
-                await AgentCursorTooling.MoveToElementAsync(context, textElement, cancellationToken).ConfigureAwait(false);
+                await AgentCursorTooling.MoveToElementAsync(context, textElement, window.Hwnd, cancellationToken).ConfigureAwait(false);
                 var setReceipt = await TypeViaElementAsync(context, window.Hwnd, textElement, text, delayMs, cancellationToken).ConfigureAwait(false);
                 if (setReceipt.Ok)
                     return ToolResult.Text("✅ " + (setReceipt with { Route = "uia.last_text_target." + setReceipt.Route }).ToJson());

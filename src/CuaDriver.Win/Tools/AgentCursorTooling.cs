@@ -24,17 +24,53 @@ internal static class AgentCursorTooling
         }
     }
 
-    public static async Task MoveToElementAsync(ToolContext context, AutomationElement element, CancellationToken ct)
+    public static Task MoveToElementAsync(ToolContext context, AutomationElement element, CancellationToken ct)
+        => MoveToElementAsync(context, element, IntPtr.Zero, ct);
+
+    public static async Task MoveToElementAsync(ToolContext context, AutomationElement element, IntPtr targetHwnd, CancellationToken ct)
     {
         var center = ElementCenter(element);
         if (center is { } point)
-            await context.State.AgentCursor.MoveToAsync(point, ct).ConfigureAwait(false);
+            await context.State.AgentCursor.MoveToAsync(point, TargetForElement(element, targetHwnd), ct).ConfigureAwait(false);
     }
 
-    public static async Task PulseAtElementAsync(ToolContext context, AutomationElement element, CancellationToken ct)
+    public static Task PulseAtElementAsync(ToolContext context, AutomationElement element, CancellationToken ct)
+        => PulseAtElementAsync(context, element, IntPtr.Zero, ct);
+
+    public static async Task PulseAtElementAsync(ToolContext context, AutomationElement element, IntPtr targetHwnd, CancellationToken ct)
     {
         var center = ElementCenter(element);
         if (center is { } point)
-            await context.State.AgentCursor.ClickPulseAsync(point, ct).ConfigureAwait(false);
+            await context.State.AgentCursor.ClickPulseAsync(point, TargetForElement(element, targetHwnd), ct).ConfigureAwait(false);
+    }
+
+    public static IntPtr TargetRoot(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || !NativeMethods.IsWindow(hwnd))
+            return IntPtr.Zero;
+
+        var root = NativeMethods.GetAncestor(hwnd, NativeMethods.GA_ROOT);
+        return root == IntPtr.Zero ? hwnd : root;
+    }
+
+    private static IntPtr TargetForElement(AutomationElement element, IntPtr fallbackHwnd)
+    {
+        var fallback = TargetRoot(fallbackHwnd);
+        try
+        {
+            var native = element.Current.NativeWindowHandle;
+            if (native != 0)
+            {
+                var root = TargetRoot(new IntPtr(native));
+                if (root != IntPtr.Zero)
+                    return root;
+            }
+        }
+        catch
+        {
+            // Use the root window supplied by the tool when UIA cannot expose a native HWND.
+        }
+
+        return fallback;
     }
 }

@@ -42,7 +42,7 @@ public sealed record AgentCursorMotion
     public static AgentCursorMotion Default { get; } = new();
 }
 
-public sealed record CursorSnapshot(bool Visible, int? ScreenX, int? ScreenY);
+public sealed record CursorSnapshot(bool Visible, int? ScreenX, int? ScreenY, long? TargetWindowId, string Layering);
 
 public sealed class AgentCursorOverlay
 {
@@ -136,25 +136,29 @@ public sealed class AgentCursorOverlay
         return next;
     }
 
-    public async Task MoveToAsync(POINT screenPoint, CancellationToken ct)
+    public Task MoveToAsync(POINT screenPoint, CancellationToken ct) => MoveToAsync(screenPoint, null, ct);
+
+    public async Task MoveToAsync(POINT screenPoint, IntPtr? targetHwnd, CancellationToken ct)
     {
         if (!Enabled)
             return;
 
         EnsureThread();
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        if (!Post(form => form.GlideTo(screenPoint.X, screenPoint.Y, Motion, completion)))
+        if (!Post(form => form.GlideTo(screenPoint.X, screenPoint.Y, targetHwnd ?? IntPtr.Zero, Motion, completion)))
             return;
 
         await completion.Task.WaitAsync(ct).ConfigureAwait(false);
     }
 
-    public async Task ClickPulseAsync(POINT screenPoint, CancellationToken ct)
+    public Task ClickPulseAsync(POINT screenPoint, CancellationToken ct) => ClickPulseAsync(screenPoint, null, ct);
+
+    public async Task ClickPulseAsync(POINT screenPoint, IntPtr? targetHwnd, CancellationToken ct)
     {
         if (!Enabled)
             return;
 
-        await MoveToAsync(screenPoint, ct).ConfigureAwait(false);
+        await MoveToAsync(screenPoint, targetHwnd, ct).ConfigureAwait(false);
         var motion = Motion;
         if (!Post(form => form.StartPress(motion)))
             return;
@@ -170,6 +174,8 @@ public sealed class AgentCursorOverlay
         var visible = false;
         int? screenX = null;
         int? screenY = null;
+        long? targetWindowId = null;
+        var layering = "uninitialized";
         lock (_gate)
         {
             formReady = _form is not null && !_form.IsDisposed;
@@ -179,6 +185,8 @@ public sealed class AgentCursorOverlay
                 visible = snapshot.Visible;
                 screenX = snapshot.ScreenX;
                 screenY = snapshot.ScreenY;
+                targetWindowId = snapshot.TargetWindowId;
+                layering = snapshot.Layering;
             }
         }
 
@@ -190,6 +198,8 @@ public sealed class AgentCursorOverlay
             visible,
             screen_x = screenX,
             screen_y = screenY,
+            target_window_id = targetWindowId,
+            layering,
             persistent = Motion.IdleHideMs <= 0,
             motion = Motion
         }, JsonUtil.SerializerOptions);
@@ -299,6 +309,9 @@ public sealed class AgentCursorOverlay
         private double _pulseStartedMs;
         private DateTime _lastActivityAt = DateTime.UtcNow;
         private TaskCompletionSource? _arrival;
+        private IntPtr _pinnedTargetHwnd;
+        private long _lastPinAtMs;
+        private string _layering = "normal";
 
         public OverlayForm()
         {
@@ -311,7 +324,7 @@ public sealed class AgentCursorOverlay
             Bounds = _virtualBounds;
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
-            TopMost = true;
+            TopMost = false;
             Text = OverlayWindowTitle;
             StartPosition = FormStartPosition.Manual;
             _current = new PointF(-180, -180);
@@ -349,12 +362,13 @@ public sealed class AgentCursorOverlay
                 HideCursor();
         }
 
-        public void EnsureVisibleAt(int screenX, int screenY, AgentCursorMotion motion)
+        public void EnsureVisibleAt(int screenX, int screenY, IntPtr targetHwnd, AgentCursorMotion motion)
         {
             if (!_enabled)
                 return;
 
             _motion = motion;
+            PinToTarget(targetHwnd);
             if (!_hasPosition)
             {
                 _current = VisualPositionForTip(ToLocal(screenX, screenY), DpiScaleForPoint(screenX, screenY));
@@ -375,6 +389,8 @@ public sealed class AgentCursorOverlay
             _trip = null;
             _spring = null;
             _springTarget = null;
+            _pinnedTargetHwnd = IntPtr.Zero;
+            _layering = "hidden";
             _arrival?.TrySetResult();
             _arrival = null;
             Hide();
@@ -386,7 +402,7 @@ public sealed class AgentCursorOverlay
                 _lastActivityAt = DateTime.UtcNow;
         }
 
-        public void GlideTo(int screenX, int screenY, AgentCursorMotion motion, TaskCompletionSource arrival)
+        public void GlideTo(int screenX, int screenY, IntPtr targetHwnd, AgentCursorMotion motion, TaskCompletionSource arrival)
         {
             if (!_enabled)
             {
@@ -395,6 +411,7 @@ public sealed class AgentCursorOverlay
             }
 
             _motion = motion;
+            PinToTarget(targetHwnd);
             var scale = DpiScaleForPoint(screenX, screenY);
             var targetTip = ToLocal(screenX, screenY);
             var target = VisualPositionForTip(targetTip, scale);
@@ -497,6 +514,8 @@ public sealed class AgentCursorOverlay
             if (!_visibleCursor)
                 return;
 
+            ReapplyWindowLayer(force: false);
+
             var now = DateTime.UtcNow;
             var dt = Math.Min(0.05, Math.Max(0.001, (now - _lastFrameAt).TotalSeconds));
             _lastFrameAt = now;
@@ -595,13 +614,15 @@ public sealed class AgentCursorOverlay
         public CursorSnapshot Snapshot()
         {
             if (!_hasPosition)
-                return new CursorSnapshot(_visibleCursor, null, null);
+                return new CursorSnapshot(_visibleCursor, null, null, WindowIdFor(_pinnedTargetHwnd), _layering);
 
             var tip = TipPointFromVisualPosition(_current, CurrentDpiScale());
             return new CursorSnapshot(
                 _visibleCursor,
                 (int)Math.Round(tip.X + _virtualBounds.Left),
-                (int)Math.Round(tip.Y + _virtualBounds.Top));
+                (int)Math.Round(tip.Y + _virtualBounds.Top),
+                WindowIdFor(_pinnedTargetHwnd),
+                _layering);
         }
 
         private PointF ToLocal(int screenX, int screenY) => new(screenX - _virtualBounds.Left, screenY - _virtualBounds.Top);
@@ -611,9 +632,93 @@ public sealed class AgentCursorOverlay
             CloseSiblingOverlayWindows();
             if (!Visible)
                 Show();
-            TopMost = true;
             RenderFrame();
+            ReapplyWindowLayer(force: true);
         }
+
+        private void PinToTarget(IntPtr targetHwnd)
+        {
+            _pinnedTargetHwnd = NormalizeTargetHwnd(targetHwnd);
+            _lastPinAtMs = 0;
+            _layering = _pinnedTargetHwnd == IntPtr.Zero ? "normal" : "target_pinned";
+        }
+
+        private void ReapplyWindowLayer(bool force)
+        {
+            if (!IsHandleCreated || IsDisposed)
+                return;
+
+            var now = Environment.TickCount64;
+            if (!force && now - _lastPinAtMs < 80)
+                return;
+
+            _lastPinAtMs = now;
+            var flags = NativeMethods.SWP_NOMOVE
+                        | NativeMethods.SWP_NOSIZE
+                        | NativeMethods.SWP_NOACTIVATE
+                        | NativeMethods.SWP_NOOWNERZORDER
+                        | NativeMethods.SWP_NOSENDCHANGING
+                        | NativeMethods.SWP_SHOWWINDOW;
+
+            var target = NormalizeTargetHwnd(_pinnedTargetHwnd);
+            _pinnedTargetHwnd = target;
+            if (target == IntPtr.Zero)
+            {
+                NativeMethods.SetWindowPos(Handle, NativeMethods.HWND_TOP, 0, 0, 0, 0, flags);
+                _layering = "normal";
+                return;
+            }
+
+            var targetTopmost = IsTopmostWindow(target);
+            if (!targetTopmost)
+                NativeMethods.SetWindowPos(Handle, NativeMethods.HWND_NOTOPMOST, 0, 0, 0, 0, flags);
+
+            var insertAfter = WindowJustAboveTarget(target, Handle, targetTopmost);
+            NativeMethods.SetWindowPos(Handle, insertAfter, 0, 0, 0, 0, flags);
+            _layering = targetTopmost ? "target_pinned_topmost" : "target_pinned";
+        }
+
+        private static IntPtr WindowJustAboveTarget(IntPtr target, IntPtr overlay, bool targetTopmost)
+        {
+            var above = NativeMethods.GetWindow(target, NativeMethods.GW_HWNDPREV);
+            while (above != IntPtr.Zero)
+            {
+                if (above != overlay && !IsAgentCursorOverlayWindow(above))
+                {
+                    if (!targetTopmost && IsTopmostWindow(above))
+                        return NativeMethods.HWND_TOP;
+
+                    return above;
+                }
+
+                above = NativeMethods.GetWindow(above, NativeMethods.GW_HWNDPREV);
+            }
+
+            return targetTopmost ? NativeMethods.HWND_TOPMOST : NativeMethods.HWND_TOP;
+        }
+
+        private static IntPtr NormalizeTargetHwnd(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero || !NativeMethods.IsWindow(hwnd))
+                return IntPtr.Zero;
+
+            var root = NativeMethods.GetAncestor(hwnd, NativeMethods.GA_ROOT);
+            hwnd = root == IntPtr.Zero ? hwnd : root;
+            return NativeMethods.IsWindow(hwnd) && NativeMethods.IsWindowVisible(hwnd) && !NativeMethods.IsIconic(hwnd)
+                ? hwnd
+                : IntPtr.Zero;
+        }
+
+        private static bool IsTopmostWindow(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero)
+                return false;
+
+            var exStyle = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE).ToInt64();
+            return (exStyle & NativeMethods.WS_EX_TOPMOST) != 0;
+        }
+
+        private static long? WindowIdFor(IntPtr hwnd) => hwnd == IntPtr.Zero ? null : hwnd.ToInt64();
 
         private void RenderFrame()
         {
@@ -1155,7 +1260,7 @@ public sealed class AgentCursorOverlay
 
         private static bool IsSiblingOverlayWindow(IntPtr hwnd, uint pid, string currentProcessName)
         {
-            if (NativeMethods.GetWindowText(hwnd).Equals(OverlayWindowTitle, StringComparison.Ordinal))
+            if (IsAgentCursorOverlayWindow(hwnd))
                 return true;
 
             var exStyle = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE).ToInt64();
@@ -1175,6 +1280,12 @@ public sealed class AgentCursorOverlay
             {
                 return false;
             }
+        }
+
+        private static bool IsAgentCursorOverlayWindow(IntPtr hwnd)
+        {
+            return hwnd != IntPtr.Zero &&
+                   NativeMethods.GetWindowText(hwnd).Equals(OverlayWindowTitle, StringComparison.Ordinal);
         }
 
         private static double Hypot(double x, double y) => Math.Sqrt(x * x + y * y);

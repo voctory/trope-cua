@@ -76,7 +76,7 @@ public sealed class ClickTool : IDriverTool
                 return ToolResult.Error($"window_id {windowId.Value} belongs to pid {window.Pid}, not pid {pid}.");
 
             var element = context.State.UiaTree.GetCachedElement(pid, windowId!.Value, index.Value);
-            await AgentCursorTooling.MoveToElementAsync(context, element, cancellationToken).ConfigureAwait(false);
+            await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
             if (BrowserWindowClassifier.IsLikelyBrowser(window))
             {
                 var rect = element.Current.BoundingRectangle;
@@ -86,7 +86,7 @@ public sealed class ClickTool : IDriverTool
                     if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
                     {
                         if (msaaReceipt.Ok)
-                            await AgentCursorTooling.PulseAtElementAsync(context, element, cancellationToken).ConfigureAwait(false);
+                            await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
                         return ToolResult.Text((msaaReceipt.Ok ? "✅ " : "❌ ") + msaaReceipt.ToJson(), !msaaReceipt.Ok);
                     }
 
@@ -99,7 +99,7 @@ public sealed class ClickTool : IDriverTool
                         receipt = await cdp.TryClickAsync(window.Hwnd, window.WindowId, localX, localY, count, rightButton: false, cdpPort, cancellationToken).ConfigureAwait(false)
                                   ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {cdpPort}.");
                         if (receipt.Ok)
-                            await AgentCursorTooling.PulseAtElementAsync(context, element, cancellationToken).ConfigureAwait(false);
+                            await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
                         return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
                     }
                 }
@@ -117,7 +117,7 @@ public sealed class ClickTool : IDriverTool
                     receipt = msaaReceipt;
             }
             context.State.LastUiaTextTarget[(pid, windowId.Value)] = element;
-            await AgentCursorTooling.PulseAtElementAsync(context, element, cancellationToken).ConfigureAwait(false);
+            await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
         }
         else
         {
@@ -176,14 +176,14 @@ public sealed class ClickTool : IDriverTool
             var hit = context.State.UiaTree.HitTest(pid, window.WindowId, resolved.ScreenPoint);
             if (hit is { IsClickAction: true } && modifiers.Length == 0)
             {
-                await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
+                await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                 if (BrowserWindowClassifier.IsLikelyBrowser(window))
                 {
                     var msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, resolved.ScreenPoint);
                     if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
                     {
                         if (msaaReceipt.Ok)
-                            await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
+                            await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                         return ToolResult.Text((msaaReceipt.Ok ? "✅ " : "❌ ") + msaaReceipt.ToJson(), !msaaReceipt.Ok);
                     }
 
@@ -194,7 +194,7 @@ public sealed class ClickTool : IDriverTool
                         receipt = await hitCdp.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, hitCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
                                   ?? ActionReceipt.Failure("cdp.input.dispatch_mouse", $"No page tab found on CDP port {hitCdpPort}.");
                         if (receipt.Ok)
-                            await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
+                            await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                         return ToolResult.Text((receipt.Ok ? "✅ " : "❌ ") + receipt.ToJson(), !receipt.Ok);
                     }
 
@@ -220,28 +220,28 @@ public sealed class ClickTool : IDriverTool
                 {
                     receipt = hitReceipt with { Route = "uia.hit_test." + hitReceipt.Route };
                     context.State.LastUiaTextTarget[(pid, window.WindowId)] = hit.Element;
-                    await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
+                    await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                     return ToolResult.Text("✅ " + receipt.ToJson(), false);
                 }
             }
 
             if (hit is { IsTextInput: true } && BrowserWindowClassifier.IsLikelyBrowser(window))
             {
-                await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
+                await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                 context.State.LastUiaTextTarget[(pid, window.WindowId)] = hit.Element;
                 receipt = ActionReceipt.Success("uia.hit_test.text_target");
-                await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
+                await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                 return ToolResult.Text("✅ " + receipt.ToJson(), false);
             }
 
-            await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
+            await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
             if (BrowserWindowClassifier.IsLikelyBrowser(window) && modifiers.Length == 0)
             {
                 var msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, resolved.ScreenPoint);
                 if (msaaReceipt.Ok || msaaReceipt.ForegroundChanged || msaaReceipt.CursorMoved)
                 {
                     if (msaaReceipt.Ok)
-                        await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
+                        await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                     return ToolResult.Text((msaaReceipt.Ok ? "✅ " : "❌ ") + msaaReceipt.ToJson(), !msaaReceipt.Ok);
                 }
             }
@@ -256,7 +256,7 @@ public sealed class ClickTool : IDriverTool
             if (receipt.Ok)
             {
                 context.State.LastTargetHwnd[(pid, window.WindowId)] = resolved.TargetHwnd;
-                await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, cancellationToken).ConfigureAwait(false);
+                await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
             }
         }
 

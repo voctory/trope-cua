@@ -34,6 +34,19 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     public static extern bool IsWindow(IntPtr hWnd);
 
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SetWindowPos(
+        IntPtr hWnd,
+        IntPtr hWndInsertAfter,
+        int x,
+        int y,
+        int cx,
+        int cy,
+        uint uFlags);
+
     [DllImport("kernel32.dll")]
     public static extern uint GetCurrentThreadId();
 
@@ -142,6 +155,7 @@ internal static class NativeMethods
 
     public const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
     public const uint GA_ROOT = 2;
+    public const uint GW_HWNDPREV = 3;
     public const int GWL_EXSTYLE = -20;
     public const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
     public const int MDT_EFFECTIVE_DPI = 0;
@@ -178,9 +192,21 @@ internal static class NativeMethods
     public static readonly Guid IID_IAccessible = new("618736e0-3c3d-11cf-810c-00aa00389b71");
 
     public const int WS_EX_TRANSPARENT = 0x00000020;
+    public const int WS_EX_TOPMOST = 0x00000008;
     public const int WS_EX_LAYERED = 0x00080000;
     public const int WS_EX_NOACTIVATE = 0x08000000;
     public const int WS_EX_TOOLWINDOW = 0x00000080;
+
+    public static readonly IntPtr HWND_TOP = IntPtr.Zero;
+    public static readonly IntPtr HWND_TOPMOST = new(-1);
+    public static readonly IntPtr HWND_NOTOPMOST = new(-2);
+
+    public const uint SWP_NOSIZE = 0x0001;
+    public const uint SWP_NOMOVE = 0x0002;
+    public const uint SWP_NOACTIVATE = 0x0010;
+    public const uint SWP_SHOWWINDOW = 0x0040;
+    public const uint SWP_NOOWNERZORDER = 0x0200;
+    public const uint SWP_NOSENDCHANGING = 0x0400;
 
     public const byte AC_SRC_OVER = 0x00;
     public const byte AC_SRC_ALPHA = 0x01;

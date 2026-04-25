@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
 using CuaDriver.Win.Uia;
+using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
@@ -25,8 +26,10 @@ public sealed class SetValueTool : IDriverTool
         var index = JsonArgs.RequiredInt(args, "element_index");
         var value = JsonArgs.RequiredString(args, "value");
 
+        var window = WindowEnumerator.Find(windowId);
+        var targetHwnd = window?.Hwnd ?? new IntPtr(windowId);
         var element = context.State.UiaTree.GetCachedElement(pid, windowId, index);
-        await AgentCursorTooling.MoveToElementAsync(context, element, cancellationToken).ConfigureAwait(false);
+        await AgentCursorTooling.MoveToElementAsync(context, element, targetHwnd, cancellationToken).ConfigureAwait(false);
 
         ActionReceipt receipt;
         if (double.TryParse(value, out var number))
