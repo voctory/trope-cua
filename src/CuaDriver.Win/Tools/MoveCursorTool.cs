@@ -40,7 +40,7 @@ public sealed class MoveCursorTool : IDriverTool
             return ToolResult.Text("✅ " + ActionReceipt.Success("agent_cursor.visual_move").ToJson());
         }
 
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
         NativeMethods.SetCursorPos(x, y);
         await context.State.AgentCursor.MoveToAsync(point, targetHwnd, cancellationToken).ConfigureAwait(false);
         var done = guard.Finish(ActionReceipt.Success("parent.setcursorpos"), allowCursorMove: true);

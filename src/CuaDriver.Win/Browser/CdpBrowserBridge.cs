@@ -26,7 +26,7 @@ public static class CdpBrowserBridge
         if (port is null)
             return null;
 
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
 
         try
         {
@@ -85,7 +85,7 @@ public static class CdpBrowserBridge
         if (port is null)
             return null;
 
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
         try
         {
             var wsUrl = await PageWebSocketUrlAsync(port.Value, windowId, ct).ConfigureAwait(false);
@@ -121,7 +121,7 @@ public static class CdpBrowserBridge
 
     public static async Task<ActionReceipt> EvaluateUserGestureAsync(int port, long? windowId, string expression, CancellationToken ct)
     {
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
         try
         {
             var wsUrl = await PageWebSocketUrlAsync(port, windowId, ct).ConfigureAwait(false)

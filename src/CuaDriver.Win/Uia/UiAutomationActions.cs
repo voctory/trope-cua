@@ -8,7 +8,7 @@ public static class UiAutomationActions
 {
     public static async Task<ActionReceipt> InvokeElementAsync(AutomationElement element, string actionName, CancellationToken ct)
     {
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
 
         try
         {
@@ -78,7 +78,7 @@ public static class UiAutomationActions
 
     public static ActionReceipt Scroll(AutomationElement element, int delta)
     {
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
 
         try
         {
@@ -109,7 +109,7 @@ public static class UiAutomationActions
 
     public static ActionReceipt SetValue(AutomationElement element, string value)
     {
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
 
         try
         {
@@ -135,7 +135,7 @@ public static class UiAutomationActions
 
     public static ActionReceipt SetRangeValue(AutomationElement element, double value)
     {
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
 
         try
         {

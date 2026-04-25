@@ -54,7 +54,7 @@ public sealed class LaunchAppTool : IDriverTool
             return ToolResult.Text("❌ " + denied.ToJson(), true);
         }
 
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
         var beforeWindows = WindowEnumerator.AllWindows().Select(w => w.WindowId).ToHashSet();
         ProcessStartInfo psi;
         if (!string.IsNullOrWhiteSpace(appId))

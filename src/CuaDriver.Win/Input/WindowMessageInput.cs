@@ -8,7 +8,7 @@ public static class WindowMessageInput
 {
     public static async Task<WindowMessageDispatch> ClickAsync(IntPtr hwnd, double x, double y, int count, bool rightButton, CancellationToken ct, string[]? modifiers = null)
     {
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
         var resolved = ResolvePointTarget(hwnd, x, y);
         try
         {
@@ -61,7 +61,7 @@ public static class WindowMessageInput
 
     public static ActionReceipt SetText(IntPtr hwnd, string text)
     {
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
         var ptr = IntPtr.Zero;
         try
         {
@@ -82,7 +82,7 @@ public static class WindowMessageInput
 
     public static async Task<ActionReceipt> TypeTextAsync(IntPtr hwnd, string text, CancellationToken ct, int delayMs = 4)
     {
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
         try
         {
             foreach (var ch in text)
@@ -127,7 +127,7 @@ public static class WindowMessageInput
 
     public static async Task<ActionReceipt> PressKeyAsync(IntPtr hwnd, string key, string[] modifiers, CancellationToken ct)
     {
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
         try
         {
             var modifierKeys = modifiers.Select(VirtualKey).Where(v => v != 0).ToArray();
@@ -155,7 +155,7 @@ public static class WindowMessageInput
 
     public static ActionReceipt Scroll(IntPtr hwnd, double? x, double? y, int delta)
     {
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
         try
         {
             var resolved = x is not null && y is not null

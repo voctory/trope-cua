@@ -109,7 +109,7 @@ public static class MsaaActions
 
     public static ActionReceipt DoDefaultActionAtPoint(IntPtr rootHwnd, POINT screenPoint)
     {
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
 
         try
         {
@@ -146,7 +146,7 @@ public static class MsaaActions
 
     public static ActionReceipt SetEditableTextAtElement(IntPtr rootHwnd, AutomationElement element, string value)
     {
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
 
         try
         {
@@ -200,7 +200,7 @@ public static class MsaaActions
 
     public static ActionReceipt InsertEditableTextAtElement(IntPtr rootHwnd, AutomationElement element, string value)
     {
-        var guard = NoRegressionGuard.Capture();
+        using var guard = NoRegressionGuard.Capture();
 
         try
         {
