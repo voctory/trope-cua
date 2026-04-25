@@ -24,28 +24,21 @@ internal sealed class McpServer
             if (string.IsNullOrWhiteSpace(line))
                 continue;
 
-            JsonObject request;
+            McpRequest? request = null;
             JsonNode? idNode = null;
             try
             {
-                request = JsonNode.Parse(line) as JsonObject
-                          ?? throw new McpRequestException(-32600, "Invalid request: expected a JSON object.");
-
-                idNode = request["id"]?.DeepClone();
-                var method = OptionalString(request, "method", -32600, "Invalid request: method must be a string.") ?? "";
-
-                if (method.StartsWith("notifications/", StringComparison.Ordinal))
+                request = McpRequest.Parse(line);
+                idNode = request.Id;
+                if (request.IsNotification)
                     continue;
 
-                if (string.IsNullOrWhiteSpace(method))
-                    throw new McpRequestException(-32600, "Invalid request: missing method.");
-
-                var response = method switch
+                var response = request.Method switch
                 {
-                    "initialize" => McpProtocol.Response(idNode, InitializeResult()),
-                    "tools/list" => McpProtocol.Response(idNode, ToolsListResult()),
-                    "tools/call" => McpProtocol.Response(idNode, await ToolsCallAsync(request, cancellationToken).ConfigureAwait(false)),
-                    _ => McpProtocol.Error(idNode, -32601, $"Unknown method: {method}")
+                    "initialize" => McpProtocol.Response(request.Id, InitializeResult()),
+                    "tools/list" => McpProtocol.Response(request.Id, ToolsListResult()),
+                    "tools/call" => McpProtocol.Response(request.Id, await ToolsCallAsync(request, cancellationToken).ConfigureAwait(false)),
+                    _ => McpProtocol.Error(request.Id, -32601, $"Unknown method: {request.Method}")
                 };
 
                 await WriteResponseAsync(response, cancellationToken).ConfigureAwait(false);
@@ -101,32 +94,10 @@ internal sealed class McpServer
         return new JsonObject { ["tools"] = tools };
     }
 
-    private async Task<JsonObject> ToolsCallAsync(JsonObject request, CancellationToken ct)
+    private async Task<JsonObject> ToolsCallAsync(McpRequest request, CancellationToken ct)
     {
-        var p = request["params"] is null
-            ? new JsonObject()
-            : request["params"] as JsonObject ?? throw new McpRequestException(-32602, "tools/call params must be a JSON object");
-        var name = OptionalString(p, "name", -32602, "tools/call params.name must be a string")
-                   ?? throw new McpRequestException(-32602, "tools/call missing params.name");
-        var args = p["arguments"] is null
-            ? new JsonObject()
-            : p["arguments"] as JsonObject ?? throw new McpRequestException(-32602, "tools/call params.arguments must be a JSON object");
-        var result = await _registry.InvokeAsync(name, args, _context, ct).ConfigureAwait(false);
-
+        var call = request.ToolCall();
+        var result = await _registry.InvokeAsync(call.Name, call.Args, _context, ct).ConfigureAwait(false);
         return McpProtocol.ToolCallResult(result);
-    }
-
-    private static string? OptionalString(JsonObject obj, string key, int errorCode, string errorMessage)
-    {
-        if (!obj.TryGetPropertyValue(key, out var node) || node is null)
-            return null;
-        if (node.GetValueKind() != JsonValueKind.String)
-            throw new McpRequestException(errorCode, errorMessage);
-        return node.GetValue<string>();
-    }
-
-    private sealed class McpRequestException(int code, string message) : Exception(message)
-    {
-        public int Code { get; } = code;
     }
 }
