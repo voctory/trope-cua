@@ -27,6 +27,21 @@ public sealed class ChildSessionStatusTool : IDriverTool
         lines.Add($"child_sessions_enabled={ChildSessionBroker.IsEnabled()}");
         lines.Add(ChildSessionHost.StatusText());
         lines.Add(ChildSessionBroker.Status());
-        return Task.FromResult(ToolResult.Text(string.Join(Environment.NewLine, lines)));
+        return Task.FromResult(ToolResult.Text(string.Join(Environment.NewLine, lines), Structured()));
+    }
+
+    private static JsonObject Structured()
+    {
+        var childSessionId = ChildSessionBroker.GetChildSessionId();
+        return new JsonObject
+        {
+            ["parent_session_id"] = ChildSessionBroker.CurrentProcessSessionId(),
+            ["active_console_session_id"] = ChildSessionBroker.ActiveConsoleSessionId(),
+            ["child_sessions_supported_by_os"] = ChildSessionBroker.IsSupportedByOs(),
+            ["child_sessions_enabled"] = ChildSessionBroker.IsEnabled(),
+            ["child_session_id"] = childSessionId,
+            ["child_session_connected"] = childSessionId is not null,
+            ["host"] = ChildSessionHost.StatusObject()
+        };
     }
 }

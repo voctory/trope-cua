@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using CuaDriver.Win.Win32;
 using Microsoft.Win32;
+using System.Text.Json.Nodes;
 
 namespace CuaDriver.Win.HardCases;
 
@@ -78,6 +79,22 @@ public static class ChildSessionHost
         }
     }
 
+    public static JsonObject StatusObject()
+    {
+        lock (Gate)
+        {
+            var child = ChildSessionBroker.GetChildSessionId();
+            var host = _host;
+            return new JsonObject
+            {
+                ["host_running"] = host?.IsRunning == true,
+                ["child_session_id"] = child,
+                ["state"] = host?.IsRunning == true ? host.State : "stopped",
+                ["log"] = host is null ? new JsonArray() : JsonArrayFrom(host.LogSnapshot())
+            };
+        }
+    }
+
     public static bool Stop(out string message)
     {
         HostInstance? host;
@@ -94,6 +111,14 @@ public static class ChildSessionHost
         }
 
         return host.Stop(out message);
+    }
+
+    private static JsonArray JsonArrayFrom(IEnumerable<string> values)
+    {
+        var arr = new JsonArray();
+        foreach (var value in values)
+            arr.Add(value);
+        return arr;
     }
 
     private sealed class HostInstance
