@@ -39,7 +39,8 @@ public sealed class WindowCapture
         using var final = ResizeIfNeeded(bitmap, maxImageDimension);
         var (data, mimeType) = Encode(final, format, quality);
         var scale = NativeMethods.GetDpiForWindow(hwnd) / 96.0;
-        return new CapturedImage(data, final.Width, final.Height, bitmap.Width, bitmap.Height, scale, mimeType, "gdi.printwindow");
+        var route = printed ? "gdi.printwindow" : "gdi.copyfromscreen.window";
+        return new CapturedImage(data, final.Width, final.Height, bitmap.Width, bitmap.Height, scale, mimeType, route);
     }
 
     public CapturedImage CaptureVirtualScreen(int maxImageDimension, long quality = 95, string format = "png")
