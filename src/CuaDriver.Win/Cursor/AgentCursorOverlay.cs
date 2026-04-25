@@ -51,6 +51,15 @@ public sealed class AgentCursorOverlay
     private const float CursorTipOffset = 16f;
     private const float SurfaceHalfSize = 38f;
     private const int Supersample = 3;
+    private const double TurnRadius = 80;
+    private const double PeakSpeed = 900;
+    private const double MinStartSpeed = 300;
+    private const double MinEndSpeed = 200;
+    private const double SpringStiffness = 400;
+    private const double SpringOvershoot = 0.8;
+    private const double IdleBreathPeriodSeconds = 1.8;
+    private const double IdleRotationPeriodSeconds = 2.4;
+    private const double IdleRotationAmplitudeRadians = 0.10;
 
     private readonly object _gate = new();
     private OverlayForm? _form;
@@ -283,13 +292,13 @@ public sealed class AgentCursorOverlay
         private readonly Rectangle _virtualBounds;
         private AgentCursorMotion _motion = AgentCursorMotion.Default;
         private PointF _current;
-        private PointF _start;
-        private PointF _target;
-        private PointF _control1;
-        private PointF _control2;
-        private DateTime _glideStartedAt;
         private DateTime _lastFrameAt = DateTime.UtcNow;
-        private double _heading = Math.PI / 4;
+        private double _heading = RestingHeadingRadians;
+        private PlannedPath? _path;
+        private Trip? _trip;
+        private SpringState? _spring;
+        private SpringTarget? _springTarget;
+        private double _distanceSoFar;
         private bool _hasPosition;
         private bool _isGliding;
         private bool _visibleCursor;
@@ -313,12 +322,8 @@ public sealed class AgentCursorOverlay
             Text = OverlayWindowTitle;
             StartPosition = FormStartPosition.Manual;
             _current = new PointF(-180, -180);
-            _start = _current;
-            _target = _current;
-            _control1 = _current;
-            _control2 = _current;
 
-            _timer = new System.Windows.Forms.Timer { Interval = 16 };
+            _timer = new System.Windows.Forms.Timer { Interval = 8 };
             _timer.Tick += (_, _) =>
             {
                 StepAnimation();
@@ -360,10 +365,7 @@ public sealed class AgentCursorOverlay
             if (!_hasPosition)
             {
                 _current = VisualPositionForTip(ToLocal(screenX, screenY), DpiScaleForPoint(screenX, screenY));
-                _start = _current;
-                _target = _current;
-                _control1 = _current;
-                _control2 = _current;
+                _heading = RestingHeadingRadians;
                 _hasPosition = true;
             }
 
@@ -376,6 +378,10 @@ public sealed class AgentCursorOverlay
         {
             _visibleCursor = false;
             _isGliding = false;
+            _path = null;
+            _trip = null;
+            _spring = null;
+            _springTarget = null;
             _arrival?.TrySetResult();
             _arrival = null;
             Hide();
@@ -390,27 +396,43 @@ public sealed class AgentCursorOverlay
             }
 
             _motion = motion;
-            var target = VisualPositionForTip(ToLocal(screenX, screenY), DpiScaleForPoint(screenX, screenY));
+            var scale = DpiScaleForPoint(screenX, screenY);
+            var target = VisualPositionForTip(ToLocal(screenX, screenY), scale);
             if (!_hasPosition)
             {
                 _current = InitialPosition(target);
+                _heading = RestingHeadingRadians;
                 _hasPosition = true;
             }
 
             _arrival?.TrySetResult();
             _arrival = arrival;
-            _start = _current;
-            _target = target;
-            BuildBezier(_start, _target, _motion, out _control1, out _control2);
-            _glideStartedAt = DateTime.UtcNow;
-            _lastActivityAt = _glideStartedAt;
+            _path = PlanPath(
+                _current.X,
+                _current.Y,
+                _heading + Math.PI,
+                target.X,
+                target.Y,
+                RestingHeadingRadians + Math.PI,
+                Math.Max(1, TurnRadius * scale),
+                RestingHeadingRadians,
+                target);
+            _trip = TripFor(_path.Value, _motion.GlideDurationMs, scale);
+            _spring = null;
+            _springTarget = null;
+            _distanceSoFar = 0;
+            _lastFrameAt = DateTime.UtcNow;
+            _lastActivityAt = _lastFrameAt;
             _visibleCursor = true;
             _pulseStartedMs = 0;
 
-            if (Distance(_start, _target) < 1)
+            if (_path.Value.Length < 1)
             {
-                _current = _target;
+                _current = target;
+                _heading = RestingHeadingRadians;
                 _isGliding = false;
+                _path = null;
+                _trip = null;
                 _arrival?.TrySetResult();
                 _arrival = null;
             }
@@ -454,29 +476,82 @@ public sealed class AgentCursorOverlay
             var dt = Math.Min(0.05, Math.Max(0.001, (now - _lastFrameAt).TotalSeconds));
             _lastFrameAt = now;
 
-            if (_isGliding)
+            if (_path is { } path && _trip is { } trip)
             {
-                var elapsed = (now - _glideStartedAt).TotalMilliseconds;
-                var t = Math.Clamp(elapsed / Math.Max(1, _motion.GlideDurationMs), 0, 1);
-                var eased = SmootherStep(t);
-                _current = Bezier(_start, _control1, _control2, _target, eased);
-                var tangent = BezierTangentRadians(_start, _control1, _control2, _target, eased);
-                _heading = RotateToward(_heading, tangent + Math.PI, 14 * dt);
-                changed = true;
-                if (t >= 1)
+                var u = Math.Min(1.0, _distanceSoFar / Math.Max(path.Length, 1));
+                var profileValue = SmootherSpeedProfile(u);
+                var floorSpeed = u < 0.5 ? trip.MinStart : trip.MinEnd;
+                var currentSpeed = floorSpeed + (trip.Peak - floorSpeed) * profileValue;
+                _distanceSoFar += currentSpeed * dt;
+
+                if (_distanceSoFar >= path.Length)
                 {
-                    _current = _target;
-                    _heading = RestingHeadingRadians;
+                    var endState = path.Sample(path.Length);
+                    _spring = new SpringState(
+                        0,
+                        0,
+                        Math.Cos(endState.Heading) * currentSpeed * SpringOvershoot,
+                        Math.Sin(endState.Heading) * currentSpeed * SpringOvershoot);
+                    _springTarget = new SpringTarget(path.TargetPoint, path.EndVisualHeading);
+                    _current = path.TargetPoint;
+                    _heading = path.EndVisualHeading;
+                    _path = null;
+                    _trip = null;
+                    _distanceSoFar = 0;
                     _isGliding = false;
+                    _lastActivityAt = now;
                     _arrival?.TrySetResult();
                     _arrival = null;
                 }
+                else
+                {
+                    var state = path.Sample(_distanceSoFar);
+                    _current = new PointF((float)state.X, (float)state.Y);
+                    _heading = RotateToward(_heading, state.Heading + Math.PI, 14 * dt);
+                }
+
+                changed = true;
+            }
+            else if (_spring is { } spring && _springTarget is { } springTarget)
+            {
+                var damping = Math.Max(0.3, _motion.Spring) * 24;
+                var substeps = 4;
+                var sdt = dt / substeps;
+                for (var i = 0; i < substeps; i++)
+                {
+                    spring.Vx += (-SpringStiffness * spring.Ox - damping * spring.Vx) * sdt;
+                    spring.Vy += (-SpringStiffness * spring.Oy - damping * spring.Vy) * sdt;
+                    spring.Ox += spring.Vx * sdt;
+                    spring.Oy += spring.Vy * sdt;
+                }
+
+                _current = new PointF(
+                    (float)(springTarget.Point.X + spring.Ox),
+                    (float)(springTarget.Point.Y + spring.Oy));
+                _heading = springTarget.Heading;
+                if (Hypot(spring.Ox, spring.Oy) < 0.3 && Hypot(spring.Vx, spring.Vy) < 2)
+                {
+                    _current = springTarget.Point;
+                    _spring = null;
+                    _springTarget = null;
+                }
+                else
+                {
+                    _spring = spring;
+                }
+
+                changed = true;
             }
 
             if (_pulseStartedMs > 0 && Environment.TickCount64 - _pulseStartedMs > Math.Max(1, _motion.PressDurationMs))
             {
                 _pulseStartedMs = 0;
                 _lastActivityAt = now;
+                changed = true;
+            }
+            else if (_pulseStartedMs > 0)
+            {
+                changed = true;
             }
 
             if (!_isGliding && _pulseStartedMs <= 0)
@@ -484,6 +559,8 @@ public sealed class AgentCursorOverlay
                 var idleMs = (now - _lastActivityAt).TotalMilliseconds;
                 if (_motion.IdleHideMs > 0 && idleMs >= _motion.IdleHideMs)
                     HideCursor();
+                else
+                    changed = true;
             }
 
             if (changed)
@@ -519,7 +596,8 @@ public sealed class AgentCursorOverlay
                 return;
 
             var scale = CurrentDpiScale();
-            var screenCenter = new PointF(_current.X + _virtualBounds.Left, _current.Y + _virtualBounds.Top);
+            var renderPose = RenderPose(scale);
+            var screenCenter = new PointF(renderPose.Center.X + _virtualBounds.Left, renderPose.Center.Y + _virtualBounds.Top);
             var halfSize = Math.Max(32, (int)Math.Ceiling(SurfaceHalfSize * scale));
             var width = halfSize * 2;
             var height = halfSize * 2;
@@ -534,8 +612,8 @@ public sealed class AgentCursorOverlay
                 g.Clear(Color.Transparent);
                 ConfigureHighQuality(g);
                 g.ScaleTransform(Supersample, Supersample);
-                DrawBloom(g, localCenter, scale);
-                DrawCursor(g, localCenter, _heading, scale);
+                DrawBloom(g, localCenter, scale, BloomBreath());
+                DrawCursor(g, localCenter, renderPose.Heading, scale);
             }
 
             using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
@@ -593,42 +671,23 @@ public sealed class AgentCursorOverlay
             return new PointF(x, y);
         }
 
-        private static void BuildBezier(PointF start, PointF end, AgentCursorMotion motion, out PointF control1, out PointF control2)
+        private static void DrawBloom(Graphics g, PointF p, float scale, double breath)
         {
-            var dx = end.X - start.X;
-            var dy = end.Y - start.Y;
-            var length = Math.Max(1, Math.Sqrt(dx * dx + dy * dy));
-            var perpX = -dy / length;
-            var perpY = dx / length;
-            var deflection = length * motion.ArcSize;
-            var flowBias = (motion.ArcFlow + 1) / 2;
-            var c1Deflect = deflection * (1 - 0.5 * flowBias);
-            var c2Deflect = deflection * (1 - 0.5 * (1 - flowBias));
-
-            var c1BaseX = start.X + dx * motion.StartHandle;
-            var c1BaseY = start.Y + dy * motion.StartHandle;
-            var c2BaseX = end.X - dx * motion.EndHandle;
-            var c2BaseY = end.Y - dy * motion.EndHandle;
-
-            control1 = new PointF((float)(c1BaseX + perpX * c1Deflect), (float)(c1BaseY + perpY * c1Deflect));
-            control2 = new PointF((float)(c2BaseX + perpX * c2Deflect), (float)(c2BaseY + perpY * c2Deflect));
-        }
-
-        private static void DrawBloom(Graphics g, PointF p, float scale)
-        {
-            var radius = 22f * scale;
+            var radius = (float)((22 + 2 * breath) * scale);
             var bounds = new RectangleF(p.X - radius, p.Y - radius, radius * 2, radius * 2);
             using var path = new GraphicsPath();
             path.AddEllipse(bounds);
+            var centerAlpha = (int)Math.Round(140 + 51 * breath);
+            var midFactor = (float)(0.27 + 0.06 * breath);
             using var brush = new PathGradientBrush(path)
             {
                 CenterPoint = p,
-                CenterColor = Color.FromArgb(140, 94, 192, 232),
+                CenterColor = Color.FromArgb(centerAlpha, 94, 192, 232),
                 SurroundColors = [Color.FromArgb(0, 94, 192, 232)]
             };
             brush.Blend = new Blend
             {
-                Factors = [1.0f, 0.27f, 0.0f],
+                Factors = [1.0f, midFactor, 0.0f],
                 Positions = [0.0f, 0.5f, 1.0f]
             };
             g.FillPath(brush, path);
@@ -672,26 +731,42 @@ public sealed class AgentCursorOverlay
             g.DrawPath(outline, path);
         }
 
-        private static PointF Bezier(PointF a, PointF b, PointF c, PointF d, double t)
+        private static double SmootherSpeedProfile(double u) => (30 * u * u * (1 - u) * (1 - u)) / 1.875;
+
+        private double BloomBreath()
         {
-            var u = 1 - t;
-            var uu = u * u;
-            var uuu = uu * u;
-            var tt = t * t;
-            var ttt = tt * t;
-            return new PointF(
-                (float)(uuu * a.X + 3 * uu * t * b.X + 3 * u * tt * c.X + ttt * d.X),
-                (float)(uuu * a.Y + 3 * uu * t * b.Y + 3 * u * tt * c.Y + ttt * d.Y));
+            if (_path is not null || _spring is not null || _pulseStartedMs > 0)
+                return 1;
+
+            var seconds = Math.Max(0, (DateTime.UtcNow - _lastActivityAt).TotalSeconds);
+            return 0.5 + 0.5 * Math.Sin(seconds / IdleBreathPeriodSeconds * Math.PI * 2);
         }
 
-        private static double SmootherStep(double t) => t * t * t * (t * (t * 6 - 15) + 10);
-
-        private static double BezierTangentRadians(PointF a, PointF b, PointF c, PointF d, double t)
+        private (PointF Center, double Heading) RenderPose(float scale)
         {
-            var u = 1 - t;
-            var dx = 3 * u * u * (b.X - a.X) + 6 * u * t * (c.X - b.X) + 3 * t * t * (d.X - c.X);
-            var dy = 3 * u * u * (b.Y - a.Y) + 6 * u * t * (c.Y - b.Y) + 3 * t * t * (d.Y - c.Y);
-            return Math.Atan2(dy, dx);
+            if (!IsThinkingIdle())
+                return (_current, _heading);
+
+            var heading = RestingHeadingRadians + IdleRotation();
+            var tip = TipPointFromVisualPosition(_current, scale, RestingHeadingRadians);
+            return (VisualPositionForTip(tip, scale, heading), heading);
+        }
+
+        private bool IsThinkingIdle()
+        {
+            return _enabled
+                   && _visibleCursor
+                   && _hasPosition
+                   && !_isGliding
+                   && _path is null
+                   && _spring is null
+                   && _pulseStartedMs <= 0;
+        }
+
+        private double IdleRotation()
+        {
+            var seconds = Math.Max(0, (DateTime.UtcNow - _lastActivityAt).TotalSeconds);
+            return Math.Sin(seconds / IdleRotationPeriodSeconds * Math.PI * 2) * IdleRotationAmplitudeRadians;
         }
 
         private static double RotateToward(double current, double desired, double maxStep)
@@ -732,18 +807,28 @@ public sealed class AgentCursorOverlay
 
         private static PointF VisualPositionForTip(PointF tip, float scale)
         {
+            return VisualPositionForTip(tip, scale, RestingHeadingRadians);
+        }
+
+        private static PointF VisualPositionForTip(PointF tip, float scale, double heading)
+        {
             var offset = CursorTipOffset * scale;
             return new PointF(
-                tip.X + (float)(Math.Cos(RestingHeadingRadians) * offset),
-                tip.Y + (float)(Math.Sin(RestingHeadingRadians) * offset));
+                tip.X + (float)(Math.Cos(heading) * offset),
+                tip.Y + (float)(Math.Sin(heading) * offset));
         }
 
         private static PointF TipPointFromVisualPosition(PointF visualPosition, float scale)
         {
+            return TipPointFromVisualPosition(visualPosition, scale, RestingHeadingRadians);
+        }
+
+        private static PointF TipPointFromVisualPosition(PointF visualPosition, float scale, double heading)
+        {
             var offset = CursorTipOffset * scale;
             return new PointF(
-                visualPosition.X - (float)(Math.Cos(RestingHeadingRadians) * offset),
-                visualPosition.Y - (float)(Math.Sin(RestingHeadingRadians) * offset));
+                visualPosition.X - (float)(Math.Cos(heading) * offset),
+                visualPosition.Y - (float)(Math.Sin(heading) * offset));
         }
 
         private static void ConfigureHighQuality(Graphics g)
@@ -753,6 +838,277 @@ public sealed class AgentCursorOverlay
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             g.SmoothingMode = SmoothingMode.AntiAlias;
+        }
+
+        private static Trip TripFor(PlannedPath path, double glideDurationMs, float scale)
+        {
+            var durationSeconds = Math.Clamp(glideDurationMs / 1000, 0.05, 5);
+            var desiredAverageSpeed = path.Length / durationSeconds;
+            var macAverageSpeed = ((PeakSpeed + MinStartSpeed + MinEndSpeed) / 3) * scale;
+            var speedScale = macAverageSpeed <= 0 ? 1 : Math.Max(0.1, desiredAverageSpeed / macAverageSpeed);
+            return new Trip(PeakSpeed * scale * speedScale, MinStartSpeed * scale * speedScale, MinEndSpeed * scale * speedScale);
+        }
+
+        private static PlannedPath PlanPath(
+            double x0,
+            double y0,
+            double th0,
+            double x1,
+            double y1,
+            double th1,
+            double radius,
+            double endVisualHeading,
+            PointF targetPoint)
+        {
+            return PlanDubins(x0, y0, th0, x1, y1, th1, radius, endVisualHeading, targetPoint)
+                   ?? PlannedPath.Linear(x0, y0, th0, x1, y1, th1, radius, endVisualHeading, targetPoint);
+        }
+
+        private static PlannedPath? PlanDubins(
+            double x0,
+            double y0,
+            double th0,
+            double x1,
+            double y1,
+            double th1,
+            double radius,
+            double endVisualHeading,
+            PointF targetPoint)
+        {
+            var dx = x1 - x0;
+            var dy = y1 - y0;
+            var distance = Hypot(dx, dy);
+            if (distance <= 0.5)
+                return null;
+
+            var d = distance / radius;
+            var theta = Mod2Pi(Math.Atan2(dy, dx));
+            var a = Mod2Pi(th0 - theta);
+            var b = Mod2Pi(th1 - theta);
+            DubinsSolution? best = null;
+            var bestLength = double.PositiveInfinity;
+
+            foreach (var solver in DubinsSolvers)
+            {
+                var solution = solver(d, a, b);
+                if (solution is not { } s || !double.IsFinite(s.Length) || s.Length < 0 || s.Length >= bestLength)
+                    continue;
+
+                best = s;
+                bestLength = s.Length;
+            }
+
+            return best is { } chosen
+                ? PlannedPath.Dubins(x0, y0, th0, radius, chosen, endVisualHeading, targetPoint, x1, y1, th1)
+                : null;
+        }
+
+        private static readonly Func<double, double, double, DubinsSolution?>[] DubinsSolvers =
+        [
+            DubinsLsl,
+            DubinsRsr,
+            DubinsLsr,
+            DubinsRsl,
+            DubinsRlr,
+            DubinsLrl
+        ];
+
+        private static DubinsSolution? DubinsLsl(double d, double a, double b)
+        {
+            var tmp0 = d + Math.Sin(a) - Math.Sin(b);
+            var p2 = 2 + d * d - 2 * Math.Cos(a - b) + 2 * d * (Math.Sin(a) - Math.Sin(b));
+            if (p2 < 0)
+                return null;
+            var tmp1 = Math.Atan2(Math.Cos(b) - Math.Cos(a), tmp0);
+            return new DubinsSolution(Mod2Pi(-a + tmp1), Math.Sqrt(p2), Mod2Pi(b - tmp1), ['L', 'S', 'L']);
+        }
+
+        private static DubinsSolution? DubinsRsr(double d, double a, double b)
+        {
+            var tmp0 = d - Math.Sin(a) + Math.Sin(b);
+            var p2 = 2 + d * d - 2 * Math.Cos(a - b) + 2 * d * (Math.Sin(b) - Math.Sin(a));
+            if (p2 < 0)
+                return null;
+            var tmp1 = Math.Atan2(Math.Cos(a) - Math.Cos(b), tmp0);
+            return new DubinsSolution(Mod2Pi(a - tmp1), Math.Sqrt(p2), Mod2Pi(-b + tmp1), ['R', 'S', 'R']);
+        }
+
+        private static DubinsSolution? DubinsLsr(double d, double a, double b)
+        {
+            var p2 = -2 + d * d + 2 * Math.Cos(a - b) + 2 * d * (Math.Sin(a) + Math.Sin(b));
+            if (p2 < 0)
+                return null;
+            var p = Math.Sqrt(p2);
+            var tmp1 = Math.Atan2(-Math.Cos(a) - Math.Cos(b), d + Math.Sin(a) + Math.Sin(b)) - Math.Atan2(-2, p);
+            return new DubinsSolution(Mod2Pi(-a + tmp1), p, Mod2Pi(-Mod2Pi(b) + tmp1), ['L', 'S', 'R']);
+        }
+
+        private static DubinsSolution? DubinsRsl(double d, double a, double b)
+        {
+            var p2 = d * d - 2 + 2 * Math.Cos(a - b) - 2 * d * (Math.Sin(a) + Math.Sin(b));
+            if (p2 < 0)
+                return null;
+            var p = Math.Sqrt(p2);
+            var tmp1 = Math.Atan2(Math.Cos(a) + Math.Cos(b), d - Math.Sin(a) - Math.Sin(b)) - Math.Atan2(2, p);
+            return new DubinsSolution(Mod2Pi(a - tmp1), p, Mod2Pi(b - tmp1), ['R', 'S', 'L']);
+        }
+
+        private static DubinsSolution? DubinsRlr(double d, double a, double b)
+        {
+            var tmp = (6 - d * d + 2 * Math.Cos(a - b) + 2 * d * (Math.Sin(a) - Math.Sin(b))) / 8;
+            if (Math.Abs(tmp) > 1)
+                return null;
+            var p = Mod2Pi(2 * Math.PI - Math.Acos(tmp));
+            var t = Mod2Pi(a - Math.Atan2(Math.Cos(a) - Math.Cos(b), d - Math.Sin(a) + Math.Sin(b)) + p / 2);
+            return new DubinsSolution(t, p, Mod2Pi(a - b - t + p), ['R', 'L', 'R']);
+        }
+
+        private static DubinsSolution? DubinsLrl(double d, double a, double b)
+        {
+            var tmp = (6 - d * d + 2 * Math.Cos(a - b) + 2 * d * (Math.Sin(b) - Math.Sin(a))) / 8;
+            if (Math.Abs(tmp) > 1)
+                return null;
+            var p = Mod2Pi(2 * Math.PI - Math.Acos(tmp));
+            var t = Mod2Pi(-a + Math.Atan2(-Math.Cos(a) + Math.Cos(b), d + Math.Sin(a) - Math.Sin(b)) + p / 2);
+            return new DubinsSolution(t, p, Mod2Pi(Mod2Pi(b) - a - t + p), ['L', 'R', 'L']);
+        }
+
+        private static double Mod2Pi(double value)
+        {
+            var tau = 2 * Math.PI;
+            var result = value - tau * Math.Floor(value / tau);
+            return result < 0 ? result + tau : result;
+        }
+
+        private readonly record struct Trip(double Peak, double MinStart, double MinEnd);
+
+        private struct SpringState(double ox, double oy, double vx, double vy)
+        {
+            public double Ox = ox;
+            public double Oy = oy;
+            public double Vx = vx;
+            public double Vy = vy;
+        }
+
+        private readonly record struct SpringTarget(PointF Point, double Heading);
+
+        private readonly record struct PathState(double X, double Y, double Heading);
+
+        private readonly record struct DubinsSolution(double T, double P, double Q, char[] Types)
+        {
+            public double Length => T + P + Q;
+        }
+
+        private readonly record struct PlannedPath(
+            bool IsDubins,
+            double Length,
+            double EndVisualHeading,
+            PointF TargetPoint,
+            double X0,
+            double Y0,
+            double Th0,
+            double Radius,
+            double Seg1,
+            double Seg2,
+            double Seg3,
+            char[] Types,
+            double X1,
+            double Y1,
+            double Th1)
+        {
+            public static PlannedPath Linear(
+                double x0,
+                double y0,
+                double th0,
+                double x1,
+                double y1,
+                double th1,
+                double radius,
+                double endVisualHeading,
+                PointF targetPoint)
+            {
+                return new PlannedPath(false, Math.Max(1, Hypot(x1 - x0, y1 - y0)), endVisualHeading, targetPoint, x0, y0, th0, radius, 0, 0, 0, [], x1, y1, th1);
+            }
+
+            public static PlannedPath Dubins(
+                double x0,
+                double y0,
+                double th0,
+                double radius,
+                DubinsSolution solution,
+                double endVisualHeading,
+                PointF targetPoint,
+                double x1,
+                double y1,
+                double th1)
+            {
+                return new PlannedPath(true, solution.Length * radius, endVisualHeading, targetPoint, x0, y0, th0, radius, solution.T, solution.P, solution.Q, solution.Types, x1, y1, th1);
+            }
+
+            public PathState Sample(double distance)
+            {
+                return IsDubins ? SampleDubins(distance) : SampleLinear(distance);
+            }
+
+            private PathState SampleLinear(double distance)
+            {
+                var u = Math.Clamp(distance / Length, 0, 1);
+                var diff = Th1 - Th0;
+                while (diff > Math.PI) diff -= 2 * Math.PI;
+                while (diff < -Math.PI) diff += 2 * Math.PI;
+                return new PathState(X0 + (X1 - X0) * u, Y0 + (Y1 - Y0) * u, Th0 + diff * u);
+            }
+
+            private PathState SampleDubins(double inputDistance)
+            {
+                if (inputDistance <= 0)
+                    return new PathState(X0, Y0, Th0);
+
+                var l1 = Seg1 * Radius;
+                var l2 = Seg2 * Radius;
+                var l3 = Seg3 * Radius;
+                var radius = Radius;
+                var distance = Math.Min(inputDistance, l1 + l2 + l3);
+                var x = X0;
+                var y = Y0;
+                var heading = Th0;
+
+                void Advance(double length, char type)
+                {
+                    if (type == 'S')
+                    {
+                        x += Math.Cos(heading) * length;
+                        y += Math.Sin(heading) * length;
+                        return;
+                    }
+
+                    var deltaHeading = length / radius * (type == 'L' ? 1 : -1);
+                    var perpendicular = type == 'L' ? Math.PI / 2 : -Math.PI / 2;
+                    var centerX = x + Math.Cos(heading + perpendicular) * radius;
+                    var centerY = y + Math.Sin(heading + perpendicular) * radius;
+                    var angle = Math.Atan2(y - centerY, x - centerX);
+                    x = centerX + Math.Cos(angle + deltaHeading) * radius;
+                    y = centerY + Math.Sin(angle + deltaHeading) * radius;
+                    heading += deltaHeading;
+                }
+
+                if (distance <= l1)
+                {
+                    Advance(distance, Types[0]);
+                    return new PathState(x, y, heading);
+                }
+
+                Advance(l1, Types[0]);
+                if (distance <= l1 + l2)
+                {
+                    Advance(distance - l1, Types[1]);
+                    return new PathState(x, y, heading);
+                }
+
+                Advance(l2, Types[1]);
+                Advance(distance - l1 - l2, Types[2]);
+                return new PathState(x, y, heading);
+            }
         }
 
         private static void CloseSiblingOverlayWindows()
@@ -796,11 +1152,6 @@ public sealed class AgentCursorOverlay
             }
         }
 
-        private static double Distance(PointF a, PointF b)
-        {
-            var dx = a.X - b.X;
-            var dy = a.Y - b.Y;
-            return Math.Sqrt(dx * dx + dy * dy);
-        }
+        private static double Hypot(double x, double y) => Math.Sqrt(x * x + y * y);
     }
 }
