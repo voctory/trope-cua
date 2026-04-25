@@ -35,6 +35,7 @@ public sealed class ReplayTrajectoryTool : IDriverTool
         var attempted = 0;
         var succeeded = 0;
         var failed = 0;
+        var turns = new JsonArray();
         ReplayFailure? firstFailure = null;
 
         for (var i = 0; i < turnDirs.Length; i++)
@@ -47,6 +48,14 @@ public sealed class ReplayTrajectoryTool : IDriverTool
 
             attempted++;
             var result = await context.Registry.InvokeAsync(parsed.Value.Tool, parsed.Value.Arguments, context, cancellationToken).ConfigureAwait(false);
+            turns.Add(new JsonObject
+            {
+                ["turn"] = Path.GetFileName(turnDir),
+                ["tool"] = parsed.Value.Tool,
+                ["ok"] = !result.IsError,
+                ["result_summary"] = FirstText(result),
+                ["result_structured"] = result.StructuredContent?.DeepClone()
+            });
             if (result.IsError)
             {
                 failed++;
@@ -67,7 +76,26 @@ public sealed class ReplayTrajectoryTool : IDriverTool
         if (firstFailure is not null)
             summary += $" first_failure={firstFailure.Turn}:{firstFailure.Tool}";
 
-        return ToolResult.Text("✅ " + summary, failed > 0 && stopOnError);
+        var structured = new JsonObject
+        {
+            ["directory"] = dir,
+            ["attempted"] = attempted,
+            ["succeeded"] = succeeded,
+            ["failed"] = failed,
+            ["stop_on_error"] = stopOnError,
+            ["turns"] = turns
+        };
+        if (firstFailure is not null)
+        {
+            structured["first_failure"] = new JsonObject
+            {
+                ["turn"] = firstFailure.Turn,
+                ["tool"] = firstFailure.Tool,
+                ["error"] = firstFailure.Error
+            };
+        }
+
+        return ToolResult.Text("✅ " + summary, structured, failed > 0 && stopOnError);
     }
 
     private static ParsedAction? ParseActionJson(string path)

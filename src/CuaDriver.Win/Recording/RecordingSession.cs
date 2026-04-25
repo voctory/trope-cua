@@ -124,6 +124,7 @@ public sealed class RecordingSession
             ["tool"] = toolName,
             ["arguments"] = arguments.DeepClone(),
             ["result_summary"] = FirstText(result),
+            ["result_structured"] = result.StructuredContent?.DeepClone(),
             ["timestamp"] = DateTimeOffset.UtcNow.ToString("O"),
             ["t_ms_from_session_start"] = ElapsedMs(sessionStartTimestamp, now),
             ["t_start_ms_from_session_start"] = ElapsedMs(sessionStartTimestamp, actionStartTimestamp == 0 ? now : actionStartTimestamp),

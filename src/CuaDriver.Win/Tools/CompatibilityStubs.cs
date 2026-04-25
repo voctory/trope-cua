@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using CuaDriver.Win.Recording;
 using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Tools;
@@ -112,13 +113,20 @@ public sealed class SetRecordingTool : IDriverTool
             var text = state.Enabled
                 ? $"✅ Recording enabled -> {state.OutputDirectory}"
                 : "✅ Recording disabled.";
-            return Task.FromResult(ToolResult.Text(text));
+            return Task.FromResult(ToolResult.Text(text, RecordingStateObject(state)));
         }
         catch (Exception ex)
         {
             return Task.FromResult(ToolResult.Error($"Failed to configure recording: {ex.Message}"));
         }
     }
+
+    public static JsonObject RecordingStateObject(RecordingState state) => new()
+    {
+        ["enabled"] = state.Enabled,
+        ["output_dir"] = state.OutputDirectory,
+        ["next_turn"] = state.NextTurn
+    };
 }
 
 public sealed class GetRecordingStateTool : IDriverTool
@@ -130,6 +138,6 @@ public sealed class GetRecordingStateTool : IDriverTool
         var text = state.Enabled
             ? $"✅ recording: enabled output_dir={state.OutputDirectory} next_turn={state.NextTurn}"
             : "✅ recording: disabled";
-        return Task.FromResult(ToolResult.Text(text));
+        return Task.FromResult(ToolResult.Text(text, SetRecordingTool.RecordingStateObject(state)));
     }
 }
