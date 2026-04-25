@@ -8,14 +8,9 @@ namespace CuaDriver.Win;
 public static class Program
 {
     [STAThread]
-    public static int Main(string[] args)
+    public static async Task<int> Main(string[] args)
     {
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
-        return MainAsync(args).GetAwaiter().GetResult();
-    }
-
-    private static async Task<int> MainAsync(string[] args)
-    {
         var state = new DriverState();
         var registry = ToolRegistry.CreateDefault(state);
         var context = new ToolContext { State = state, Registry = registry };
