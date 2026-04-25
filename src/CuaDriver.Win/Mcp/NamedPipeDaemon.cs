@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Security.Principal;
@@ -10,6 +11,7 @@ namespace CuaDriver.Win.Mcp;
 
 public sealed record DaemonRequest(string Method, string? Name, JsonObject? Args);
 public sealed record DaemonResponse(bool Ok, ToolResult? Result, string? Error);
+public sealed record DaemonInstanceRecord(string InstanceId, int Pid, string PipeName, string StartedAt, string ExePath);
 
 public sealed class NamedPipeDaemon
 {
@@ -39,42 +41,54 @@ public sealed class NamedPipeDaemon
         }
 
         using var shutdown = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        WriteInstanceRecord();
         Console.Error.WriteLine($"cua-driver-win daemon instance '{_instanceId}' listening on named pipe {InstancePipeName}");
-        while (!shutdown.IsCancellationRequested)
+        try
         {
-            await using var pipe = new NamedPipeServerStream(InstancePipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
-            await pipe.WaitForConnectionAsync(shutdown.Token).ConfigureAwait(false);
-            using var reader = new StreamReader(pipe);
-            await using var writer = new StreamWriter(pipe) { AutoFlush = true };
-
-            try
+            while (!shutdown.IsCancellationRequested)
             {
-                var line = await reader.ReadLineAsync(shutdown.Token).ConfigureAwait(false);
-                if (line is null)
-                    continue;
-                var request = JsonSerializer.Deserialize<DaemonRequest>(line, JsonUtil.SerializerOptions);
-                if (request is null)
+                await using var pipe = new NamedPipeServerStream(InstancePipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                await pipe.WaitForConnectionAsync(shutdown.Token).ConfigureAwait(false);
+                using var reader = new StreamReader(pipe);
+                await using var writer = new StreamWriter(pipe) { AutoFlush = true };
+
+                try
                 {
-                    await writer.WriteLineAsync(JsonSerializer.Serialize(new DaemonResponse(false, null, "Invalid daemon request"), JsonUtil.LineSerializerOptions)).ConfigureAwait(false);
-                    continue;
+                    var line = await reader.ReadLineAsync(shutdown.Token).ConfigureAwait(false);
+                    if (line is null)
+                        continue;
+                    var request = JsonSerializer.Deserialize<DaemonRequest>(line, JsonUtil.SerializerOptions);
+                    if (request is null)
+                    {
+                        await writer.WriteLineAsync(JsonSerializer.Serialize(new DaemonResponse(false, null, "Invalid daemon request"), JsonUtil.LineSerializerOptions)).ConfigureAwait(false);
+                        continue;
+                    }
+
+                    var response = request.Method switch
+                    {
+                        "call" when !string.IsNullOrWhiteSpace(request.Name) => await CallAsync(request, shutdown.Token).ConfigureAwait(false),
+                        "status" => new DaemonResponse(true, StatusResult(), null),
+                        "shutdown" => new DaemonResponse(true, ToolResult.Text("✅ daemon shutdown requested", StatusObject()), null),
+                        _ => new DaemonResponse(false, null, "Invalid daemon request")
+                    };
+
+                    await writer.WriteLineAsync(JsonSerializer.Serialize(response, JsonUtil.LineSerializerOptions)).ConfigureAwait(false);
+                    if (request.Method == "shutdown")
+                        shutdown.Cancel();
                 }
-
-                var response = request.Method switch
+                catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
                 {
-                    "call" when !string.IsNullOrWhiteSpace(request.Name) => await CallAsync(request, shutdown.Token).ConfigureAwait(false),
-                    "status" => new DaemonResponse(true, StatusResult(), null),
-                    "shutdown" => new DaemonResponse(true, ToolResult.Text("✅ daemon shutdown requested", StatusObject()), null),
-                    _ => new DaemonResponse(false, null, "Invalid daemon request")
-                };
-
-                await writer.WriteLineAsync(JsonSerializer.Serialize(response, JsonUtil.LineSerializerOptions)).ConfigureAwait(false);
-                if (request.Method == "shutdown")
-                    shutdown.Cancel();
+                    // Expected during daemon shutdown.
+                }
+                catch (Exception ex)
+                {
+                    await writer.WriteLineAsync(JsonSerializer.Serialize(new DaemonResponse(false, null, $"{ex.GetType().Name}: {ex.Message}"), JsonUtil.LineSerializerOptions)).ConfigureAwait(false);
+                }
             }
-            catch (Exception ex)
-            {
-                await writer.WriteLineAsync(JsonSerializer.Serialize(new DaemonResponse(false, null, $"{ex.GetType().Name}: {ex.Message}"), JsonUtil.LineSerializerOptions)).ConfigureAwait(false);
-            }
+        }
+        finally
+        {
+            RemoveInstanceRecord();
         }
     }
 
@@ -160,6 +174,32 @@ public sealed class NamedPipeDaemon
 
     public static string PipeNameFor(string? instanceId) => $"cua-driver-win-{UserKey()}-{NormalizeInstanceId(instanceId ?? "default")}";
 
+    public static ToolResult ListInstances()
+    {
+        var records = ReadInstanceRecords();
+        var structuredRecords = new JsonArray();
+        var lines = new List<string> { $"✅ daemon instances: {records.Count}" };
+        foreach (var record in records)
+        {
+            var running = IsProcessRunning(record.Pid, record.ExePath);
+            structuredRecords.Add(new JsonObject
+            {
+                ["instance_id"] = record.InstanceId,
+                ["pid"] = record.Pid,
+                ["pipe_name"] = record.PipeName,
+                ["started_at"] = record.StartedAt,
+                ["exe_path"] = record.ExePath,
+                ["running"] = running
+            });
+            lines.Add($"- instance={record.InstanceId} pid={record.Pid} running={running} pipe={record.PipeName}");
+        }
+
+        return ToolResult.Text(string.Join(Environment.NewLine, lines), new JsonObject
+        {
+            ["instances"] = structuredRecords
+        });
+    }
+
     private static string UserKey()
     {
         var sid = WindowsIdentity.GetCurrent().User?.Value ?? Environment.UserName;
@@ -177,4 +217,75 @@ public sealed class NamedPipeDaemon
             normalized = normalized.Replace(ch, '_');
         return normalized.Length > 64 ? normalized[..64] : normalized;
     }
+
+    private void WriteInstanceRecord()
+    {
+        Directory.CreateDirectory(DaemonRegistryDirectory);
+        var record = new DaemonInstanceRecord(
+            _instanceId,
+            Environment.ProcessId,
+            InstancePipeName,
+            _startedAt.ToString("O"),
+            Environment.ProcessPath ?? "");
+        var path = InstanceRecordPath(_instanceId);
+        var tmp = path + $".{Environment.ProcessId}.tmp";
+        File.WriteAllText(tmp, JsonSerializer.Serialize(record, JsonUtil.SerializerOptions));
+        File.Move(tmp, path, overwrite: true);
+    }
+
+    private void RemoveInstanceRecord()
+    {
+        try
+        {
+            var path = InstanceRecordPath(_instanceId);
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch
+        {
+            // Best-effort cleanup; daemon-list ignores stale dead pids.
+        }
+    }
+
+    private static IReadOnlyList<DaemonInstanceRecord> ReadInstanceRecords()
+    {
+        if (!Directory.Exists(DaemonRegistryDirectory))
+            return [];
+
+        var records = new List<DaemonInstanceRecord>();
+        foreach (var path in Directory.EnumerateFiles(DaemonRegistryDirectory, "*.json"))
+        {
+            try
+            {
+                var record = JsonSerializer.Deserialize<DaemonInstanceRecord>(File.ReadAllText(path), JsonUtil.SerializerOptions);
+                if (record is not null)
+                    records.Add(record);
+            }
+            catch
+            {
+                // Ignore corrupt/stale registry files.
+            }
+        }
+
+        return records.OrderBy(record => record.InstanceId, StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    private static bool IsProcessRunning(int pid, string exePath)
+    {
+        try
+        {
+            var process = Process.GetProcessById(pid);
+            if (string.IsNullOrWhiteSpace(exePath))
+                return !process.HasExited;
+            return !process.HasExited && string.Equals(process.MainModule?.FileName, exePath, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string DaemonRegistryDirectory => Path.Combine(DriverConfig.ConfigDirectory, "daemons");
+
+    private static string InstanceRecordPath(string instanceId) => Path.Combine(DaemonRegistryDirectory, $"{NormalizeInstanceId(instanceId)}.json");
 }

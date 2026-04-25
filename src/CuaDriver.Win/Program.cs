@@ -51,6 +51,13 @@ public static class Program
             return result.IsError ? 1 : 0;
         }
 
+        if (command == "daemon-list")
+        {
+            var result = Mcp.NamedPipeDaemon.ListInstances();
+            PrintResult(result);
+            return 0;
+        }
+
         if (command == "daemon-stop" || command == "daemon-shutdown")
         {
             var daemon = new Mcp.NamedPipeDaemon(registry, context, instanceId);
@@ -97,6 +104,7 @@ public static class Program
         Console.WriteLine("cua-driver-win mcp");
         Console.WriteLine("cua-driver-win serve [--instance <id>]");
         Console.WriteLine("cua-driver-win daemon-status [--instance <id>]");
+        Console.WriteLine("cua-driver-win daemon-list");
         Console.WriteLine("cua-driver-win daemon-stop [--instance <id>]");
         Console.WriteLine("cua-driver-win call [--instance <id>] <tool> [json]");
         Console.WriteLine();
