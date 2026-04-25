@@ -24,6 +24,7 @@ The Windows port intentionally does **not** treat `SendInput` as the normal equi
 - Trajectory recording writes Mac-compatible `turn-NNNNN` folders with `action.json`, `app_state.json`, `screenshot.png`, and click markers, plus `replay_trajectory` for re-driving recorded action calls.
 - `launch_app` refuses parent-session launches by default because Windows ShellExecute/CreateProcess can foreground the target. Use `unsafe_allow_foreground=true` only when that is intentional, or run launches in the child-session/AppBroadcast lane.
 - GDI/PrintWindow screenshot fallback plus a WGC integration seam. Production WGC capture is documented in `docs/capture.md` because it needs Windows-only WinRT/D3D plumbing and validation on the target OS.
+- The named-pipe daemon is single-instance per daemon instance id, not globally single-instance. Use `serve --instance <id>` and `call --instance <id>` when running isolated parallel background agents.
 - Child-session broker scaffolding for the hard-case lane.
 - AppBroadcast/InputInjector lane documentation and disabled source hook for Microsoft-provisioned builds.
 

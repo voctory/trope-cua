@@ -19,6 +19,9 @@ public static class Program
         var state = new DriverState();
         var registry = ToolRegistry.CreateDefault(state);
         var context = new ToolContext { State = state, Registry = registry };
+        var parsed = ExtractInstanceArg(args);
+        args = parsed.Args;
+        var instanceId = parsed.InstanceId;
 
         if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
         {
@@ -35,22 +38,24 @@ public static class Program
 
         if (command == "serve")
         {
-            await new Mcp.NamedPipeDaemon(registry, context).RunAsync(CancellationToken.None).ConfigureAwait(false);
+            await new Mcp.NamedPipeDaemon(registry, context, instanceId).RunAsync(CancellationToken.None).ConfigureAwait(false);
             return 0;
         }
 
         if (command == "daemon-status")
         {
-            var result = await new Mcp.NamedPipeDaemon(registry, context).TryStatusAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false)
-                         ?? ToolResult.Error($"daemon not running on named pipe {Mcp.NamedPipeDaemon.PipeName}");
+            var daemon = new Mcp.NamedPipeDaemon(registry, context, instanceId);
+            var result = await daemon.TryStatusAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false)
+                         ?? ToolResult.Error($"daemon not running on named pipe {daemon.InstancePipeName}");
             PrintResult(result);
             return result.IsError ? 1 : 0;
         }
 
         if (command == "daemon-stop" || command == "daemon-shutdown")
         {
-            var result = await new Mcp.NamedPipeDaemon(registry, context).TryShutdownAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false)
-                         ?? ToolResult.Error($"daemon not running on named pipe {Mcp.NamedPipeDaemon.PipeName}");
+            var daemon = new Mcp.NamedPipeDaemon(registry, context, instanceId);
+            var result = await daemon.TryShutdownAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false)
+                         ?? ToolResult.Error($"daemon not running on named pipe {daemon.InstancePipeName}");
             PrintResult(result);
             return result.IsError ? 1 : 0;
         }
@@ -72,7 +77,7 @@ public static class Program
 
             var toolName = args[1];
             var toolArgs = ParseArgs(args.Length >= 3 ? args[2] : "{}");
-            var daemon = new Mcp.NamedPipeDaemon(registry, context);
+            var daemon = new Mcp.NamedPipeDaemon(registry, context, instanceId);
             var result = await daemon.TryCallAsync(toolName, toolArgs, TimeSpan.FromMinutes(5), CancellationToken.None).ConfigureAwait(false)
                          ?? await registry.InvokeAsync(toolName, toolArgs, context, CancellationToken.None).ConfigureAwait(false);
             PrintResult(result);
@@ -90,10 +95,10 @@ public static class Program
     {
         Console.WriteLine("cua-driver-win <tool> [json]");
         Console.WriteLine("cua-driver-win mcp");
-        Console.WriteLine("cua-driver-win serve");
-        Console.WriteLine("cua-driver-win daemon-status");
-        Console.WriteLine("cua-driver-win daemon-stop");
-        Console.WriteLine("cua-driver-win call <tool> [json]");
+        Console.WriteLine("cua-driver-win serve [--instance <id>]");
+        Console.WriteLine("cua-driver-win daemon-status [--instance <id>]");
+        Console.WriteLine("cua-driver-win daemon-stop [--instance <id>]");
+        Console.WriteLine("cua-driver-win call [--instance <id>] <tool> [json]");
         Console.WriteLine();
         Console.WriteLine("Tools:");
         foreach (var tool in registry.Tools)
@@ -102,6 +107,33 @@ public static class Program
 
     private static string FirstLine(string text)
         => text.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim() ?? "";
+
+    private static (string[] Args, string? InstanceId) ExtractInstanceArg(string[] args)
+    {
+        string? instanceId = null;
+        var kept = new List<string>();
+        for (var i = 0; i < args.Length; i++)
+        {
+            var arg = args[i];
+            if (arg == "--instance")
+            {
+                if (i + 1 >= args.Length)
+                    throw new ArgumentException("--instance requires a value.");
+                instanceId = args[++i];
+                continue;
+            }
+
+            if (arg.StartsWith("--instance=", StringComparison.Ordinal))
+            {
+                instanceId = arg["--instance=".Length..];
+                continue;
+            }
+
+            kept.Add(arg);
+        }
+
+        return (kept.ToArray(), instanceId);
+    }
 
     private static JsonObject ParseArgs(string raw)
     {

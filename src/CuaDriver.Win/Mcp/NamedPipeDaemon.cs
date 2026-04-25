@@ -15,36 +15,34 @@ public sealed class NamedPipeDaemon
 {
     private readonly ToolRegistry _registry;
     private readonly ToolContext _context;
+    private readonly string _instanceId;
     private readonly DateTimeOffset _startedAt = DateTimeOffset.UtcNow;
 
-    public NamedPipeDaemon(ToolRegistry registry, ToolContext context)
+    public NamedPipeDaemon(ToolRegistry registry, ToolContext context, string? instanceId = null)
     {
         _registry = registry;
         _context = context;
+        _instanceId = NormalizeInstanceId(instanceId ?? Environment.GetEnvironmentVariable("CUA_DRIVER_INSTANCE") ?? "default");
     }
 
-    public static string PipeName
-    {
-        get
-        {
-            return $"cua-driver-win-{UserKey()}";
-        }
-    }
+    public static string PipeName => PipeNameFor(Environment.GetEnvironmentVariable("CUA_DRIVER_INSTANCE") ?? "default");
+
+    public string InstancePipeName => PipeNameFor(_instanceId);
 
     public async Task RunAsync(CancellationToken ct)
     {
-        using var mutex = new Mutex(initiallyOwned: false, DaemonMutexName);
+        using var mutex = new Mutex(initiallyOwned: false, DaemonMutexNameFor(_instanceId));
         if (!mutex.WaitOne(0))
         {
-            Console.Error.WriteLine($"cua-driver-win daemon already running on named pipe {PipeName}");
+            Console.Error.WriteLine($"cua-driver-win daemon instance '{_instanceId}' already running on named pipe {InstancePipeName}");
             return;
         }
 
         using var shutdown = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        Console.Error.WriteLine($"cua-driver-win daemon listening on named pipe {PipeName}");
+        Console.Error.WriteLine($"cua-driver-win daemon instance '{_instanceId}' listening on named pipe {InstancePipeName}");
         while (!shutdown.IsCancellationRequested)
         {
-            await using var pipe = new NamedPipeServerStream(PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+            await using var pipe = new NamedPipeServerStream(InstancePipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
             await pipe.WaitForConnectionAsync(shutdown.Token).ConfigureAwait(false);
             using var reader = new StreamReader(pipe);
             await using var writer = new StreamWriter(pipe) { AutoFlush = true };
@@ -125,7 +123,7 @@ public sealed class NamedPipeDaemon
 
         try
         {
-            await using var pipe = new NamedPipeClientStream(".", PipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+            await using var pipe = new NamedPipeClientStream(".", InstancePipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
             await pipe.ConnectAsync(cts.Token).ConfigureAwait(false);
             await using var writer = new StreamWriter(pipe, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
             using var reader = new StreamReader(pipe, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, 1024, leaveOpen: true);
@@ -146,18 +144,21 @@ public sealed class NamedPipeDaemon
     private ToolResult StatusResult()
     {
         var structured = StatusObject();
-        var text = $"✅ daemon: running pid={Environment.ProcessId} pipe={PipeName} started_at={_startedAt:O}";
+        var text = $"✅ daemon: running instance={_instanceId} pid={Environment.ProcessId} pipe={InstancePipeName} started_at={_startedAt:O}";
         return ToolResult.Text(text, structured);
     }
 
     private JsonObject StatusObject() => new()
     {
         ["running"] = true,
+        ["instance_id"] = _instanceId,
         ["pid"] = Environment.ProcessId,
-        ["pipe_name"] = PipeName,
+        ["pipe_name"] = InstancePipeName,
         ["started_at"] = _startedAt.ToString("O"),
         ["uptime_ms"] = (long)(DateTimeOffset.UtcNow - _startedAt).TotalMilliseconds
     };
+
+    public static string PipeNameFor(string? instanceId) => $"cua-driver-win-{UserKey()}-{NormalizeInstanceId(instanceId ?? "default")}";
 
     private static string UserKey()
     {
@@ -167,5 +168,13 @@ public sealed class NamedPipeDaemon
         return sid;
     }
 
-    private static string DaemonMutexName => $@"Local\cua-driver-win-{UserKey()}";
+    private static string DaemonMutexNameFor(string instanceId) => $@"Local\cua-driver-win-{UserKey()}-{NormalizeInstanceId(instanceId)}";
+
+    private static string NormalizeInstanceId(string instanceId)
+    {
+        var normalized = string.IsNullOrWhiteSpace(instanceId) ? "default" : instanceId.Trim();
+        foreach (var ch in Path.GetInvalidFileNameChars().Concat(['\\', '/', ':', ';', ' ']))
+            normalized = normalized.Replace(ch, '_');
+        return normalized.Length > 64 ? normalized[..64] : normalized;
+    }
 }
