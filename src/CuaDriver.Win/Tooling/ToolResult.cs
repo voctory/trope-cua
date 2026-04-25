@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace CuaDriver.Win.Tooling;
 
-public sealed record ToolResult
+internal sealed record ToolResult
 {
     [JsonPropertyName("content")]
     public List<ContentBlock> Content { get; init; } = new();

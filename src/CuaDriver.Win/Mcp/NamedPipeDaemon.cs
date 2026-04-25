@@ -9,11 +9,11 @@ using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Mcp;
 
-public sealed record DaemonRequest(string Method, string? Name, JsonObject? Args);
-public sealed record DaemonResponse(bool Ok, ToolResult? Result, string? Error);
-public sealed record DaemonInstanceRecord(string InstanceId, int Pid, string PipeName, string StartedAt, string ExePath);
+internal sealed record DaemonRequest(string Method, string? Name, JsonObject? Args);
+internal sealed record DaemonResponse(bool Ok, ToolResult? Result, string? Error);
+internal sealed record DaemonInstanceRecord(string InstanceId, int Pid, string PipeName, string StartedAt, string ExePath);
 
-public sealed class NamedPipeDaemon
+internal sealed class NamedPipeDaemon
 {
     private static readonly TimeSpan PipeConnectTimeout = TimeSpan.FromSeconds(2);
 

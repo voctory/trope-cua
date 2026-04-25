@@ -9,9 +9,9 @@ using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Recording;
 
-public sealed record RecordingState(bool Enabled, string? OutputDirectory, int NextTurn, string? LastError);
+internal sealed record RecordingState(bool Enabled, string? OutputDirectory, int NextTurn, string? LastError);
 
-public sealed class RecordingSession
+internal sealed class RecordingSession
 {
     private readonly object _gate = new();
     private bool _enabled;

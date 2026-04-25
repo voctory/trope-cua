@@ -5,7 +5,7 @@ using System.Text.Json.Nodes;
 
 namespace CuaDriver.Win.Tooling;
 
-public sealed class ToolRegistry
+internal sealed class ToolRegistry
 {
     private readonly Dictionary<string, IDriverTool> _tools;
     private static readonly FrozenSet<string> ActionToolNames = new[]

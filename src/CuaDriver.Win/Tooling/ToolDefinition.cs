@@ -2,7 +2,7 @@ using System.Text.Json.Nodes;
 
 namespace CuaDriver.Win.Tooling;
 
-public sealed record ToolDefinition(
+internal sealed record ToolDefinition(
     string Name,
     string Description,
     JsonObject InputSchema,

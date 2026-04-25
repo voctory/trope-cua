@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace CuaDriver.Win.Tooling;
 
-public sealed record ContentBlock
+internal sealed record ContentBlock
 {
     [JsonPropertyName("type")]
     public string Type { get; init; } = "text";

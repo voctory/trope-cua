@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 
 namespace CuaDriver.Win.Tooling;
 
-public static class JsonArgs
+internal static class JsonArgs
 {
     public static int RequiredInt(JsonObject args, string name)
     {

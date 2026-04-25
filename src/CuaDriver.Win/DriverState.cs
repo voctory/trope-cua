@@ -5,7 +5,7 @@ using CuaDriver.Win.Recording;
 
 namespace CuaDriver.Win;
 
-public sealed class DriverState
+internal sealed class DriverState
 {
     public DriverConfig Config { get; set; } = DriverConfig.Load();
     public Uia.UiAutomationTree UiaTree { get; } = new();
@@ -57,4 +57,4 @@ public sealed class DriverState
     }
 }
 
-public sealed record ZoomContext(int OriginX, int OriginY, int Width, int Height, double Ratio, long WindowId);
+internal sealed record ZoomContext(int OriginX, int OriginY, int Width, int Height, double Ratio, long WindowId);

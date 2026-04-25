@@ -5,7 +5,7 @@ using CuaDriver.Win.Tools;
 
 namespace CuaDriver.Win.Mcp;
 
-public sealed class McpServer
+internal sealed class McpServer
 {
     private readonly ToolRegistry _registry;
     private readonly ToolContext _context;
