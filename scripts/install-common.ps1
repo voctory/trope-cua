@@ -6,6 +6,78 @@ function Get-CuaDriverConfigDirectory {
   return [System.IO.Path]::GetFullPath($env:CUA_DRIVER_CONFIG_DIR)
 }
 
+function Get-CuaDriverDefaultRuntime {
+  $architecture = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture
+  if ($null -eq $architecture) {
+    $architecture = [System.Runtime.InteropServices.Architecture]::X64
+  }
+
+  return "win-$($architecture.ToString().ToLowerInvariant())"
+}
+
+function Get-CuaDriverRequiredSdkVersion {
+  param(
+    [string]$Root
+  )
+
+  $GlobalJson = Join-Path $Root "global.json"
+  if (-not (Test-Path $GlobalJson)) {
+    return $null
+  }
+
+  return (Get-Content -LiteralPath $GlobalJson -Raw | ConvertFrom-Json).sdk.version
+}
+
+function Test-CuaDriverDotnetHasSdk {
+  param(
+    [string]$DotnetPath,
+    [string]$SdkVersion
+  )
+
+  if ([string]::IsNullOrWhiteSpace($DotnetPath) -or -not (Test-Path $DotnetPath)) {
+    if (-not (Get-Command $DotnetPath -ErrorAction SilentlyContinue)) {
+      return $false
+    }
+  }
+
+  $installedSdks = @(& $DotnetPath --list-sdks 2>$null)
+  if ($LASTEXITCODE -ne 0) {
+    return $false
+  }
+
+  return [bool]($installedSdks | Where-Object { $_ -match "^$([regex]::Escape($SdkVersion))\s+\[" } | Select-Object -First 1)
+}
+
+function Resolve-CuaDriverDotnet {
+  param(
+    [string]$Root
+  )
+
+  $requestedSdk = Get-CuaDriverRequiredSdkVersion -Root $Root
+  if ([string]::IsNullOrWhiteSpace($requestedSdk)) {
+    return "dotnet"
+  }
+
+  $candidates = @()
+  if (-not [string]::IsNullOrWhiteSpace($env:DOTNET_ROOT)) {
+    $candidates += Join-Path $env:DOTNET_ROOT "dotnet.exe"
+  }
+  if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
+    $candidates += Join-Path $env:USERPROFILE ".dotnet\dotnet.exe"
+  }
+  $candidates += "dotnet"
+
+  foreach ($candidate in ($candidates | Select-Object -Unique)) {
+    if (Test-CuaDriverDotnetHasSdk -DotnetPath $candidate -SdkVersion $requestedSdk) {
+      return $candidate
+    }
+  }
+
+  $installedSdks = @(dotnet --list-sdks 2>$null)
+  $GlobalJson = Join-Path $Root "global.json"
+  throw "Required .NET SDK $requestedSdk is not available to dotnet. Install it, add its dotnet.exe to PATH, set DOTNET_ROOT, or update $GlobalJson. Installed SDKs on PATH: $($installedSdks -join '; ')"
+}
+
 function Test-CuaDriverPathUnderDirectory {
   param(
     [string]$Path,
