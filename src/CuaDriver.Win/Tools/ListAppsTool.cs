@@ -16,12 +16,14 @@ internal sealed class ListAppsTool : IDriverTool
 
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
-        var apps = AppEnumerator.RunningApps();
+        var apps = AppEnumerator.Apps();
+        var runningCount = apps.Count(a => a.Running);
+        var installedCount = apps.Count(a => !a.Running);
         var shortcuts = AppEnumerator.StartMenuShortcuts();
 
         var sb = new StringBuilder();
-        sb.AppendLine(CultureInfo.InvariantCulture, $"{ToolText.OkPrefix}Found {apps.Count} running GUI app(s). Start Menu shortcuts detected: {shortcuts.Count}.");
-        foreach (var app in apps)
+        sb.AppendLine(CultureInfo.InvariantCulture, $"{ToolText.OkPrefix}Found {apps.Count} app(s): {runningCount} running, {installedCount} installed-not-running. Start Menu shortcuts detected: {shortcuts.Count}.");
+        foreach (var app in apps.Where(a => a.Running))
         {
             sb.Append("- ").Append(app.Name)
               .Append(" pid ").Append(app.Pid)
@@ -30,12 +32,15 @@ internal sealed class ListAppsTool : IDriverTool
                 sb.Append(" main_window_id=").Append(hwnd);
             if (!string.IsNullOrWhiteSpace(app.Path))
                 sb.Append(" path=\"").Append(app.Path).Append('"');
+            if (!string.IsNullOrWhiteSpace(app.AppId))
+                sb.Append(" app_id=\"").Append(app.AppId).Append('"');
             sb.AppendLine();
         }
 
         return Task.FromResult(ToolResult.Text(sb.ToString().TrimEnd(), new JsonObject
         {
-            ["running_count"] = apps.Count,
+            ["running_count"] = runningCount,
+            ["installed_count"] = installedCount,
             ["start_menu_shortcut_count"] = shortcuts.Count,
             ["apps"] = ToolJson.Array(apps, app => new JsonObject
             {
@@ -43,8 +48,10 @@ internal sealed class ListAppsTool : IDriverTool
                 ["pid"] = app.Pid,
                 ["running"] = app.Running,
                 ["path"] = app.Path,
+                ["app_id"] = app.AppId,
                 ["main_window_id"] = app.MainWindowId,
-                ["window_count"] = app.WindowCount
+                ["window_count"] = app.WindowCount,
+                ["source"] = app.Source
             })
         }));
     }
