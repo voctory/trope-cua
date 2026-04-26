@@ -8,5 +8,12 @@
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <AssemblyName>cua-driver-win</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Authors>Victor Vannara</Authors>
+    <Copyright>Copyright (c) 2026 Victor Vannara</Copyright>
+    <Description>Windows background computer-use driver for MCP clients and automation agents.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/voctory/cua-driver-win</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/voctory/cua-driver-win</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 </Project>

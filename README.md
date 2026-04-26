@@ -123,3 +123,9 @@ Refactoring guidance is maintained in `docs/refactoring-rubric.md`. It captures 
 This is a source package, not a signed binary. The AppBroadcast/InputInjector lane requires Microsoft restricted capabilities and is therefore present as a documented integration seam rather than a generally buildable default. The child-session lane includes the Windows Terminal Services broker scaffolding, but packaging a full Picture-in-Picture host requires an RDP ActiveX UI host or equivalent wrapper.
 
 For UIA-addressable apps and Chromium pages with CDP access, the default same-session lane is the intended Windows equivalent. For canvas, raw-input, DirectX/Unity/Unreal, and other hardware-input-only surfaces, run the target plus this driver inside the child-session lane.
+
+## License and attribution
+
+This project is released under the MIT License. See [LICENSE](LICENSE).
+
+This Windows driver was informed by the Cua Driver Mac implementation in [trycua/cua](https://github.com/trycua/cua), but does not include upstream source code from that repository. See [NOTICE](NOTICE). This project is not affiliated with or endorsed by Cua AI, Inc.
