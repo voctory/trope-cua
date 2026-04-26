@@ -1,11 +1,15 @@
 param(
   [string]$Configuration = "Release",
-  [string]$Runtime = "win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())",
+  [string]$Runtime,
   [switch]$SelfContained
 )
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "install-common.ps1")
+if ([string]::IsNullOrWhiteSpace($Runtime)) {
+  $Runtime = Get-CuaDriverDefaultRuntime
+}
 & (Join-Path $PSScriptRoot "build.ps1") -Configuration $Configuration -Runtime $Runtime -SelfContained:$SelfContained
 
 $ProgramFilesDotnet = Join-Path $env:ProgramFiles "dotnet"

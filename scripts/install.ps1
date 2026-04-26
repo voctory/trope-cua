@@ -1,7 +1,7 @@
 param(
   [string]$InstallDir = "$env:LOCALAPPDATA\Programs\CuaDriverWin",
   [string]$Configuration = "Release",
-  [string]$Runtime = "win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())",
+  [string]$Runtime,
   [switch]$SelfContained,
   [switch]$FrameworkDependent
 )
@@ -9,6 +9,9 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "install-common.ps1")
+if ([string]::IsNullOrWhiteSpace($Runtime)) {
+  $Runtime = Get-CuaDriverDefaultRuntime
+}
 $InstallSelfContained = $SelfContained -or -not $FrameworkDependent
 & (Join-Path $PSScriptRoot "build.ps1") -Configuration $Configuration -Runtime $Runtime -SelfContained:$InstallSelfContained
 
