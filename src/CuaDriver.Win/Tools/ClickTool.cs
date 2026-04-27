@@ -67,6 +67,13 @@ internal sealed class ClickTool : IDriverTool
                     var msaaReceipt = MsaaActions.DoDefaultActionAtElement(window.Hwnd, element);
                     if (msaaReceipt.ShouldStopFallback)
                     {
+                        msaaReceipt = await StabilizeBrowserOneShotControlAsync(
+                            target.Pid,
+                            window,
+                            element,
+                            elementPoint.ScreenPoint,
+                            msaaReceipt,
+                            cancellationToken).ConfigureAwait(false);
                         if (msaaReceipt.Ok)
                             await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
                         return ActionToolResult.FromReceipt(msaaReceipt);
@@ -78,6 +85,13 @@ internal sealed class ClickTool : IDriverTool
                         msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, elementPoint.ScreenPoint);
                         if (msaaReceipt.ShouldStopFallback)
                         {
+                            msaaReceipt = await StabilizeBrowserOneShotControlAsync(
+                                target.Pid,
+                                window,
+                                hit.Element,
+                                elementPoint.ScreenPoint,
+                                msaaReceipt,
+                                cancellationToken).ConfigureAwait(false);
                             if (msaaReceipt.Ok)
                                 await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
                             return ActionToolResult.FromReceipt(msaaReceipt with { Route = "uia.center_hit_test." + msaaReceipt.Route });
@@ -182,6 +196,13 @@ internal sealed class ClickTool : IDriverTool
                 var msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, resolved.ScreenPoint);
                 if (msaaReceipt.ShouldStopFallback)
                 {
+                    msaaReceipt = await StabilizeBrowserOneShotControlAsync(
+                        pid,
+                        window,
+                        hit.Element,
+                        resolved.ScreenPoint,
+                        msaaReceipt,
+                        cancellationToken).ConfigureAwait(false);
                     if (msaaReceipt.Ok)
                         await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                     return ActionToolResult.FromReceipt(msaaReceipt);
@@ -264,6 +285,13 @@ internal sealed class ClickTool : IDriverTool
             var msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, resolved.ScreenPoint);
             if (msaaReceipt.ShouldStopFallback)
             {
+                msaaReceipt = await StabilizeBrowserOneShotControlAsync(
+                    pid,
+                    window,
+                    hit?.Element,
+                    resolved.ScreenPoint,
+                    msaaReceipt,
+                    cancellationToken).ConfigureAwait(false);
                 if (msaaReceipt.Ok)
                     await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                 return ActionToolResult.FromReceipt(msaaReceipt);
@@ -331,6 +359,50 @@ internal sealed class ClickTool : IDriverTool
         {
             var automationId = element.Current.AutomationId ?? "";
             return automationId.Contains("PlayPause", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static async Task<ActionReceipt> StabilizeBrowserOneShotControlAsync(
+        int pid,
+        WindowInfo window,
+        AutomationElement? originalElement,
+        POINT screenPoint,
+        ActionReceipt receipt,
+        CancellationToken cancellationToken)
+    {
+        if (!receipt.Ok || !IsRetryableBrowserOneShotControl(originalElement))
+            return receipt;
+
+        await Task.Delay(180, cancellationToken).ConfigureAwait(false);
+
+        var hit = UiAutomationTree.HitTest(pid, window.WindowId, screenPoint);
+        if (hit is null || !IsRetryableBrowserOneShotControl(hit.Element))
+            return receipt;
+
+        var retry = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, screenPoint);
+        return retry.Ok
+            ? retry with { Route = receipt.Route + ".retry_still_present." + retry.Route }
+            : receipt;
+    }
+
+    private static bool IsRetryableBrowserOneShotControl(AutomationElement? element)
+    {
+        if (element is null)
+            return false;
+
+        try
+        {
+            var current = element.Current;
+            var name = current.Name ?? "";
+            var automationId = current.AutomationId ?? "";
+            var className = current.ClassName ?? "";
+            return name.Contains("Skip", StringComparison.OrdinalIgnoreCase)
+                   || automationId.Contains("skip", StringComparison.OrdinalIgnoreCase)
+                   || className.Contains("skip", StringComparison.OrdinalIgnoreCase);
         }
         catch
         {
