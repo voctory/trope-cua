@@ -29,6 +29,12 @@ internal static class ChildSessionBroker
             return false;
         }
 
+        if (IsEnabled())
+        {
+            message = "Child sessions are already enabled.";
+            return true;
+        }
+
         if (WTSEnableChildSessions(true))
         {
             message = "WTSEnableChildSessions(TRUE) succeeded.";
@@ -41,7 +47,7 @@ internal static class ChildSessionBroker
 
     public static int? GetChildSessionId()
     {
-        if (WTSGetChildSessionId(out var sessionId))
+        if (WTSGetChildSessionId(out var sessionId) && sessionId >= 0)
             return sessionId;
         return null;
     }
