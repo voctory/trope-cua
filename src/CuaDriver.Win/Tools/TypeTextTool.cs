@@ -39,17 +39,28 @@ internal sealed class TypeTextTool : IDriverTool
             if (!ToolWindows.TryFindForPid(target.Pid, target.WindowId.Value, out var window, out var error))
                 return error!;
 
+            var element = context.State.UiaTree.GetCachedElement(target.Pid, target.WindowId.Value, target.ElementIndex.Value);
+            await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
+
             var cdpPort = BrowserToolArgs.CdpPort(args, context);
             if (BrowserWindowClassifier.IsLikelyChromium(window) && cdpPort is null)
             {
+                receipt = await TypeViaBrowserIa2Async(context, window.Hwnd, element, target.Text, target.DelayMs, streamCharacters, cancellationToken).ConfigureAwait(false);
+                if (receipt.Ok)
+                    return ActionToolResult.FromReceipt(receipt);
+
+                if (target.AllowTransientForeground)
+                {
+                    receipt = await TypeViaElementAsync(context, window.Hwnd, element, target.Text, target.DelayMs, streamCharacters, allowTransientForeground: true, cancellationToken).ConfigureAwait(false);
+                    return ActionToolResult.FromReceipt(receipt);
+                }
+
                 var refused = ActionReceipt.Failure(
                     "requires_cdp_or_child_session",
-                    "Refusing Chromium UIA/IA2 text setters from the parent session because Chromium can foreground the target while focusing editable web content. Provide cdp_port, configure chromium_debugging_port, or use the child-session/AppBroadcast lane.");
+                    $"Chromium element text entry has no configured CDP route and the safe IA2 editable-text route failed ({receipt.Route}: {receipt.Reason}). Provide cdp_port, configure chromium_debugging_port, pass allow_transient_foreground=true for an explicit unsafe UIA fallback, or use the child-session/AppBroadcast lane.");
                 return ActionToolResult.FromReceipt(refused);
             }
 
-            var element = context.State.UiaTree.GetCachedElement(target.Pid, target.WindowId.Value, target.ElementIndex.Value);
-            await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
             if (BrowserWindowClassifier.IsLikelyChromium(window) && cdpPort is not null)
             {
                 receipt = await TypeViaBrowserCdpAsync(context, window, element, target.Text, target.DelayMs, cdpPort.Value, cancellationToken).ConfigureAwait(false);
@@ -126,6 +137,45 @@ internal sealed class TypeTextTool : IDriverTool
 
         return await CdpBrowserBridge.TryTypeTextAsync(cdpPort, window.WindowId, text, delayMs, cancellationToken).ConfigureAwait(false)
                ?? BrowserToolArgs.NoPageReceipt("cdp.input.insert_text", cdpPort);
+    }
+
+    private static async Task<ActionReceipt> TypeViaBrowserIa2Async(
+        ToolContext context,
+        IntPtr rootHwnd,
+        System.Windows.Automation.AutomationElement element,
+        string text,
+        int delayMs,
+        bool streamCharacters,
+        CancellationToken cancellationToken)
+    {
+        var units = TextElementSplitter.Split(text);
+        if (delayMs <= 0 || units.Count <= 1)
+        {
+            var receipt = MsaaActions.InsertEditableTextAtElement(rootHwnd, element, text);
+            if (receipt.Ok)
+                return receipt with { Route = "browser.ia2." + receipt.Route };
+
+            var replacement = MsaaActions.SetEditableTextAtElement(rootHwnd, element, text);
+            return replacement with { Route = "browser.ia2.fallback_replace." + replacement.Route };
+        }
+
+        ActionReceipt? last = null;
+        for (var i = 0; i < units.Count; i++)
+        {
+            var receipt = MsaaActions.InsertEditableTextAtElement(rootHwnd, element, units[i]);
+            if (!receipt.Ok)
+                return receipt with { Route = "browser.ia2." + receipt.Route };
+
+            last = receipt;
+            context.State.AgentCursor.KeepAlive();
+            if (i + 1 < units.Count)
+                await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
+        }
+
+        return (last ?? ActionReceipt.Failure("ia2.editable_text.insert", "No text units to insert.")) with
+        {
+            Route = $"browser.ia2.{(last?.Route ?? "ia2.editable_text.insert")}.{(streamCharacters ? "chars" : "stream")}"
+        };
     }
 
     private static async Task<ActionReceipt> TypeViaElementAsync(
