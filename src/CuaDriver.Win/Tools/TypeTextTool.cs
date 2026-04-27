@@ -18,7 +18,8 @@ internal sealed class TypeTextTool : IDriverTool
             ("element_index", JsonArgs.Prop("integer", "Optional element index for UIA ValuePattern.")),
             ("text", JsonArgs.Prop("string", "Text to type or set.")),
             ("delay_ms", JsonArgs.Prop("integer", "Milliseconds between streamed text chunks, 0-200. Default 30.")),
-            ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium debugging port."))),
+            ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium debugging port.")),
+            ("allow_transient_foreground", JsonArgs.Prop("boolean", "Explicit unsafe override. Allows a native UIA value route to briefly foreground/focus the target, then attempts to restore the previous cursor and foreground. Receipt remains background_safe=false when this happens."))),
         Destructive: true,
         Idempotent: false,
         OpenWorld: true);
@@ -55,7 +56,7 @@ internal sealed class TypeTextTool : IDriverTool
                 return ActionToolResult.FromReceipt(receipt);
             }
 
-            receipt = await TypeViaElementAsync(context, window.Hwnd, element, target.Text, target.DelayMs, streamCharacters, cancellationToken).ConfigureAwait(false);
+            receipt = await TypeViaElementAsync(context, window.Hwnd, element, target.Text, target.DelayMs, streamCharacters, target.AllowTransientForeground, cancellationToken).ConfigureAwait(false);
         }
         else
         {
@@ -73,7 +74,7 @@ internal sealed class TypeTextTool : IDriverTool
                         return ActionToolResult.FromReceipt(browserReceipt, "uia.last_text_target.");
                 }
 
-                var setReceipt = await TypeViaElementAsync(context, window.Hwnd, textElement, target.Text, target.DelayMs, streamCharacters, cancellationToken).ConfigureAwait(false);
+                var setReceipt = await TypeViaElementAsync(context, window.Hwnd, textElement, target.Text, target.DelayMs, streamCharacters, target.AllowTransientForeground, cancellationToken).ConfigureAwait(false);
                 if (setReceipt.Ok)
                     return ActionToolResult.FromReceipt(setReceipt, "uia.last_text_target.");
             }
@@ -134,25 +135,26 @@ internal sealed class TypeTextTool : IDriverTool
         string text,
         int delayMs,
         bool streamCharacters,
+        bool allowTransientForeground,
         CancellationToken cancellationToken)
     {
         var units = TextElementSplitter.Split(text);
         if (delayMs <= 0 || units.Count <= 1)
-            return InsertElementText(rootHwnd, element, text);
+            return InsertElementText(rootHwnd, element, text, allowTransientForeground);
 
-        var insertReceipt = await StreamInsertionAsync(context, rootHwnd, element, units, delayMs, cancellationToken).ConfigureAwait(false);
+        var insertReceipt = await StreamInsertionAsync(context, rootHwnd, element, units, delayMs, allowTransientForeground, cancellationToken).ConfigureAwait(false);
         if (insertReceipt.Ok)
             return insertReceipt with { Route = $"{insertReceipt.Route}.{(streamCharacters ? "chars" : "stream")}" };
 
-        return await StreamReplacementAsync(context, rootHwnd, element, text, units, delayMs, cancellationToken).ConfigureAwait(false);
+        return await StreamReplacementAsync(context, rootHwnd, element, text, units, delayMs, allowTransientForeground, cancellationToken).ConfigureAwait(false);
     }
 
-    private static ActionReceipt InsertElementText(IntPtr rootHwnd, System.Windows.Automation.AutomationElement element, string text)
+    private static ActionReceipt InsertElementText(IntPtr rootHwnd, System.Windows.Automation.AutomationElement element, string text, bool allowTransientForeground)
     {
         var receipt = MsaaActions.InsertEditableTextAtElement(rootHwnd, element, text);
         if (!receipt.Ok)
         {
-            var replacement = SetElementText(rootHwnd, element, text);
+            var replacement = SetElementText(rootHwnd, element, text, allowTransientForeground);
             receipt = replacement with { Route = "fallback_replace." + replacement.Route };
         }
         return receipt;
@@ -164,6 +166,7 @@ internal sealed class TypeTextTool : IDriverTool
         System.Windows.Automation.AutomationElement element,
         List<string> units,
         int delayMs,
+        bool allowTransientForeground,
         CancellationToken cancellationToken)
     {
         ActionReceipt? last = null;
@@ -171,7 +174,7 @@ internal sealed class TypeTextTool : IDriverTool
         {
             var receipt = MsaaActions.InsertEditableTextAtElement(rootHwnd, element, units[i]);
             if (!receipt.Ok)
-                return receipt;
+                return receipt.ShouldStopFallback ? receipt : SetElementText(rootHwnd, element, string.Concat(units.Take(i + 1)), allowTransientForeground);
 
             last = receipt;
             context.State.AgentCursor.KeepAlive();
@@ -189,6 +192,7 @@ internal sealed class TypeTextTool : IDriverTool
         string text,
         List<string> units,
         int delayMs,
+        bool allowTransientForeground,
         CancellationToken cancellationToken)
     {
         ActionReceipt? last = null;
@@ -196,13 +200,13 @@ internal sealed class TypeTextTool : IDriverTool
         for (var i = 0; i < units.Count; i++)
         {
             offset += units[i].Length;
-            var receipt = SetElementText(rootHwnd, element, text[..offset]);
+            var receipt = SetElementText(rootHwnd, element, text[..offset], allowTransientForeground);
             if (!receipt.Ok)
             {
                 if (last is null)
-                    return SetElementText(rootHwnd, element, text);
+                    return SetElementText(rootHwnd, element, text, allowTransientForeground);
 
-                var final = SetElementText(rootHwnd, element, text);
+                var final = SetElementText(rootHwnd, element, text, allowTransientForeground);
                 return final.Ok
                     ? final with { Route = $"{last.Route}.stream.final_set" }
                     : receipt;
@@ -214,27 +218,54 @@ internal sealed class TypeTextTool : IDriverTool
                 await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
         }
 
-        return (last ?? SetElementText(rootHwnd, element, text)) with
+        return (last ?? SetElementText(rootHwnd, element, text, allowTransientForeground)) with
         {
             Route = $"{(last?.Route ?? "uia.value.set")}.stream_replace"
         };
     }
 
-    private static ActionReceipt SetElementText(IntPtr rootHwnd, System.Windows.Automation.AutomationElement element, string text)
+    private static ActionReceipt SetElementText(IntPtr rootHwnd, System.Windows.Automation.AutomationElement element, string text, bool allowTransientForeground)
     {
         var receipt = MsaaActions.SetEditableTextAtElement(rootHwnd, element, text);
-        if (!receipt.Ok)
-            receipt = UiAutomationActions.SetValue(element, text);
+        if (!receipt.Ok && !receipt.ShouldStopFallback)
+        {
+            if (RequiresIsolatedTextLane(element) && !allowTransientForeground)
+                return ActionReceipt.Failure(
+                    "requires_child_session",
+                    "This text control did not expose a background-safe IA2/MSAA editable-text route, and UIA ValuePattern.SetValue can foreground native WinUI apps. Use the child-session/AppBroadcast lane, skip this optional text field, or pass allow_transient_foreground=true for an explicit unsafe foreground/focus blip.");
+
+            receipt = UiAutomationActions.SetValue(element, text, allowTransientForeground: allowTransientForeground);
+        }
         return receipt;
     }
 
-    private sealed record TypeTextArgs(int Pid, long? WindowId, int? ElementIndex, string Text, int DelayMs)
+    private static bool RequiresIsolatedTextLane(System.Windows.Automation.AutomationElement element)
+    {
+        try
+        {
+            var current = element.Current;
+            if (current.NativeWindowHandle != 0)
+                return false;
+
+            var localizedType = current.LocalizedControlType ?? "";
+            var className = current.ClassName ?? "";
+            return localizedType.Contains("edit", StringComparison.OrdinalIgnoreCase)
+                   || className.Contains("TextBox", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    private sealed record TypeTextArgs(int Pid, long? WindowId, int? ElementIndex, string Text, int DelayMs, bool AllowTransientForeground)
     {
         public static TypeTextArgs Parse(JsonObject args) => new(
             JsonArgs.RequiredInt(args, "pid"),
             JsonArgs.OptionalLong(args, "window_id"),
             JsonArgs.OptionalInt(args, "element_index"),
             JsonArgs.RequiredString(args, "text"),
-            Math.Clamp(JsonArgs.OptionalInt(args, "delay_ms") ?? 30, 0, 200));
+            Math.Clamp(JsonArgs.OptionalInt(args, "delay_ms") ?? 30, 0, 200),
+            JsonArgs.OptionalBool(args, "allow_transient_foreground"));
     }
 }

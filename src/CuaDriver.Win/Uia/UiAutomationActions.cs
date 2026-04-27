@@ -7,7 +7,11 @@ namespace CuaDriver.Win.Uia;
 
 internal static class UiAutomationActions
 {
-    public static async Task<ActionReceipt> InvokeElementAsync(AutomationElement element, string actionName, CancellationToken ct)
+    public static async Task<ActionReceipt> InvokeElementAsync(
+        AutomationElement element,
+        string actionName,
+        CancellationToken ct,
+        bool allowTransientForeground = false)
     {
         using var guard = NoRegressionGuard.Capture();
 
@@ -37,19 +41,34 @@ internal static class UiAutomationActions
             if (TryPattern<InvokePattern>(element, InvokePattern.Pattern, out var invoke))
             {
                 invoke.Invoke();
-                return guard.Finish(ActionReceipt.Success("uia.invoke"));
+                return guard.Finish(
+                    ActionReceipt.Success("uia.invoke"),
+                    allowCursorMove: allowTransientForeground,
+                    allowForegroundChange: allowTransientForeground,
+                    restoreAllowedCursorMove: allowTransientForeground,
+                    restoreAllowedForegroundChange: allowTransientForeground);
             }
 
             if (TryPattern<TogglePattern>(element, TogglePattern.Pattern, out var toggle))
             {
                 toggle.Toggle();
-                return guard.Finish(ActionReceipt.Success("uia.toggle"));
+                return guard.Finish(
+                    ActionReceipt.Success("uia.toggle"),
+                    allowCursorMove: allowTransientForeground,
+                    allowForegroundChange: allowTransientForeground,
+                    restoreAllowedCursorMove: allowTransientForeground,
+                    restoreAllowedForegroundChange: allowTransientForeground);
             }
 
             if (TryPattern<SelectionItemPattern>(element, SelectionItemPattern.Pattern, out var selection))
             {
                 selection.Select();
-                return guard.Finish(ActionReceipt.Success("uia.selection_item.select"));
+                return guard.Finish(
+                    ActionReceipt.Success("uia.selection_item.select"),
+                    allowCursorMove: allowTransientForeground,
+                    allowForegroundChange: allowTransientForeground,
+                    restoreAllowedCursorMove: allowTransientForeground,
+                    restoreAllowedForegroundChange: allowTransientForeground);
             }
 
             if (TryPattern<ExpandCollapsePattern>(element, ExpandCollapsePattern.Pattern, out var expand))
@@ -60,13 +79,23 @@ internal static class UiAutomationActions
                     expand.Collapse();
                 else
                     expand.Expand();
-                return guard.Finish(ActionReceipt.Success("uia.expand_collapse"));
+                return guard.Finish(
+                    ActionReceipt.Success("uia.expand_collapse"),
+                    allowCursorMove: allowTransientForeground,
+                    allowForegroundChange: allowTransientForeground,
+                    restoreAllowedCursorMove: allowTransientForeground,
+                    restoreAllowedForegroundChange: allowTransientForeground);
             }
 
             if (TryPattern<ScrollItemPattern>(element, ScrollItemPattern.Pattern, out var scrollItem))
             {
                 scrollItem.ScrollIntoView();
-                return guard.Finish(ActionReceipt.Success("uia.scroll_item"));
+                return guard.Finish(
+                    ActionReceipt.Success("uia.scroll_item"),
+                    allowCursorMove: allowTransientForeground,
+                    allowForegroundChange: allowTransientForeground,
+                    restoreAllowedCursorMove: allowTransientForeground,
+                    restoreAllowedForegroundChange: allowTransientForeground);
             }
 
             return guard.Finish(ActionReceipt.Failure("uia.unsupported", "Element exposes no supported action pattern."));
@@ -108,7 +137,7 @@ internal static class UiAutomationActions
         }
     }
 
-    public static ActionReceipt SetValue(AutomationElement element, string value)
+    public static ActionReceipt SetValue(AutomationElement element, string value, bool allowTransientForeground = false)
     {
         using var guard = NoRegressionGuard.Capture();
 
@@ -119,7 +148,12 @@ internal static class UiAutomationActions
                 if (valuePattern.Current.IsReadOnly)
                     return guard.Finish(ActionReceipt.Failure("uia.value", "ValuePattern is read-only."));
                 valuePattern.SetValue(value);
-                return guard.Finish(ActionReceipt.Success("uia.value.set"));
+                return guard.Finish(
+                    ActionReceipt.Success("uia.value.set"),
+                    allowCursorMove: allowTransientForeground,
+                    allowForegroundChange: allowTransientForeground,
+                    restoreAllowedCursorMove: allowTransientForeground,
+                    restoreAllowedForegroundChange: allowTransientForeground);
             }
 
             var hwnd = AutomationElementNative.HwndOrZero(element);
@@ -134,7 +168,7 @@ internal static class UiAutomationActions
         }
     }
 
-    public static ActionReceipt SetRangeValue(AutomationElement element, double value)
+    public static ActionReceipt SetRangeValue(AutomationElement element, double value, bool allowTransientForeground = false)
     {
         using var guard = NoRegressionGuard.Capture();
 
@@ -145,7 +179,12 @@ internal static class UiAutomationActions
                 if (range.Current.IsReadOnly)
                     return guard.Finish(ActionReceipt.Failure("uia.range_value", "RangeValuePattern is read-only."));
                 range.SetValue(value);
-                return guard.Finish(ActionReceipt.Success("uia.range_value.set"));
+                return guard.Finish(
+                    ActionReceipt.Success("uia.range_value.set"),
+                    allowCursorMove: allowTransientForeground,
+                    allowForegroundChange: allowTransientForeground,
+                    restoreAllowedCursorMove: allowTransientForeground,
+                    restoreAllowedForegroundChange: allowTransientForeground);
             }
             return guard.Finish(ActionReceipt.Failure("uia.range_value", "Element exposes no RangeValuePattern."));
         }

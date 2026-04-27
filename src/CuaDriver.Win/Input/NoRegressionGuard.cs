@@ -28,6 +28,8 @@ internal sealed class NoRegressionGuard : IDisposable
         ActionReceipt receipt,
         bool allowCursorMove = false,
         bool allowForegroundChange = false,
+        bool restoreAllowedCursorMove = false,
+        bool restoreAllowedForegroundChange = false,
         bool allowUnsafeRoute = false)
     {
         var cursorAfterKnown = NativeMethods.GetCursorPos(out var cursorAfter);
@@ -37,7 +39,9 @@ internal sealed class NoRegressionGuard : IDisposable
         var cursorProbeFailed = !_cursorBeforeKnown || !cursorAfterKnown;
         var cursorMoved = cursorProbeFailed || cursorAfter.X != _cursorBefore.X || cursorAfter.Y != _cursorBefore.Y;
         var foregroundChanged = foregroundAfter != _foregroundBefore || transientForegroundChanged;
-        if (foregroundChanged && !allowForegroundChange)
+        if (cursorMoved && (!allowCursorMove || restoreAllowedCursorMove) && !cursorProbeFailed)
+            NativeMethods.SetCursorPos(_cursorBefore.X, _cursorBefore.Y);
+        if (foregroundChanged && (!allowForegroundChange || restoreAllowedForegroundChange))
             RestoreForeground();
 
         var backgroundSafe = receipt.BackgroundSafe
