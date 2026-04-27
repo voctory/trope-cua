@@ -72,6 +72,18 @@ internal sealed class ClickTool : IDriverTool
                         return ActionToolResult.FromReceipt(msaaReceipt);
                     }
 
+                    var hit = UiAutomationTree.HitTest(target.Pid, window.WindowId, elementPoint.ScreenPoint);
+                    if (hit is { IsClickAction: true })
+                    {
+                        msaaReceipt = MsaaActions.DoDefaultActionAtPoint(window.Hwnd, elementPoint.ScreenPoint);
+                        if (msaaReceipt.ShouldStopFallback)
+                        {
+                            if (msaaReceipt.Ok)
+                                await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
+                            return ActionToolResult.FromReceipt(msaaReceipt with { Route = "uia.center_hit_test." + msaaReceipt.Route });
+                        }
+                    }
+
                     var cdpPort = BrowserToolArgs.CdpPort(args, context);
                     if (cdpPort is not null)
                     {
