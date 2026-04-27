@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using CuaDriver.Win.Browser;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
 
@@ -12,6 +13,7 @@ internal sealed class HotkeyTool : IDriverTool
         JsonArgs.SchemaWithAnyOf(["pid"], [["keys"], ["key"]],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
+            ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium debugging port for browser key events.")),
             ("keys", JsonArgs.Prop("array", "Modifier(s) and one non-modifier key, e.g. [\"ctrl\", \"c\"]. Preferred shape.")),
             ("key", JsonArgs.Prop("string", "Main key. Windows-compatible alias used with modifiers.")),
             ("modifiers", JsonArgs.Prop("array", "Modifiers: ctrl, shift, alt, win/cmd.")),
@@ -29,6 +31,17 @@ internal sealed class HotkeyTool : IDriverTool
 
         if (!ToolWindows.TryFindMainOrForPid(pid, JsonArgs.OptionalLong(args, "window_id"), out var window, out var error))
             return error!;
+
+        if (BrowserWindowClassifier.IsLikelyBrowser(window))
+        {
+            var cdpReceipt = await CdpBrowserBridge.TryPressKeyAsync(BrowserToolArgs.CdpPort(args, context), window.WindowId, key, modifiers, cancellationToken).ConfigureAwait(false);
+            if (cdpReceipt is not null)
+                return ActionToolResult.FromReceipt(cdpReceipt);
+
+            return ActionToolResult.FromReceipt(ActionReceipt.Failure(
+                "requires_cdp",
+                "Browser hotkeys are not reliably delivered by background HWND messages. Provide cdp_port or configure chromium_debugging_port."));
+        }
 
         var receipt = await WindowMessageInput.PressKeyAsync(window.Hwnd, key, modifiers, cancellationToken).ConfigureAwait(false);
         return ActionToolResult.FromReceipt(receipt);

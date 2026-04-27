@@ -16,6 +16,10 @@ internal static class CdpKeyboardMapping
 
         var keyValue = lower switch
         {
+            "ctrl" or "control" => "Control",
+            "shift" => "Shift",
+            "alt" or "option" => "Alt",
+            "cmd" or "meta" or "win" => "Meta",
             "enter" or "return" => "Enter",
             "escape" or "esc" => "Escape",
             "tab" => "Tab",
@@ -38,6 +42,10 @@ internal static class CdpKeyboardMapping
 
         var code = lower switch
         {
+            "ctrl" or "control" => "ControlLeft",
+            "shift" => "ShiftLeft",
+            "alt" or "option" => "AltLeft",
+            "cmd" or "meta" or "win" => "MetaLeft",
             "enter" or "return" => "Enter",
             "escape" or "esc" => "Escape",
             "tab" => "Tab",

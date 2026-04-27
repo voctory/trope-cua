@@ -125,16 +125,22 @@ internal static class CdpBrowserBridge
             if (wsUrl is null)
                 return null;
 
-            var keyDown = CdpKeyboardMapping.Event("keyDown", key, modifiers);
-            var keyUp = CdpKeyboardMapping.Event("keyUp", key, modifiers);
+            var normalizedModifiers = modifiers
+                .Where(m => ModifierKeys.Normalize(m) is not ModifierKey.None)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            var keyDown = CdpKeyboardMapping.Event("keyDown", key, normalizedModifiers);
+            var keyUp = CdpKeyboardMapping.Event("keyUp", key, normalizedModifiers);
             if (keyDown is null || keyUp is null)
                 return guard.Finish(ActionReceipt.Failure("cdp.input.dispatch_key", $"Unknown key: {key}"));
 
             using var client = new ClientWebSocket();
             await client.ConnectAsync(new Uri(wsUrl), ct).ConfigureAwait(false);
-            foreach (var modifier in modifiers)
+            var activeModifiers = new List<string>();
+            foreach (var modifier in normalizedModifiers)
             {
-                var modifierDown = CdpKeyboardMapping.Event("rawKeyDown", modifier, modifiers);
+                activeModifiers.Add(modifier);
+                var modifierDown = CdpKeyboardMapping.Event("rawKeyDown", modifier, activeModifiers);
                 if (modifierDown is not null)
                     await CdpWebSocketClient.SendAsync(client, "Input.dispatchKeyEvent", modifierDown, ct).ConfigureAwait(false);
             }
@@ -147,9 +153,10 @@ internal static class CdpBrowserBridge
             }
             finally
             {
-                foreach (var modifier in modifiers.Reverse())
+                foreach (var modifier in normalizedModifiers.Reverse())
                 {
-                    var modifierUp = CdpKeyboardMapping.Event("keyUp", modifier, modifiers);
+                    activeModifiers.RemoveAll(m => string.Equals(m, modifier, StringComparison.OrdinalIgnoreCase));
+                    var modifierUp = CdpKeyboardMapping.Event("keyUp", modifier, activeModifiers);
                     if (modifierUp is not null)
                         await CdpWebSocketClient.SendAsync(client, "Input.dispatchKeyEvent", modifierUp, ct).ConfigureAwait(false);
                 }
