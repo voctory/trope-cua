@@ -10,8 +10,10 @@ internal static class ToolDescriptions
         2. Prefer element_index actions from the latest get_window_state snapshot for that same pid/window_id. Use pixels only for canvas, custom, or non-UIA surfaces.
         3. Read every action receipt. A successful background action must report background_safe=true, cursor_moved=false, and foreground_changed=false.
         4. If a route refuses with requires_cdp, requires_child_session, requires_appbroadcast, or requires_background_launch_lane, switch to that lane or report the blocker. Do not work around it with blind parent-session mouse or keyboard input.
-        5. For Chromium/Electron browser surfaces, use cdp_port or configured chromium_debugging_port when UIA/MSAA cannot act safely.
-        6. Do not pass unsafe_allow_foreground, allow_parent_sendinput, or allow_parent_cursor for routine automation. unsafe_allow_foreground is a last-resort parent-session escape hatch; even when used, treat its receipt as unsafe and prefer the restored/rear-stacked target window for later background actions.
+        5. For Chromium/Electron browser surfaces, first reuse an existing browser window from list_windows. Do not launch a separate debugging-profile browser just to get CDP unless the user explicitly asked for a new CDP-controlled window.
+        6. Browser text workflow: call get_window_state, choose the edit/search/address element, call type_text with that element_index, then press_key enter/return with the same pid/window_id/element_index. Do not use set_value for browser search/address fields unless the tool itself reports success.
+        7. For Chromium/Electron browser surfaces, use cdp_port or configured chromium_debugging_port only when that exact existing browser window is already CDP-enabled. If a normal user browser refuses a browser route, use child-session/AppBroadcast or report the blocker.
+        8. Existing-window actions may use transient foreground/focus by default when the verified background route fails; read the receipt because these actions report background_safe=false when a foreground blip occurs. Do not pass unsafe_allow_foreground for launches, and do not use allow_parent_sendinput or allow_parent_cursor for routine automation.
 
         The visual agent cursor is an overlay that shows intent above the target window. It must not be treated as the real Windows cursor.
         """;
@@ -38,7 +40,7 @@ internal static class ToolDescriptions
 
         - x and y are window-local screenshot pixels, top-left origin, in the same pixel space as get_window_state returned. Use this for canvas, WebGL, custom surfaces, or when there is no useful element_index. The driver maps resized screenshot pixels back to native window pixels internally. count: 2 posts a double-click. modifier/modifiers holds ctrl, shift, alt/option, or win/cmd during the pixel click.
 
-        allow_transient_foreground=true is an explicit unsafe override for native or browser UIA controls with no verified background route. It may briefly foreground/focus the target and attempts to restore the previous cursor and foreground afterward. Treat any receipt with background_safe=false, foreground_changed=true, or cursor_moved=true as not background-safe even when ok=true.
+        allow_transient_foreground controls the existing-window foreground fallback. It defaults true: when no verified background route exists, the driver may briefly foreground/focus the target and then restore the previous cursor and foreground. Treat any receipt with background_safe=false, foreground_changed=true, or cursor_moved=true as a transient foreground route even when ok=true.
 
         Agent rule: after get_window_state exposes an element_index, use it instead of approximating a pixel click. Pixel clicks are for surfaces that do not expose a useful UIA element. Exactly one of element_index or (x and y) must be provided. window_id is required for element_index and recommended for pixel clicks. action is only valid with element_index; count and modifier only affect the pixel route. For Chromium web content, provide cdp_port or configure chromium_debugging_port; blind browser PostMessage clicks are refused to avoid reporting an unsafe foreground-only route as success.
         """;
@@ -76,11 +78,11 @@ internal static class ToolDescriptions
     public const string TypeText = """
         Insert text into a target pid/window. Use element_index + window_id from the last get_window_state snapshot when filling a specific field; this streams the visible value through IA2/UIA text setters by default. Without element_index, type_text targets the last UIA text target, then Chromium CDP Input.insertText when cdp_port is configured, then a native child HWND text route for classic controls.
 
-        For Chromium or Electron inputs, first click the input or pass element_index so the driver has a text target. If the browser route has no safe target and no cdp_port, the tool refuses blind WM_CHAR delivery rather than typing into the wrong foreground app.
+        For Chromium or Electron inputs, pass the edit/search/address element_index directly to type_text. Follow with press_key enter/return using the same element_index when submitting a search or address. Prefer this over set_value for browser fields because set_value is an atomic ValuePattern operation and browser providers often expose it without a background-safe setter. If the browser route has no safe target and no cdp_port, the tool refuses blind WM_CHAR delivery rather than typing into the wrong foreground app.
 
         delay_ms spaces streamed text chunks so autocomplete and reactive inputs can keep up. Default is 30 ms. Pass delay_ms=0 for the old instant/bulk behavior. For an explicitly atomic write, use set_value.
 
-        allow_transient_foreground=true is an explicit unsafe override for native text controls with no verified background route. It may briefly foreground/focus the target and attempts to restore the previous cursor and foreground afterward. Treat any receipt with background_safe=false, foreground_changed=true, or cursor_moved=true as not background-safe even when ok=true.
+        allow_transient_foreground controls the existing-window foreground fallback. It defaults true: when no verified background text route exists, the driver may briefly foreground/focus the target and then restore the previous cursor and foreground. Treat any receipt with background_safe=false, foreground_changed=true, or cursor_moved=true as a transient foreground route even when ok=true.
 
         Agent rule: use element_index when filling a known field. Do not click the page and then blindly type unless the receipt proves a background-safe text target was established. Special keys such as Return, Escape, arrows, and shortcuts go through press_key or hotkey, not type_text.
         """;
@@ -98,9 +100,9 @@ internal static class ToolDescriptions
 
         Optional element_index + window_id from the last get_window_state snapshot targets that element's native HWND when available, falling back to the root target window. This preserves control-specific key routing while avoiding parent-session SendInput.
 
-        For Chromium browser content, press_key uses cdp_port/configured chromium_debugging_port when available because posted HWND key messages can report success without reaching the web page. allow_transient_foreground=true is an explicit unsafe fallback that temporarily foregrounds the browser and injects keyboard input, then attempts to restore foreground. Treat any receipt with background_safe=false, foreground_changed=true, or cursor_moved=true as not background-safe even when ok=true.
+        For Chromium browser content, press_key uses cdp_port/configured chromium_debugging_port when available because posted HWND key messages can report success without reaching the web page. If CDP is unavailable, allow_transient_foreground defaults true and temporarily foregrounds the existing browser window for keyboard input, then attempts to restore foreground. Treat any receipt with background_safe=false, foreground_changed=true, or cursor_moved=true as a transient foreground route even when ok=true.
 
-        Agent rule: pass window_id whenever possible and prefer element_index when targeting a specific control. Do not use keys as a fallback to foreground-only typing unless allow_transient_foreground=true was explicitly chosen for that unsafe route. Key vocabulary: enter/return, tab, escape/esc, arrows, space, backspace, delete, home, end, pageup, pagedown, f1-f24, plus any letter or digit. modifiers can hold ctrl, shift, alt/option, or win/cmd. For true key combinations such as ctrl+c, use hotkey.
+        Agent rule: pass window_id whenever possible and prefer element_index when targeting a specific control. Key vocabulary: enter/return, tab, escape/esc, arrows, space, backspace, delete, home, end, pageup, pagedown, f1-f24, plus any letter or digit. modifiers can hold ctrl, shift, alt/option, or win/cmd. For true key combinations such as ctrl+c, use hotkey.
         """;
 
     public const string Hotkey = """
@@ -112,7 +114,7 @@ internal static class ToolDescriptions
     public const string LaunchApp = """
         Launch an app for background automation. Parent-session Windows launches can foreground the target, so this tool refuses those launches by default. Do not pass unsafe_allow_foreground for routine automation. When unsafe_allow_foreground=true is explicitly used, the driver still treats the route as unsafe, attempts to restore the previous foreground window, and sends launched windows behind the current stack with no activation.
 
-        Prefer list_windows to reuse an already running app before launching a new one. Provide path for an executable or name for an app/executable name. Use list_apps to discover installed apps and list_windows after launch to choose the target window_id for get_window_state. Normal workflow: launch or identify an app, enumerate windows, snapshot a specific (pid, window_id), then act by element_index whenever possible.
+        Prefer list_windows to reuse an already running app before launching a new one. For Chromium browsers, do not create a separate --remote-debugging-port profile unless the user explicitly asked for a CDP-controlled window; use an existing browser window, a configured CDP port for that exact window, or an isolated child-session/AppBroadcast lane. Provide path for an executable or name for an app/executable name. Use list_apps to discover installed apps and list_windows after launch to choose the target window_id for get_window_state. Normal workflow: launch or identify an app, enumerate windows, snapshot a specific (pid, window_id), then act by element_index whenever possible.
         """;
 
     public const string ListApps = """
@@ -144,9 +146,11 @@ internal static class ToolDescriptions
         """;
 
     public const string SetValue = """
-        Directly set a UIA element's value. Use element_index + window_id from the last get_window_state snapshot for controls that expose a settable ValuePattern or RangeValuePattern, such as text fields, sliders, steppers, and editable combo boxes.
+        Directly set a UIA element's value. Use element_index + window_id from the last get_window_state snapshot for controls that expose a settable ValuePattern or RangeValuePattern, such as sliders, steppers, and native editable combo boxes.
 
-        allow_transient_foreground=true is an explicit unsafe override for native controls with no verified background route. It may briefly foreground/focus the target and attempts to restore the previous cursor and foreground afterward. Treat any receipt with background_safe=false, foreground_changed=true, or cursor_moved=true as not background-safe even when ok=true.
+        For Chromium/Electron address, search, and page text fields, prefer type_text with element_index, then press_key enter/return if submission is needed. Browser ValuePattern setters are often exposed but not background-safe, so set_value may return use_type_text_for_browser_text instead of attempting an unsafe UIA setter.
+
+        allow_transient_foreground controls the existing-window foreground fallback. It defaults true: when no verified background value route exists, the driver may briefly foreground/focus the target and then restore the previous cursor and foreground. Treat any receipt with background_safe=false, foreground_changed=true, or cursor_moved=true as a transient foreground route even when ok=true.
 
         For free-form text entry where cursor position matters, prefer type_text. set_value replaces or sets the element value directly.
         """;

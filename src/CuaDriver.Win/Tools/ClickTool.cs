@@ -26,7 +26,7 @@ internal sealed class ClickTool : IDriverTool
             ("from_zoom", JsonArgs.Prop("boolean", "When true, x/y are pixel coordinates in the last zoom image for this pid.")),
             ("debug_image_out", JsonArgs.Prop("string", "Optional path. For pixel clicks, capture the target window, draw a red crosshair at the received x/y in resized screenshot coordinates, and write a PNG before dispatch. Requires window_id; incompatible with from_zoom.")),
             ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium remote debugging port for browser pixel route.")),
-            ("allow_transient_foreground", JsonArgs.Prop("boolean", "Explicit unsafe override. Allows a native/browser UIA route to briefly foreground/focus the target, then attempts to restore the previous cursor and foreground. Receipt remains background_safe=false when this happens.")),
+            ("allow_transient_foreground", JsonArgs.Prop("boolean", "Allow a brief native/browser UIA foreground/focus blip when no verified background route exists, then attempt to restore the previous foreground. Defaults true for existing-window actions; receipts still report background_safe=false when this happens.")),
             ("allow_parent_sendinput", JsonArgs.Prop("boolean", "Explicit unsafe override for local experiments only. Do not set for background automation; default false and currently reported, not used."))),
         Destructive: true,
         Idempotent: false,
@@ -42,7 +42,7 @@ internal sealed class ClickTool : IDriverTool
         var action = JsonArgs.OptionalString(args, "action") ?? "press";
         var fromZoom = JsonArgs.OptionalBool(args, "from_zoom");
         var debugImageOut = JsonArgs.OptionalString(args, "debug_image_out");
-        var allowTransientForeground = JsonArgs.OptionalBool(args, "allow_transient_foreground");
+        var allowTransientForeground = JsonArgs.OptionalBool(args, "allow_transient_foreground", true);
 
         if (target.HasElement && fromZoom)
             return ToolResult.Error("from_zoom only applies to pixel clicks.");
@@ -134,7 +134,7 @@ internal sealed class ClickTool : IDriverTool
                 {
                     receipt = ActionReceipt.Failure(
                         "requires_browser_semantic_route",
-                        "Browser element did not expose a safe MSAA default action and no CDP port was configured; refusing UIA Invoke because browser providers can foreground the target. Pass allow_transient_foreground=true for an explicit unsafe foreground/focus blip.");
+                        "Browser element did not expose a safe MSAA default action and no CDP port was configured. Keep allow_transient_foreground enabled for the existing window, use a child-session/AppBroadcast lane, or report the blocker.");
                     return ActionToolResult.FromReceipt(receipt);
                 }
 
@@ -263,7 +263,7 @@ internal sealed class ClickTool : IDriverTool
                 {
                     receipt = ActionReceipt.Failure(
                         "requires_browser_semantic_route",
-                        "Browser UIA hit-test found an actionable element, but it did not expose a safe MSAA default action, URL value, or CDP route; refusing UIA Invoke because browser providers commonly raise/focus the window. Pass allow_transient_foreground=true for an explicit unsafe foreground/focus blip.");
+                        "Browser UIA hit-test found an actionable element, but it did not expose a safe MSAA default action, URL value, or CDP route. Keep allow_transient_foreground enabled for the existing window, use a child-session/AppBroadcast lane, or report the blocker.");
                     return ActionToolResult.FromReceipt(receipt);
                 }
 
@@ -360,7 +360,7 @@ internal sealed class ClickTool : IDriverTool
             if (!allowTransientForeground)
                 return ActionReceipt.Failure(
                     "requires_child_session",
-                    "This native control has no verified parent-session background route: UIA can foreground the app, MSAA can move the real cursor, and posted HWND mouse messages do not change its state. Use the child-session/AppBroadcast lane or pass allow_transient_foreground=true for an explicit unsafe foreground/focus blip.");
+                    "This native control has no verified parent-session background route: UIA can foreground the app, MSAA can move the real cursor, and posted HWND mouse messages do not change its state. Keep allow_transient_foreground enabled for the existing window, use the child-session/AppBroadcast lane, or report the blocker.");
 
             return await UiAutomationActions.InvokeElementAsync(element, action, cancellationToken, allowTransientForeground: true).ConfigureAwait(false);
         }
@@ -376,7 +376,7 @@ internal sealed class ClickTool : IDriverTool
             if (!allowTransientForeground)
                 return ActionReceipt.Failure(
                     "requires_child_session",
-                    "This virtual native control did not expose a safe MSAA action route, and UIA Invoke can foreground native WinUI apps. Use the child-session/AppBroadcast lane or pass allow_transient_foreground=true for an explicit unsafe foreground/focus blip.");
+                    "This virtual native control did not expose a safe MSAA action route, and UIA Invoke can foreground native WinUI apps. Keep allow_transient_foreground enabled for the existing window, use the child-session/AppBroadcast lane, or report the blocker.");
 
             return await UiAutomationActions.InvokeElementAsync(element, action, cancellationToken, allowTransientForeground: true).ConfigureAwait(false);
         }

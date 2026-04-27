@@ -51,6 +51,8 @@ def test_mcp_initialize_includes_background_agent_instructions():
     assert "background-safe" in instructions
     assert "list_windows" in instructions
     assert "get_window_state" in instructions
+    assert "Browser text workflow" in instructions
+    assert "Do not launch a separate debugging-profile browser" in instructions
     assert "unsafe_allow_foreground" in instructions
     assert "Do not pass unsafe_allow_foreground" in instructions
     for blocked in ("M" + "ac", "mac" + "OS"):
@@ -67,11 +69,24 @@ def test_mcp_tool_descriptions_steer_away_from_foreground_routes():
     assert "unsafe_allow_foreground" in launch_schema["properties"]
     assert "Do not pass unsafe_allow_foreground" in launch["description"]
     assert "routine background automation" in launch_schema["properties"]["unsafe_allow_foreground"]["description"]
+    assert "--remote-debugging-port" in launch["description"]
 
     click_description = tools["click"]["description"]
     assert "element_index" in click_description
     assert "background-safe" in click_description
     assert "blind browser PostMessage clicks are refused" in click_description
+
+    type_text_description = tools["type_text"]["description"]
+    assert "pass the edit/search/address element_index directly to type_text" in type_text_description
+    assert "Follow with press_key enter/return" in type_text_description
+    assert "It defaults true" in type_text_description
+    assert "Defaults true" in tools["type_text"]["inputSchema"]["properties"]["allow_transient_foreground"]["description"]
+    assert "Defaults true" in tools["press_key"]["inputSchema"]["properties"]["allow_transient_foreground"]["description"]
+
+    set_value_description = tools["set_value"]["description"]
+    assert "prefer type_text with element_index" in set_value_description
+    assert "use_type_text_for_browser_text" in set_value_description
+    assert "Defaults true" in tools["click"]["inputSchema"]["properties"]["allow_transient_foreground"]["description"]
 
     move_cursor = tools["move_cursor"]
     assert "visual agent cursor overlay" in move_cursor["description"]

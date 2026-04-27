@@ -19,7 +19,7 @@ internal sealed class TypeTextTool : IDriverTool
             ("text", JsonArgs.Prop("string", "Text to type or set.")),
             ("delay_ms", JsonArgs.Prop("integer", "Milliseconds between streamed text chunks, 0-200. Default 30.")),
             ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium debugging port.")),
-            ("allow_transient_foreground", JsonArgs.Prop("boolean", "Explicit unsafe override. Allows a native UIA value route to briefly foreground/focus the target, then attempts to restore the previous cursor and foreground. Receipt remains background_safe=false when this happens."))),
+            ("allow_transient_foreground", JsonArgs.Prop("boolean", "Allow a brief native/browser UIA foreground/focus blip when no verified background text route exists, then attempt to restore the previous foreground. Defaults true for existing-window actions; receipts still report background_safe=false when this happens."))),
         Destructive: true,
         Idempotent: false,
         OpenWorld: true);
@@ -57,7 +57,7 @@ internal sealed class TypeTextTool : IDriverTool
 
                 var refused = ActionReceipt.Failure(
                     "requires_cdp_or_child_session",
-                    $"Chromium element text entry has no configured CDP route and the safe IA2 editable-text route failed ({receipt.Route}: {receipt.Reason}). Provide cdp_port, configure chromium_debugging_port, pass allow_transient_foreground=true for an explicit unsafe UIA fallback, or use the child-session/AppBroadcast lane.");
+                    $"Chromium element text entry has no configured CDP route and the safe IA2 editable-text route failed ({receipt.Route}: {receipt.Reason}). If this is an existing user browser window, do not start a separate CDP/debugging browser; keep allow_transient_foreground enabled for the existing window, use the child-session/AppBroadcast lane, or report the blocker.");
                 return ActionToolResult.FromReceipt(refused);
             }
 
@@ -282,7 +282,7 @@ internal sealed class TypeTextTool : IDriverTool
             if (RequiresIsolatedTextLane(element) && !allowTransientForeground)
                 return ActionReceipt.Failure(
                     "requires_child_session",
-                    "This text control did not expose a background-safe IA2/MSAA editable-text route, and UIA ValuePattern.SetValue can foreground native WinUI apps. Use the child-session/AppBroadcast lane, skip this optional text field, or pass allow_transient_foreground=true for an explicit unsafe foreground/focus blip.");
+                    "This text control did not expose a background-safe IA2/MSAA editable-text route, and UIA ValuePattern.SetValue can foreground native WinUI apps. Keep allow_transient_foreground enabled for the existing window, use the child-session/AppBroadcast lane, skip this optional text field, or report the blocker.");
 
             receipt = UiAutomationActions.SetValue(element, text, allowTransientForeground: allowTransientForeground);
         }
@@ -316,6 +316,6 @@ internal sealed class TypeTextTool : IDriverTool
             JsonArgs.OptionalInt(args, "element_index"),
             JsonArgs.RequiredString(args, "text"),
             Math.Clamp(JsonArgs.OptionalInt(args, "delay_ms") ?? 30, 0, 200),
-            JsonArgs.OptionalBool(args, "allow_transient_foreground"));
+            JsonArgs.OptionalBool(args, "allow_transient_foreground", true));
     }
 }

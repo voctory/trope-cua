@@ -18,7 +18,7 @@ internal sealed class PressKeyTool : IDriverTool
             ("modifier", JsonArgs.Prop("array", "Alias for modifiers.")),
             ("element_index", JsonArgs.Prop("integer", "Optional element index from get_window_state. When present, the key targets that element's native HWND when available.")),
             ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium debugging port for browser key events.")),
-            ("allow_transient_foreground", JsonArgs.Prop("boolean", "Explicit unsafe override for browser/native surfaces that ignore posted background key messages. Temporarily foregrounds the target and injects keyboard input, then attempts to restore foreground. Receipt remains background_safe=false."))),
+            ("allow_transient_foreground", JsonArgs.Prop("boolean", "Allow a brief foreground/focus blip for browser/native surfaces that ignore posted background key messages, then attempt to restore foreground. Defaults true for existing-window actions; receipts still report background_safe=false when this happens."))),
         Destructive: true,
         Idempotent: false,
         OpenWorld: true);
@@ -29,7 +29,7 @@ internal sealed class PressKeyTool : IDriverTool
         var key = JsonArgs.RequiredString(args, "key");
         var index = JsonArgs.OptionalInt(args, "element_index");
         var modifiers = JsonArgs.OptionalStringArray(args, "modifiers", "modifier");
-        var allowTransientForeground = JsonArgs.OptionalBool(args, "allow_transient_foreground");
+        var allowTransientForeground = JsonArgs.OptionalBool(args, "allow_transient_foreground", true);
 
         var windowId = JsonArgs.OptionalLong(args, "window_id");
         if (index is not null && windowId is null)
@@ -59,7 +59,7 @@ internal sealed class PressKeyTool : IDriverTool
             {
                 var refused = ActionReceipt.Failure(
                     "requires_cdp_or_transient_foreground",
-                    "Browser key input is not reliably delivered by background HWND messages. Provide cdp_port/configure chromium_debugging_port, or pass allow_transient_foreground=true for an explicit unsafe foreground keyboard-injection route.");
+                    "Browser key input is not reliably delivered by background HWND messages. If this is an existing user browser window, do not start a separate CDP/debugging browser; keep allow_transient_foreground enabled for the existing window, use the child-session/AppBroadcast lane, or report the blocker.");
                 return ActionToolResult.FromReceipt(refused);
             }
 

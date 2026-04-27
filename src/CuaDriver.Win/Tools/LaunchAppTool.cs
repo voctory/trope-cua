@@ -34,7 +34,7 @@ internal sealed class LaunchAppTool : IDriverTool
         {
             var renamed = ActionReceipt.Failure(
                 "foreground_launch_not_background_safe",
-                "allow_foreground was removed from the advertised schema. Parent-session Windows ShellExecute cannot guarantee a background launch. If a human explicitly wants a visible foreground launch, pass unsafe_allow_foreground=true.");
+                "allow_foreground was removed from the advertised schema. Parent-session Windows ShellExecute cannot guarantee a background launch. Reuse an existing window or use a child-session/AppBroadcast lane. Only use unsafe_allow_foreground=true when the human explicitly requests an unsafe visible foreground launch.");
             return ActionToolResult.FromReceipt(renamed);
         }
 
@@ -49,7 +49,7 @@ internal sealed class LaunchAppTool : IDriverTool
         {
             var denied = ActionReceipt.Failure(
                 "requires_background_launch_lane",
-                "Parent-session Windows launches can foreground the target app. Reuse an existing window, use the child-session/AppBroadcast lane, or pass unsafe_allow_foreground=true only when the user explicitly asks for a visible foreground launch.");
+                "Parent-session Windows launches can foreground the target app. Reuse an existing window or use the child-session/AppBroadcast lane. Do not start a separate CDP/debugging browser or pass unsafe_allow_foreground unless the human explicitly asks for an unsafe visible foreground launch.");
             return ActionToolResult.FromReceipt(denied);
         }
 
