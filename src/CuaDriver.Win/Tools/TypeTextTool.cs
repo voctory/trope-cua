@@ -45,7 +45,7 @@ internal sealed class TypeTextTool : IDriverTool
             var cdpPort = BrowserToolArgs.CdpPort(args, context);
             if (BrowserWindowClassifier.IsLikelyChromium(window) && cdpPort is null)
             {
-                receipt = await TypeViaBrowserIa2Async(context, window.Hwnd, element, target.Text, target.DelayMs, streamCharacters, cancellationToken).ConfigureAwait(false);
+                receipt = await TypeViaBrowserIa2Async(context, window, element, target.Text, target.DelayMs, streamCharacters, cancellationToken).ConfigureAwait(false);
                 if (receipt.Ok)
                     return ActionToolResult.FromReceipt(receipt);
 
@@ -142,30 +142,44 @@ internal sealed class TypeTextTool : IDriverTool
 
     private static async Task<ActionReceipt> TypeViaBrowserIa2Async(
         ToolContext context,
-        IntPtr rootHwnd,
+        WindowInfo window,
         System.Windows.Automation.AutomationElement element,
         string text,
         int delayMs,
         bool streamCharacters,
         CancellationToken cancellationToken)
     {
+        var focusReceipt = await FocusBrowserElementAsync(window, element, cancellationToken).ConfigureAwait(false);
+        if (!focusReceipt.Ok)
+            return focusReceipt with { Route = "browser.hwnd.focus_click." + focusReceipt.Route };
+
         var units = TextElementSplitter.Split(text);
         if (!streamCharacters || delayMs <= 0 || units.Count <= 1)
         {
-            var receipt = MsaaActions.InsertEditableTextAtElement(rootHwnd, element, text);
+            var receipt = MsaaActions.InsertEditableTextAtElement(window.Hwnd, element, text);
             if (receipt.Ok)
-                return receipt with { Route = "browser.ia2." + receipt.Route };
+                return receipt with { Route = "browser.hwnd.focus_click.browser.ia2." + receipt.Route };
 
-            var replacement = MsaaActions.SetEditableTextAtElement(rootHwnd, element, text);
-            return replacement with { Route = "browser.ia2.fallback_replace." + replacement.Route };
+            var replacement = MsaaActions.SetEditableTextAtElement(window.Hwnd, element, text);
+            if (replacement.Ok || replacement.ShouldStopFallback)
+                return replacement with { Route = "browser.hwnd.focus_click.browser.ia2.fallback_replace." + replacement.Route };
+
+            var typed = await WindowMessageInput.TypeTextAsync(window.Hwnd, text, cancellationToken, delayMs: 0).ConfigureAwait(false);
+            return typed with { Route = "browser.hwnd.focus_click.fallback_" + typed.Route };
         }
 
         ActionReceipt? last = null;
         for (var i = 0; i < units.Count; i++)
         {
-            var receipt = MsaaActions.InsertEditableTextAtElement(rootHwnd, element, units[i]);
+            var receipt = MsaaActions.InsertEditableTextAtElement(window.Hwnd, element, units[i]);
             if (!receipt.Ok)
-                return receipt with { Route = "browser.ia2." + receipt.Route };
+            {
+                if (receipt.ShouldStopFallback)
+                    return receipt with { Route = "browser.hwnd.focus_click.browser.ia2." + receipt.Route };
+
+                var typed = await WindowMessageInput.TypeTextAsync(window.Hwnd, string.Concat(units.Skip(i)), cancellationToken, delayMs).ConfigureAwait(false);
+                return typed with { Route = "browser.hwnd.focus_click.browser.ia2.partial_fallback_" + typed.Route };
+            }
 
             last = receipt;
             context.State.AgentCursor.KeepAlive();
@@ -175,8 +189,21 @@ internal sealed class TypeTextTool : IDriverTool
 
         return (last ?? ActionReceipt.Failure("ia2.editable_text.insert", "No text units to insert.")) with
         {
-            Route = $"browser.ia2.{(last?.Route ?? "ia2.editable_text.insert")}.{(streamCharacters ? "chars" : "stream")}"
+            Route = $"browser.hwnd.focus_click.browser.ia2.{(last?.Route ?? "ia2.editable_text.insert")}.{(streamCharacters ? "chars" : "stream")}"
         };
+    }
+
+    private static async Task<ActionReceipt> FocusBrowserElementAsync(
+        WindowInfo window,
+        System.Windows.Automation.AutomationElement element,
+        CancellationToken cancellationToken)
+    {
+        var point = ToolCoordinates.ElementCenter(element, window);
+        if (point is null)
+            return ActionReceipt.Failure("hwnd.postmessage.click", "Element has no resolvable screen point for browser focus.");
+
+        var focus = await WindowMessageInput.ClickAsync(window.Hwnd, point.LocalX, point.LocalY, 1, rightButton: false, cancellationToken).ConfigureAwait(false);
+        return focus.Receipt;
     }
 
     private static async Task<ActionReceipt> TypeViaElementAsync(

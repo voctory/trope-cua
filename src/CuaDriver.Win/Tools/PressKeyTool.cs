@@ -1,7 +1,9 @@
 using System.Text.Json.Nodes;
+using System.Windows.Automation;
 using CuaDriver.Win.Browser;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
+using CuaDriver.Win.Win32;
 
 namespace CuaDriver.Win.Tools;
 
@@ -39,9 +41,10 @@ internal sealed class PressKeyTool : IDriverTool
 
         var targetHwnd = window.Hwnd;
         var isBrowser = BrowserWindowClassifier.IsLikelyBrowser(window);
+        AutomationElement? element = null;
         if (index is not null)
         {
-            var element = context.State.UiaTree.GetCachedElement(pid, window.WindowId, index.Value);
+            element = context.State.UiaTree.GetCachedElement(pid, window.WindowId, index.Value);
             var elementHwnd = ToolWindows.NativeHwndForElement(element);
             if (elementHwnd != IntPtr.Zero && !isBrowser)
                 targetHwnd = elementHwnd;
@@ -54,6 +57,16 @@ internal sealed class PressKeyTool : IDriverTool
             var cdpReceipt = await CdpBrowserBridge.TryPressKeyAsync(cdpPort, window.WindowId, key, modifiers, cancellationToken).ConfigureAwait(false);
             if (cdpReceipt is not null)
                 return ActionToolResult.FromReceipt(cdpReceipt);
+
+            if (element is null)
+                context.State.LastUiaTextTarget.TryGetValue((pid, window.WindowId), out element);
+
+            if (element is not null)
+            {
+                var backgroundReceipt = await TryBrowserBackgroundKeyAsync(window, element, key, modifiers, cancellationToken).ConfigureAwait(false);
+                if (backgroundReceipt.Ok || backgroundReceipt.ShouldStopFallback)
+                    return ActionToolResult.FromReceipt(backgroundReceipt);
+            }
 
             if (!allowTransientForeground)
             {
@@ -69,5 +82,24 @@ internal sealed class PressKeyTool : IDriverTool
 
         var receipt = await WindowMessageInput.PressKeyAsync(targetHwnd, key, modifiers, cancellationToken).ConfigureAwait(false);
         return ActionToolResult.FromReceipt(receipt);
+    }
+
+    private static async Task<ActionReceipt> TryBrowserBackgroundKeyAsync(
+        WindowInfo window,
+        AutomationElement element,
+        string key,
+        string[] modifiers,
+        CancellationToken cancellationToken)
+    {
+        var point = ToolCoordinates.ElementCenter(element, window);
+        if (point is null)
+            return ActionReceipt.Failure("browser.hwnd.focus_click.key", "Element has no resolvable screen point for browser focus.");
+
+        var focus = await WindowMessageInput.ClickAsync(window.Hwnd, point.LocalX, point.LocalY, 1, rightButton: false, cancellationToken).ConfigureAwait(false);
+        if (!focus.Receipt.Ok)
+            return focus.Receipt with { Route = "browser.hwnd.focus_click." + focus.Receipt.Route };
+
+        var keyReceipt = await WindowMessageInput.PressKeyAsync(window.Hwnd, key, modifiers, cancellationToken).ConfigureAwait(false);
+        return keyReceipt with { Route = "browser.hwnd.focus_click." + keyReceipt.Route };
     }
 }
