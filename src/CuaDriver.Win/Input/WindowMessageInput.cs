@@ -135,6 +135,51 @@ internal static class WindowMessageInput
         }
     }
 
+    public static async Task<ActionReceipt> PressKeyWithTransientForegroundAsync(IntPtr hwnd, string key, string[] modifiers, CancellationToken ct)
+    {
+        using var guard = NoRegressionGuard.Capture();
+        try
+        {
+            if (!NativeMethods.SetForegroundWindow(hwnd))
+                return guard.Finish(ActionReceipt.Failure("transient_foreground.sendinput.key", "SetForegroundWindow failed."));
+
+            if (!SpinWait.SpinUntil(() => NativeMethods.GetForegroundWindow() == hwnd, TimeSpan.FromMilliseconds(250)))
+                return guard.Finish(ActionReceipt.Failure("transient_foreground.sendinput.key", "Target did not become foreground before SendInput."));
+
+            var modifierKeys = modifiers.Select(WindowMessageKeyMapping.VirtualKey).Where(v => v != 0).Distinct().ToArray();
+            var main = WindowMessageKeyMapping.VirtualKey(key);
+            if (main == 0)
+                return guard.Finish(ActionReceipt.Failure("transient_foreground.sendinput.key", $"Unknown key: {key}"));
+
+            var inputs = new List<INPUT>();
+            foreach (var vk in modifierKeys)
+                inputs.Add(KeyInput(vk, keyUp: false));
+            inputs.Add(KeyInput(main, keyUp: false));
+            inputs.Add(KeyInput(main, keyUp: true));
+            foreach (var vk in modifierKeys.Reverse())
+                inputs.Add(KeyInput(vk, keyUp: true));
+
+            var sent = NativeMethods.SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<INPUT>());
+            if (sent != inputs.Count)
+                throw new Win32Exception(Marshal.GetLastWin32Error(), $"SendInput sent {sent} of {inputs.Count} events.");
+
+            await Task.Delay(25, ct).ConfigureAwait(false);
+            return guard.Finish(
+                ActionReceipt.UnsafeSuccess("transient_foreground.sendinput.key"),
+                allowForegroundChange: true,
+                restoreAllowedForegroundChange: true,
+                allowUnsafeRoute: true);
+        }
+        catch (Exception ex)
+        {
+            return guard.Finish(
+                ActionReceipt.Failure("transient_foreground.sendinput.key", ex.Message),
+                allowForegroundChange: true,
+                restoreAllowedForegroundChange: true,
+                allowUnsafeRoute: true);
+        }
+    }
+
     public static ActionReceipt Scroll(IntPtr hwnd, double? x, double? y, int delta)
     {
         using var guard = NoRegressionGuard.Capture();
@@ -160,4 +205,27 @@ internal static class WindowMessageInput
         if (!NativeMethods.PostMessageW(hwnd, message, wParam, lParam))
             throw new Win32Exception(Marshal.GetLastWin32Error(), "PostMessageW failed.");
     }
+
+    private static INPUT KeyInput(int virtualKey, bool keyUp)
+    {
+        var flags = keyUp ? NativeMethods.KEYEVENTF_KEYUP : 0;
+        if (IsExtendedKey(virtualKey))
+            flags |= NativeMethods.KEYEVENTF_EXTENDEDKEY;
+
+        return new INPUT
+        {
+            Type = NativeMethods.INPUT_KEYBOARD,
+            Union = new INPUTUNION
+            {
+                Keyboard = new KEYBDINPUT
+                {
+                    VirtualKey = (ushort)virtualKey,
+                    Flags = flags
+                }
+            }
+        };
+    }
+
+    private static bool IsExtendedKey(int virtualKey) => virtualKey is
+        0x21 or 0x22 or 0x23 or 0x24 or 0x25 or 0x26 or 0x27 or 0x28 or 0x2D or 0x2E;
 }

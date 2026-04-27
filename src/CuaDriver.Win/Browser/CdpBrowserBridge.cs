@@ -113,6 +113,56 @@ internal static class CdpBrowserBridge
         }
     }
 
+    public static async Task<ActionReceipt?> TryPressKeyAsync(int? port, long? windowId, string key, IReadOnlyCollection<string> modifiers, CancellationToken ct)
+    {
+        if (port is null)
+            return null;
+
+        using var guard = NoRegressionGuard.Capture();
+        try
+        {
+            var wsUrl = await PageWebSocketUrlAsync(port.Value, windowId, ct).ConfigureAwait(false);
+            if (wsUrl is null)
+                return null;
+
+            var keyDown = CdpKeyboardMapping.Event("keyDown", key, modifiers);
+            var keyUp = CdpKeyboardMapping.Event("keyUp", key, modifiers);
+            if (keyDown is null || keyUp is null)
+                return guard.Finish(ActionReceipt.Failure("cdp.input.dispatch_key", $"Unknown key: {key}"));
+
+            using var client = new ClientWebSocket();
+            await client.ConnectAsync(new Uri(wsUrl), ct).ConfigureAwait(false);
+            foreach (var modifier in modifiers)
+            {
+                var modifierDown = CdpKeyboardMapping.Event("rawKeyDown", modifier, modifiers);
+                if (modifierDown is not null)
+                    await CdpWebSocketClient.SendAsync(client, "Input.dispatchKeyEvent", modifierDown, ct).ConfigureAwait(false);
+            }
+
+            try
+            {
+                await CdpWebSocketClient.SendAsync(client, "Input.dispatchKeyEvent", keyDown, ct).ConfigureAwait(false);
+                await Task.Delay(25, ct).ConfigureAwait(false);
+                await CdpWebSocketClient.SendAsync(client, "Input.dispatchKeyEvent", keyUp, ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                foreach (var modifier in modifiers.Reverse())
+                {
+                    var modifierUp = CdpKeyboardMapping.Event("keyUp", modifier, modifiers);
+                    if (modifierUp is not null)
+                        await CdpWebSocketClient.SendAsync(client, "Input.dispatchKeyEvent", modifierUp, ct).ConfigureAwait(false);
+                }
+            }
+
+            return guard.Finish(ActionReceipt.Success("cdp.input.dispatch_key"));
+        }
+        catch (Exception ex)
+        {
+            return guard.Finish(ActionReceipt.Failure("cdp.input.dispatch_key", ex.Message));
+        }
+    }
+
     public static async Task<ActionReceipt> EvaluateUserGestureAsync(int port, string expression, CancellationToken ct)
         => await EvaluateUserGestureAsync(port, null, expression, ct).ConfigureAwait(false);
 

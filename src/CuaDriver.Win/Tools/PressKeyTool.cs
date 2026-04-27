@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using CuaDriver.Win.Browser;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
 
@@ -15,7 +16,9 @@ internal sealed class PressKeyTool : IDriverTool
             ("key", JsonArgs.Prop("string", "Key name, e.g. enter, escape, tab, a, f5.")),
             ("modifiers", JsonArgs.Prop("array", "Optional modifier names held while the key is pressed: ctrl, shift, alt/option, win/cmd.")),
             ("modifier", JsonArgs.Prop("array", "Alias for modifiers.")),
-            ("element_index", JsonArgs.Prop("integer", "Optional element index from get_window_state. When present, the key targets that element's native HWND when available."))),
+            ("element_index", JsonArgs.Prop("integer", "Optional element index from get_window_state. When present, the key targets that element's native HWND when available.")),
+            ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium debugging port for browser key events.")),
+            ("allow_transient_foreground", JsonArgs.Prop("boolean", "Explicit unsafe override for browser/native surfaces that ignore posted background key messages. Temporarily foregrounds the target and injects keyboard input, then attempts to restore foreground. Receipt remains background_safe=false."))),
         Destructive: true,
         Idempotent: false,
         OpenWorld: true);
@@ -26,6 +29,7 @@ internal sealed class PressKeyTool : IDriverTool
         var key = JsonArgs.RequiredString(args, "key");
         var index = JsonArgs.OptionalInt(args, "element_index");
         var modifiers = JsonArgs.OptionalStringArray(args, "modifiers", "modifier");
+        var allowTransientForeground = JsonArgs.OptionalBool(args, "allow_transient_foreground");
 
         var windowId = JsonArgs.OptionalLong(args, "window_id");
         if (index is not null && windowId is null)
@@ -34,13 +38,33 @@ internal sealed class PressKeyTool : IDriverTool
             return error!;
 
         var targetHwnd = window.Hwnd;
+        var isBrowser = BrowserWindowClassifier.IsLikelyBrowser(window);
         if (index is not null)
         {
             var element = context.State.UiaTree.GetCachedElement(pid, window.WindowId, index.Value);
             var elementHwnd = ToolWindows.NativeHwndForElement(element);
-            if (elementHwnd != IntPtr.Zero)
+            if (elementHwnd != IntPtr.Zero && !isBrowser)
                 targetHwnd = elementHwnd;
             context.State.LastUiaTextTarget[(pid, window.WindowId)] = element;
+        }
+
+        if (isBrowser)
+        {
+            var cdpPort = BrowserToolArgs.CdpPort(args, context);
+            var cdpReceipt = await CdpBrowserBridge.TryPressKeyAsync(cdpPort, window.WindowId, key, modifiers, cancellationToken).ConfigureAwait(false);
+            if (cdpReceipt is not null)
+                return ActionToolResult.FromReceipt(cdpReceipt);
+
+            if (!allowTransientForeground)
+            {
+                var refused = ActionReceipt.Failure(
+                    "requires_cdp_or_transient_foreground",
+                    "Browser key input is not reliably delivered by background HWND messages. Provide cdp_port/configure chromium_debugging_port, or pass allow_transient_foreground=true for an explicit unsafe foreground keyboard-injection route.");
+                return ActionToolResult.FromReceipt(refused);
+            }
+
+            var foregroundReceipt = await WindowMessageInput.PressKeyWithTransientForegroundAsync(targetHwnd, key, modifiers, cancellationToken).ConfigureAwait(false);
+            return ActionToolResult.FromReceipt(foregroundReceipt);
         }
 
         var receipt = await WindowMessageInput.PressKeyAsync(targetHwnd, key, modifiers, cancellationToken).ConfigureAwait(false);

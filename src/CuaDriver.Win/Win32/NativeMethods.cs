@@ -71,6 +71,9 @@ internal static class NativeMethods
     public static extern bool PostMessageW(IntPtr hWnd, uint msg, UIntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll", SetLastError = true)]
+    public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+    [DllImport("user32.dll", SetLastError = true)]
     public static extern IntPtr SendMessageW(IntPtr hWnd, uint msg, UIntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
@@ -189,6 +192,10 @@ internal static class NativeMethods
     public const uint WM_CHAR = 0x0102;
     public const uint WM_SETTEXT = 0x000C;
     public const uint BM_CLICK = 0x00F5;
+
+    public const uint INPUT_KEYBOARD = 1;
+    public const uint KEYEVENTF_KEYUP = 0x0002;
+    public const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
 
     public const uint CWP_SKIPINVISIBLE = 0x0001;
     public const uint CWP_SKIPDISABLED = 0x0002;
@@ -351,4 +358,28 @@ internal sealed record RectDto(int X, int Y, int Width, int Height)
 {
     public static RectDto From(RECT r) => new(r.Left, r.Top, r.Width, r.Height);
     public override string ToString() => $"x={X} y={Y} width={Width} height={Height}";
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct INPUT
+{
+    public uint Type;
+    public INPUTUNION Union;
+}
+
+[StructLayout(LayoutKind.Explicit)]
+internal struct INPUTUNION
+{
+    [FieldOffset(0)]
+    public KEYBDINPUT Keyboard;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct KEYBDINPUT
+{
+    public ushort VirtualKey;
+    public ushort ScanCode;
+    public uint Flags;
+    public uint Time;
+    public IntPtr ExtraInfo;
 }
