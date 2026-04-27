@@ -66,9 +66,13 @@ internal static class CdpKeyboardMapping
             _ => normalized
         };
 
+        var dispatchType = type == "keyDown" && ShouldUseRawKeyDown(keyValue, modifiers)
+            ? "rawKeyDown"
+            : type;
+
         var obj = new JsonObject
         {
-            ["type"] = type,
+            ["type"] = dispatchType,
             ["key"] = keyValue,
             ["code"] = code,
             ["windowsVirtualKeyCode"] = vk,
@@ -84,6 +88,9 @@ internal static class CdpKeyboardMapping
 
         return obj;
     }
+
+    private static bool ShouldUseRawKeyDown(string keyValue, IReadOnlyCollection<string> modifiers)
+        => keyValue.Length != 1 || char.IsControl(keyValue[0]) || modifiers.Any(m => !IsTextSafeModifier(m));
 
     private static bool IsTextSafeModifier(string modifier)
     {
