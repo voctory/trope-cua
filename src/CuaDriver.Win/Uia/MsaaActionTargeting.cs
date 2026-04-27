@@ -4,6 +4,23 @@ namespace CuaDriver.Win.Uia;
 
 internal static class MsaaActionTargeting
 {
+    public static IEnumerable<Win32.POINT> PreferredActionPoints(AutomationElement element)
+    {
+        var elementRect = element.Current.BoundingRectangle;
+        if (elementRect.IsEmpty)
+            yield break;
+
+        var preferredRect = PreferredActionRect(element);
+        foreach (var point in CandidatePoints(preferredRect))
+            yield return point;
+
+        if (preferredRect != elementRect)
+        {
+            foreach (var point in CandidatePoints(elementRect))
+                yield return point;
+        }
+    }
+
     public static System.Windows.Rect PreferredActionRect(AutomationElement element)
     {
         var rect = element.Current.BoundingRectangle;
@@ -75,6 +92,29 @@ internal static class MsaaActionTargeting
         }
 
         return System.Windows.Rect.Empty;
+    }
+
+    private static IEnumerable<Win32.POINT> CandidatePoints(System.Windows.Rect rect)
+    {
+        if (rect.IsEmpty)
+            yield break;
+
+        var candidates = new[]
+        {
+            new System.Windows.Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2),
+            new System.Windows.Point(rect.X + rect.Width * 0.25, rect.Y + rect.Height / 2),
+            new System.Windows.Point(rect.X + rect.Width * 0.75, rect.Y + rect.Height / 2),
+            new System.Windows.Point(rect.X + rect.Width / 2, rect.Y + rect.Height * 0.35),
+            new System.Windows.Point(rect.X + rect.Width / 2, rect.Y + rect.Height * 0.65),
+        };
+
+        var seen = new HashSet<(int X, int Y)>();
+        foreach (var candidate in candidates)
+        {
+            var rounded = ((int)Math.Round(candidate.X), (int)Math.Round(candidate.Y));
+            if (seen.Add(rounded))
+                yield return new Win32.POINT(rounded.Item1, rounded.Item2);
+        }
     }
 
     private static T? Safe<T>(Func<T> func)

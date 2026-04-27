@@ -13,14 +13,21 @@ internal static class MsaaActions
     {
         try
         {
-            var rect = MsaaActionTargeting.PreferredActionRect(element);
-            if (rect.IsEmpty)
+            var points = MsaaActionTargeting.PreferredActionPoints(element).ToArray();
+            if (points.Length == 0)
                 return ActionReceipt.Failure("msaa.default_action", "Element has no bounding rectangle.");
 
-            var point = new POINT(
-                (int)Math.Round(rect.X + rect.Width / 2),
-                (int)Math.Round(rect.Y + rect.Height / 2));
-            return DoDefaultActionAtPoint(rootHwnd, point);
+            ActionReceipt? last = null;
+            foreach (var point in points)
+            {
+                var receipt = DoDefaultActionAtPoint(rootHwnd, point);
+                if (receipt.ShouldStopFallback)
+                    return receipt;
+
+                last = receipt;
+            }
+
+            return last ?? ActionReceipt.Failure("msaa.default_action", "Element has no actionable point.");
         }
         catch (Exception ex)
         {
