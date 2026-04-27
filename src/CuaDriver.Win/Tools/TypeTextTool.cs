@@ -17,7 +17,7 @@ internal sealed class TypeTextTool : IDriverTool
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
             ("element_index", JsonArgs.Prop("integer", "Optional element index for UIA ValuePattern.")),
             ("text", JsonArgs.Prop("string", "Text to type or set.")),
-            ("delay_ms", JsonArgs.Prop("integer", "Milliseconds between streamed text chunks, 0-200. Default 30.")),
+            ("delay_ms", JsonArgs.Prop("integer", "Milliseconds between streamed text chunks for type_text_chars, 0-200. Ignored by atomic type_text.")),
             ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium debugging port.")),
             ("allow_transient_foreground", JsonArgs.Prop("boolean", "Allow a brief native/browser UIA foreground/focus blip when no verified background text route exists, then attempt to restore the previous foreground. Defaults true for existing-window actions; receipts still report background_safe=false when this happens."))),
         Destructive: true,
@@ -63,7 +63,7 @@ internal sealed class TypeTextTool : IDriverTool
 
             if (BrowserWindowClassifier.IsLikelyChromium(window) && cdpPort is not null)
             {
-                receipt = await TypeViaBrowserCdpAsync(context, window, element, target.Text, target.DelayMs, cdpPort.Value, cancellationToken).ConfigureAwait(false);
+                receipt = await TypeViaBrowserCdpAsync(context, window, element, target.Text, target.DelayMs, streamCharacters, cdpPort.Value, cancellationToken).ConfigureAwait(false);
                 return ActionToolResult.FromReceipt(receipt);
             }
 
@@ -80,7 +80,7 @@ internal sealed class TypeTextTool : IDriverTool
                 var targetCdpPort = BrowserToolArgs.CdpPort(args, context);
                 if (BrowserWindowClassifier.IsLikelyChromium(window) && targetCdpPort is not null)
                 {
-                    var browserReceipt = await TypeViaBrowserCdpAsync(context, window, textElement, target.Text, target.DelayMs, targetCdpPort.Value, cancellationToken).ConfigureAwait(false);
+                    var browserReceipt = await TypeViaBrowserCdpAsync(context, window, textElement, target.Text, target.DelayMs, streamCharacters, targetCdpPort.Value, cancellationToken).ConfigureAwait(false);
                     if (browserReceipt.Ok)
                         return ActionToolResult.FromReceipt(browserReceipt, "uia.last_text_target.");
                 }
@@ -91,7 +91,7 @@ internal sealed class TypeTextTool : IDriverTool
             }
 
             var cdpPort = BrowserToolArgs.CdpPort(args, context);
-            var cdpReceipt = await CdpBrowserBridge.TryTypeTextAsync(cdpPort, window.WindowId, target.Text, target.DelayMs, cancellationToken).ConfigureAwait(false);
+            var cdpReceipt = await CdpBrowserBridge.TryTypeTextAsync(cdpPort, window.WindowId, target.Text, streamCharacters ? target.DelayMs : 0, cancellationToken).ConfigureAwait(false);
             if (cdpReceipt is not null)
             {
                 receipt = cdpReceipt;
@@ -121,6 +121,7 @@ internal sealed class TypeTextTool : IDriverTool
         System.Windows.Automation.AutomationElement element,
         string text,
         int delayMs,
+        bool streamCharacters,
         int cdpPort,
         CancellationToken cancellationToken)
     {
@@ -135,7 +136,7 @@ internal sealed class TypeTextTool : IDriverTool
         if (!clickReceipt.Ok)
             return clickReceipt;
 
-        return await CdpBrowserBridge.TryTypeTextAsync(cdpPort, window.WindowId, text, delayMs, cancellationToken).ConfigureAwait(false)
+        return await CdpBrowserBridge.TryTypeTextAsync(cdpPort, window.WindowId, text, streamCharacters ? delayMs : 0, cancellationToken).ConfigureAwait(false)
                ?? BrowserToolArgs.NoPageReceipt("cdp.input.insert_text", cdpPort);
     }
 
@@ -149,7 +150,7 @@ internal sealed class TypeTextTool : IDriverTool
         CancellationToken cancellationToken)
     {
         var units = TextElementSplitter.Split(text);
-        if (delayMs <= 0 || units.Count <= 1)
+        if (!streamCharacters || delayMs <= 0 || units.Count <= 1)
         {
             var receipt = MsaaActions.InsertEditableTextAtElement(rootHwnd, element, text);
             if (receipt.Ok)
@@ -189,7 +190,7 @@ internal sealed class TypeTextTool : IDriverTool
         CancellationToken cancellationToken)
     {
         var units = TextElementSplitter.Split(text);
-        if (delayMs <= 0 || units.Count <= 1)
+        if (!streamCharacters || delayMs <= 0 || units.Count <= 1)
             return InsertElementText(rootHwnd, element, text, allowTransientForeground);
 
         var insertReceipt = await StreamInsertionAsync(context, rootHwnd, element, units, delayMs, allowTransientForeground, cancellationToken).ConfigureAwait(false);

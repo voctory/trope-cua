@@ -77,11 +77,11 @@ internal static class ToolDescriptions
         """;
 
     public const string TypeText = """
-        Insert text into a target pid/window. Use element_index + window_id from the last get_window_state snapshot when filling a specific field; this streams the visible value through IA2/UIA text setters by default. Without element_index, type_text targets the last UIA text target, then Chromium CDP Input.insertText when cdp_port is configured, then a native child HWND text route for classic controls.
+        Insert text into a target pid/window. Use element_index + window_id from the last get_window_state snapshot when filling a specific field; type_text writes the complete text atomically through IA2/UIA text setters where possible. Without element_index, type_text targets the last UIA text target, then Chromium CDP Input.insertText when cdp_port is configured, then a native child HWND text route for classic controls.
 
         For Chromium or Electron inputs, pass the edit/search/address element_index directly to type_text. Follow with press_key enter/return using the same element_index when submitting a search or address. Prefer this over set_value for browser fields because set_value is an atomic ValuePattern operation and browser providers often expose it without a background-safe setter. If the browser route has no safe target and no cdp_port, the tool refuses blind WM_CHAR delivery rather than typing into the wrong foreground app.
 
-        delay_ms spaces streamed text chunks so autocomplete and reactive inputs can keep up. Default is 30 ms. Pass delay_ms=0 for the old instant/bulk behavior. For an explicitly atomic write, use set_value.
+        delay_ms is ignored by type_text because background text entry should be atomic. Use type_text_chars when a caller explicitly needs character-by-character entry.
 
         allow_transient_foreground controls the existing-window foreground fallback. It defaults true: when no verified background text route exists, the driver may briefly foreground/focus the target and then restore the previous cursor and foreground. Treat any receipt with background_safe=false, foreground_changed=true, or cursor_moved=true as a transient foreground route even when ok=true.
 
