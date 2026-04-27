@@ -12,7 +12,7 @@ Default loop:
 
 Unsafe flags are explicit human opt-ins:
 
-- `unsafe_allow_foreground` can launch a visible foreground app and is not for routine automation.
+- `unsafe_allow_foreground` is a last-resort parent-session launch escape hatch and is not for routine automation. Its receipt remains unsafe; the driver attempts to restore the previous foreground window and push launched windows behind the current stack.
 - `allow_parent_sendinput` is a local experiment escape hatch, not a production input lane.
 - `allow_parent_cursor` moves the real parent-session cursor and should not be used for background automation.
 

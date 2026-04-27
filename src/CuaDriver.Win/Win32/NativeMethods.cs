@@ -221,6 +221,7 @@ internal static class NativeMethods
     public const int WS_EX_TOOLWINDOW = 0x00000080;
 
     public static readonly IntPtr HWND_TOP = IntPtr.Zero;
+    public static readonly IntPtr HWND_BOTTOM = new(1);
     public static readonly IntPtr HWND_TOPMOST = new(-1);
     public static readonly IntPtr HWND_NOTOPMOST = new(-2);
 

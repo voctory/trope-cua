@@ -22,7 +22,7 @@ The Windows driver intentionally does **not** treat `SendInput` as the normal au
 - Classic Win32 targeted message fallback for native controls, typing, keys, and scroll; browser web content without UIA/CDP now returns an explicit failure instead of reporting unverified delivery.
 - Visual agent cursor overlay drawn in a click-through, no-activate WinForms window. It does not move the user's hardware cursor.
 - Trajectory recording writes `turn-NNNNN` folders with `action.json`, `app_state.json`, `screenshot.png`, and click markers, plus `replay_trajectory` for re-driving recorded action calls.
-- `launch_app` refuses parent-session launches by default because Windows ShellExecute/CreateProcess can foreground the target. Use `unsafe_allow_foreground=true` only when that is intentional, or run launches in the child-session/AppBroadcast lane.
+- `launch_app` refuses parent-session launches by default because Windows ShellExecute/CreateProcess can foreground the target. Use `unsafe_allow_foreground=true` only as a last-resort escape hatch; the driver still reports it as unsafe, attempts to restore the previous foreground window, and sends launched windows behind the current stack.
 - GDI/PrintWindow screenshot fallback plus a WGC integration seam. Production WGC capture is documented in `docs/capture.md` because it needs Windows-only WinRT/D3D plumbing and validation on the target OS.
 - The named-pipe daemon is single-instance per daemon instance id, not globally single-instance. Use `serve --instance <id>` and `call --instance <id>` when running isolated parallel background agents.
 - Child-session broker scaffolding for the hard-case lane.

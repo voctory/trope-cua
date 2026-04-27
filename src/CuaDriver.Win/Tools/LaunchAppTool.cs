@@ -20,7 +20,7 @@ internal sealed class LaunchAppTool : IDriverTool
             ("name", JsonArgs.Prop("string", "Alias for exe.")),
             ("app_id", JsonArgs.Prop("string", "UWP/AppUserModelID launched through shell:AppsFolder.")),
             ("arguments", JsonArgs.Prop("string", "Optional command-line arguments.")),
-            ("unsafe_allow_foreground", JsonArgs.Prop("boolean", "Explicitly allow a parent-session launch that may foreground the target app. Do not use for routine background automation; only set when the user explicitly requests a visible foreground launch."))),
+            ("unsafe_allow_foreground", JsonArgs.Prop("boolean", "Explicitly allow a parent-session launch that may foreground the target app. Do not use for routine background automation; the driver will still try to restore the previous foreground window and send launched windows behind the current stack."))),
         Destructive: true,
         Idempotent: false,
         OpenWorld: true);
@@ -53,6 +53,7 @@ internal sealed class LaunchAppTool : IDriverTool
             return ActionToolResult.FromReceipt(denied);
         }
 
+        var foregroundBefore = NativeMethods.GetForegroundWindow();
         using var guard = NoRegressionGuard.Capture();
         var beforeWindows = WindowEnumerator.AllWindows().Select(w => w.WindowId).ToHashSet();
         ProcessStartInfo psi;
@@ -66,7 +67,7 @@ internal sealed class LaunchAppTool : IDriverTool
         }
 
         var process = Process.Start(psi);
-        await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
+        await PollLaunchWindowsToBackAsync(beforeWindows, path, appId, foregroundBefore, cancellationToken).ConfigureAwait(false);
 
         var pid = process?.Id;
         var allAfter = WindowEnumerator.AllWindows();
@@ -81,15 +82,25 @@ internal sealed class LaunchAppTool : IDriverTool
             windows = newWindows.Length > 0 ? newWindows : allAfter.Where(w => MatchesLaunchTarget(w, path, appId)).ToArray();
         }
 
+        var sentToBack = SendWindowsToBack(windows);
         var receipt = guard.Finish(
             ActionReceipt.UnsafeSuccess("shellexecute.unsafe_foreground"),
             allowForegroundChange: true,
+            restoreAllowedForegroundChange: true,
             allowUnsafeRoute: true);
+        var foregroundRestored = receipt.ForegroundChanged
+                                 && foregroundBefore != IntPtr.Zero
+                                 && NativeMethods.GetForegroundWindow() == foregroundBefore;
+
         var sb = new StringBuilder();
         sb.AppendLine(ToolText.OkPrefix + receipt.ToJson());
         sb.Append("Launch requested: ").AppendLine(appId ?? path);
         if (pid is not null)
             sb.AppendLine(CultureInfo.InvariantCulture, $"pid={pid}");
+        if (sentToBack > 0)
+            sb.AppendLine(CultureInfo.InvariantCulture, $"sent_to_back={sentToBack}");
+        if (receipt.ForegroundChanged)
+            sb.AppendLine(CultureInfo.InvariantCulture, $"foreground_restored={foregroundRestored}");
         if (windows.Length > 0 && windows[0].Pid != pid)
             sb.AppendLine(CultureInfo.InvariantCulture, $"resolved_pid={windows[0].Pid}");
         foreach (var w in windows)
@@ -98,6 +109,8 @@ internal sealed class LaunchAppTool : IDriverTool
         var structured = ActionToolResult.StructuredReceipt(receipt);
         structured["requested"] = appId ?? path;
         structured["pid"] = pid;
+        structured["sent_to_back"] = sentToBack;
+        structured["foreground_restored"] = foregroundRestored;
         if (windows.Length > 0 && windows[0].Pid != pid)
             structured["resolved_pid"] = windows[0].Pid;
         structured["windows"] = ToolJson.Array(windows, ToolJson.Window);
@@ -121,4 +134,51 @@ internal sealed class LaunchAppTool : IDriverTool
         => window.AppName.Equals("cua-driver-win", StringComparison.OrdinalIgnoreCase)
            || window.Title.Contains("GDI+", StringComparison.OrdinalIgnoreCase)
            || window.ClassName.Contains("WindowsForms", StringComparison.OrdinalIgnoreCase);
+
+    private static int SendWindowsToBack(WindowInfo[] windows)
+    {
+        var moved = 0;
+        const uint flags = NativeMethods.SWP_NOMOVE
+                           | NativeMethods.SWP_NOSIZE
+                           | NativeMethods.SWP_NOACTIVATE
+                           | NativeMethods.SWP_NOOWNERZORDER
+                           | NativeMethods.SWP_NOSENDCHANGING;
+
+        foreach (var window in windows)
+        {
+            if (NativeMethods.SetWindowPos(window.Hwnd, NativeMethods.HWND_BOTTOM, 0, 0, 0, 0, flags))
+                moved++;
+        }
+
+        return moved;
+    }
+
+    private static async Task PollLaunchWindowsToBackAsync(
+        HashSet<long> beforeWindows,
+        string? path,
+        string? appId,
+        IntPtr foregroundBefore,
+        CancellationToken cancellationToken)
+    {
+        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(1);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var candidates = WindowEnumerator.AllWindows()
+                .Where(w => !beforeWindows.Contains(w.WindowId) || MatchesLaunchTarget(w, path, appId))
+                .Where(w => w.Pid != Environment.ProcessId)
+                .Where(w => !IsDriverAuxWindow(w))
+                .ToArray();
+
+            if (candidates.Length > 0)
+            {
+                SendWindowsToBack(candidates);
+                if (foregroundBefore != IntPtr.Zero && NativeMethods.GetForegroundWindow() != foregroundBefore)
+                    NativeMethods.SetForegroundWindow(foregroundBefore);
+            }
+
+            await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+        }
+    }
 }

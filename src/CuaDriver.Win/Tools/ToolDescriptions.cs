@@ -11,7 +11,7 @@ internal static class ToolDescriptions
         3. Read every action receipt. A successful background action must report background_safe=true, cursor_moved=false, and foreground_changed=false.
         4. If a route refuses with requires_cdp, requires_child_session, requires_appbroadcast, or requires_background_launch_lane, switch to that lane or report the blocker. Do not work around it with blind parent-session mouse or keyboard input.
         5. For Chromium/Electron browser surfaces, use cdp_port or configured chromium_debugging_port when UIA/MSAA cannot act safely.
-        6. Do not pass unsafe_allow_foreground, allow_parent_sendinput, or allow_parent_cursor unless the user explicitly asks for a visible foreground/unsafe local experiment.
+        6. Do not pass unsafe_allow_foreground, allow_parent_sendinput, or allow_parent_cursor for routine automation. unsafe_allow_foreground is a last-resort parent-session escape hatch; even when used, treat its receipt as unsafe and prefer the restored/rear-stacked target window for later background actions.
 
         The visual agent cursor is an overlay that shows intent above the target window. It must not be treated as the real Windows cursor.
         """;
@@ -110,7 +110,7 @@ internal static class ToolDescriptions
         """;
 
     public const string LaunchApp = """
-        Launch an app for background automation. Parent-session Windows launches can foreground the target, so this tool refuses those launches by default. Do not pass unsafe_allow_foreground for routine automation. Only pass unsafe_allow_foreground=true when the user explicitly asks for a visible foreground launch or unsafe local experiment.
+        Launch an app for background automation. Parent-session Windows launches can foreground the target, so this tool refuses those launches by default. Do not pass unsafe_allow_foreground for routine automation. When unsafe_allow_foreground=true is explicitly used, the driver still treats the route as unsafe, attempts to restore the previous foreground window, and sends launched windows behind the current stack with no activation.
 
         Prefer list_windows to reuse an already running app before launching a new one. Provide path for an executable or name for an app/executable name. Use list_apps to discover installed apps and list_windows after launch to choose the target window_id for get_window_state. Normal workflow: launch or identify an app, enumerate windows, snapshot a specific (pid, window_id), then act by element_index whenever possible.
         """;

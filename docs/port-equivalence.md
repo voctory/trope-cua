@@ -8,7 +8,7 @@ The Windows driver uses semantic UIA actions first and pixel routes second:
 4. Pixel actions then use targeted `HWND` messages for classic native controls.
 5. Browser web content without UIA/CDP returns an explicit failure instead of claiming a blind `PostMessage` click landed.
 6. Parent-session hardware input is refused by default.
-7. Parent-session launches are refused by default; generic Windows launch APIs can foreground the target. Callers must pass `unsafe_allow_foreground=true` or use a child-session/AppBroadcast lane.
+7. Parent-session launches are refused by default; generic Windows launch APIs can foreground the target. Callers must use a child-session/AppBroadcast lane, reuse an existing window, or explicitly pass the last-resort `unsafe_allow_foreground=true` escape hatch, which remains unsafe and attempts to restore the previous foreground while pushing launched windows behind the current stack.
 8. Raw-input-only targets are escalated to the child-session lane.
 
 This routing policy is deliberately strict. It avoids the common regressions: moving the user's cursor, changing the foreground window, switching desktops, or typing into the wrong app.
