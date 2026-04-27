@@ -53,6 +53,8 @@ def test_mcp_initialize_includes_background_agent_instructions():
     assert "get_window_state" in instructions
     assert "Browser text workflow" in instructions
     assert "Do not launch a separate debugging-profile browser" in instructions
+    assert "browser_eval with a user-gesture navigation expression" in instructions
+    assert "retry with a fresh element_index" in instructions
     assert "unsafe_allow_foreground" in instructions
     assert "Do not pass unsafe_allow_foreground" in instructions
     for blocked in ("M" + "ac", "mac" + "OS"):
@@ -75,6 +77,7 @@ def test_mcp_tool_descriptions_steer_away_from_foreground_routes():
     assert "element_index" in click_description
     assert "background-safe" in click_description
     assert "blind browser PostMessage clicks are refused" in click_description
+    assert "refresh get_window_state and retry with the new element_index" in click_description
 
     type_text_description = tools["type_text"]["description"]
     assert "pass the edit/search/address element_index directly to type_text" in type_text_description
@@ -82,6 +85,7 @@ def test_mcp_tool_descriptions_steer_away_from_foreground_routes():
     assert "It defaults true" in type_text_description
     assert "Defaults true" in tools["type_text"]["inputSchema"]["properties"]["allow_transient_foreground"]["description"]
     assert "Defaults true" in tools["press_key"]["inputSchema"]["properties"]["allow_transient_foreground"]["description"]
+    assert "browser_eval for user-gesture navigation" in tools["press_key"]["description"]
 
     set_value_description = tools["set_value"]["description"]
     assert "prefer type_text with element_index" in set_value_description
