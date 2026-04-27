@@ -107,6 +107,23 @@ internal sealed class ClickTool : IDriverTool
                             await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
                         return ActionToolResult.FromReceipt(receipt);
                     }
+
+                    if (count == 1 && action.Equals("press", StringComparison.OrdinalIgnoreCase) && IsRetryableBrowserOneShotControl(element))
+                    {
+                        receipt = await TryVerifiedBrowserOneShotClickAsync(
+                            target.Pid,
+                            window,
+                            element,
+                            elementPoint.ScreenPoint,
+                            elementPoint.LocalX,
+                            elementPoint.LocalY,
+                            cancellationToken).ConfigureAwait(false);
+                        if (receipt.Ok)
+                        {
+                            await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
+                            return ActionToolResult.FromReceipt(receipt);
+                        }
+                    }
                 }
 
                 var navigationReceipt = BrowserNavigation.RefuseForegroundOnlyLinkRoute(UiAutomationActions.TryGetValue(element));
@@ -216,6 +233,23 @@ internal sealed class ClickTool : IDriverTool
                     if (receipt.Ok)
                         await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                     return ActionToolResult.FromReceipt(receipt);
+                }
+
+                if (count == 1 && action.Equals("press", StringComparison.OrdinalIgnoreCase) && IsRetryableBrowserOneShotControl(hit.Element))
+                {
+                    receipt = await TryVerifiedBrowserOneShotClickAsync(
+                        pid,
+                        window,
+                        hit.Element,
+                        resolved.ScreenPoint,
+                        clickX,
+                        clickY,
+                        cancellationToken).ConfigureAwait(false);
+                    if (receipt.Ok)
+                    {
+                        await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
+                        return ActionToolResult.FromReceipt(receipt);
+                    }
                 }
 
                 var navReceipt = BrowserNavigation.RefuseForegroundOnlyLinkRoute(UiAutomationActions.TryGetValue(hit.Element));
@@ -387,6 +421,59 @@ internal sealed class ClickTool : IDriverTool
         return retry.Ok
             ? retry with { Route = receipt.Route + ".retry_still_present." + retry.Route }
             : receipt;
+    }
+
+    private static async Task<ActionReceipt> TryVerifiedBrowserOneShotClickAsync(
+        int pid,
+        WindowInfo window,
+        AutomationElement originalElement,
+        POINT screenPoint,
+        double localX,
+        double localY,
+        CancellationToken cancellationToken)
+    {
+        var dispatch = await WindowMessageInput.ClickAsync(window.Hwnd, localX, localY, 1, rightButton: false, cancellationToken).ConfigureAwait(false);
+        if (!dispatch.Receipt.Ok)
+            return dispatch.Receipt with { Route = "browser.one_shot.verify_gone." + dispatch.Receipt.Route };
+
+        await Task.Delay(220, cancellationToken).ConfigureAwait(false);
+
+        var hit = UiAutomationTree.HitTest(pid, window.WindowId, screenPoint);
+        if (hit is null || !IsSameBrowserOneShotControl(originalElement, hit.Element))
+            return dispatch.Receipt with { Route = "browser.one_shot.verify_gone." + dispatch.Receipt.Route };
+
+        return ActionReceipt.Failure(
+            "browser.one_shot.verify_gone",
+            "Browser one-shot control was still present after a background HWND click, so delivery could not be verified.");
+    }
+
+    private static bool IsSameBrowserOneShotControl(AutomationElement originalElement, AutomationElement hitElement)
+    {
+        if (!IsRetryableBrowserOneShotControl(hitElement))
+            return false;
+
+        try
+        {
+            if (Automation.Compare(originalElement, hitElement))
+                return true;
+        }
+        catch
+        {
+            // Fall through to property comparison below.
+        }
+
+        try
+        {
+            var original = originalElement.Current;
+            var hit = hitElement.Current;
+            return string.Equals(original.AutomationId ?? "", hit.AutomationId ?? "", StringComparison.OrdinalIgnoreCase)
+                   && string.Equals(original.Name ?? "", hit.Name ?? "", StringComparison.OrdinalIgnoreCase)
+                   && string.Equals(original.ClassName ?? "", hit.ClassName ?? "", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return true;
+        }
     }
 
     private static bool IsRetryableBrowserOneShotControl(AutomationElement? element)
