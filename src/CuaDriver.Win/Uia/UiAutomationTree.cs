@@ -25,6 +25,7 @@ internal sealed class UiAutomationTree
 
         var turnId = Interlocked.Increment(ref _nextTurnId);
         Walk(root, root, windowId, pid, 0, 0, elements, infos, sb);
+        HarvestRawElements(root, pid, elements, infos, sb);
 
         var markdown = sb.ToString().TrimEnd();
         if (!string.IsNullOrWhiteSpace(query))
@@ -235,6 +236,116 @@ internal sealed class UiAutomationTree
             catch { break; }
             ordinal++;
         }
+    }
+
+    private static void HarvestRawElements(
+        AutomationElement root,
+        int pid,
+        Dictionary<int, AutomationElement> cache,
+        List<UiElementInfo> infos,
+        StringBuilder sb)
+    {
+        var rootRect = Safe(() => root.Current.BoundingRectangle);
+        if (rootRect.IsEmpty)
+            return;
+
+        var discovered = new List<(AutomationElement Element, UiElementInfo Info)>();
+        var rawWalker = TreeWalker.RawViewWalker;
+        var visited = 0;
+        VisitRawChildren(root, depth: 0);
+
+        if (discovered.Count == 0)
+            return;
+
+        sb.AppendLine("  - supplemental raw UIA elements");
+        foreach (var (element, info) in discovered
+                     .OrderBy(e => e.Info.Bounds.Y)
+                     .ThenBy(e => e.Info.Bounds.X))
+        {
+            var indexedInfo = info with { ElementIndex = cache.Count };
+            cache[indexedInfo.ElementIndex] = element;
+            infos.Add(indexedInfo);
+            UiTreeMarkdown.AppendElement(sb, indexedInfo, 2, actionable: true);
+        }
+
+        void TryRecord(AutomationElement element)
+        {
+            UiElementInfo info;
+            try
+            {
+                info = MakeInfo(element, cache.Count + discovered.Count, pid);
+            }
+            catch
+            {
+                return;
+            }
+
+            if (!UiElementClassifier.IsActionable(info)
+                || info.Bounds.Width <= 0
+                || info.Bounds.Height <= 0
+                || info.IsOffscreen
+                || !IsInsideRoot(info.Bounds, rootRect)
+                || IsAlreadyKnown(element, info, cache, discovered))
+            {
+                return;
+            }
+
+            discovered.Add((element, info));
+        }
+
+        void VisitRawChildren(AutomationElement parent, int depth)
+        {
+            if (depth > 35 || visited >= 5000 || discovered.Count >= 500)
+                return;
+
+            AutomationElement? child = null;
+            try { child = rawWalker.GetFirstChild(parent); } catch { }
+
+            var ordinal = 0;
+            while (child is not null && ordinal < 1000 && visited < 5000 && discovered.Count < 500)
+            {
+                visited++;
+                TryRecord(child);
+                VisitRawChildren(child, depth + 1);
+
+                try { child = rawWalker.GetNextSibling(child); }
+                catch { break; }
+                ordinal++;
+            }
+        }
+    }
+
+    private static bool IsInsideRoot(RectDto bounds, Rect rootRect)
+    {
+        var x = bounds.X + Math.Min(2, bounds.Width / 2);
+        var y = bounds.Y + Math.Min(2, bounds.Height / 2);
+        return rootRect.Contains(new System.Windows.Point(x, y));
+    }
+
+    private static bool IsAlreadyKnown(
+        AutomationElement element,
+        UiElementInfo info,
+        Dictionary<int, AutomationElement> cache,
+        List<(AutomationElement Element, UiElementInfo Info)> discovered)
+    {
+        foreach (var existing in cache.Values)
+        {
+            if (AutomationEquals(existing, element))
+                return true;
+        }
+
+        foreach (var (existing, existingInfo) in discovered)
+        {
+            if (AutomationEquals(existing, element)
+                || (string.Equals(existingInfo.AutomationId, info.AutomationId, StringComparison.Ordinal)
+                    && string.Equals(existingInfo.Name, info.Name, StringComparison.Ordinal)
+                    && existingInfo.Bounds == info.Bounds))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static UiElementInfo MakeInfo(AutomationElement element, int proposedIndex, int fallbackPid)
