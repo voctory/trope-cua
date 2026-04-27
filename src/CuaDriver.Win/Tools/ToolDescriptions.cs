@@ -99,7 +99,7 @@ internal static class ToolDescriptions
     public const string PressKey = """
         Press and release a single key against a target pid/window without parent-session SendInput. The target does not need to be foreground if the target HWND accepts posted key messages.
 
-        Optional element_index + window_id from the last get_window_state snapshot targets that element's native HWND when available, falling back to the root target window. This preserves control-specific key routing while avoiding parent-session SendInput.
+        Optional element_index + window_id from the last get_window_state snapshot targets that element's native HWND when available, falling back to the root target window. Without element_index, native apps reuse the child HWND from the last successful background click for that window when available. This preserves control-specific key routing while avoiding parent-session SendInput.
 
         For Chromium browser content, press_key uses cdp_port/configured chromium_debugging_port when available. Without CDP, pass the same element_index used for type_text; the driver tries a background HWND click to establish Chromium's internal focus, then posts the key to the browser HWND. If no background key target is available and allow_transient_foreground is true, the existing browser window may be temporarily foregrounded for keyboard input, then foreground is restored. Treat any receipt with background_safe=false, foreground_changed=true, or cursor_moved=true as a transient foreground route even when ok=true. If address/search submission is still blocked and CDP is configured for this exact browser window, use browser_eval for user-gesture navigation instead of launching or shelling out to the browser.
 
@@ -107,7 +107,9 @@ internal static class ToolDescriptions
         """;
 
     public const string Hotkey = """
-        Press a modifier combination against a target pid/window without parent-session SendInput. Prefer the keys array, for example ["ctrl", "c"]. The key plus modifiers shape remains accepted.
+        Press a modifier combination against a target pid/window without parent-session SendInput. Prefer the keys array, for example ["ctrl", "c"]. The key plus modifiers shape remains accepted. Optional element_index + window_id targets that element's native HWND when available; otherwise native apps reuse the child HWND from the last successful background click for that window when available.
+
+        For Chromium browser content, hotkey uses CDP when available. Without CDP, it can reuse the last browser text target established by click/type_text and applies the same background HWND focus-click plus posted-key chain as press_key.
 
         Recognized modifiers: ctrl/control, shift, alt/option, win/cmd/meta. Non-modifier keys use the same vocabulary as press_key. Pass window_id when available; otherwise the driver's current main-window heuristic is used. Do not use hotkeys to compensate for a missing safe text/click route.
         """;

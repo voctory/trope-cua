@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using System.Windows.Automation;
 using CuaDriver.Win.Browser;
 using CuaDriver.Win.Input;
 using CuaDriver.Win.Tooling;
@@ -12,7 +13,8 @@ internal sealed class HotkeyTool : IDriverTool
         ToolDescriptions.Hotkey,
         JsonArgs.SchemaWithAnyOf(["pid"], [["keys"], ["key"]],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
-            ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
+            ("window_id", JsonArgs.Prop("integer", "Target HWND. Required when element_index is used.")),
+            ("element_index", JsonArgs.Prop("integer", "Optional element index from get_window_state. When present, the hotkey targets that element's native HWND when available.")),
             ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium debugging port for browser key events.")),
             ("keys", JsonArgs.Prop("array", "Modifier(s) and one non-modifier key, e.g. [\"ctrl\", \"c\"]. Preferred shape.")),
             ("key", JsonArgs.Prop("string", "Main key. Windows-compatible alias used with modifiers.")),
@@ -29,21 +31,54 @@ internal sealed class HotkeyTool : IDriverTool
         if (parseError is not null)
             return parseError;
 
-        if (!ToolWindows.TryFindMainOrForPid(pid, JsonArgs.OptionalLong(args, "window_id"), out var window, out var error))
+        var index = JsonArgs.OptionalInt(args, "element_index");
+        var windowId = JsonArgs.OptionalLong(args, "window_id");
+        if (index is not null && windowId is null)
+            return ToolResult.Error("window_id is required when element_index is used.");
+        if (!ToolWindows.TryFindMainOrForPid(pid, windowId, out var window, out var error))
             return error!;
 
-        if (BrowserWindowClassifier.IsLikelyBrowser(window))
+        var isBrowser = BrowserWindowClassifier.IsLikelyBrowser(window);
+        var targetHwnd = window.Hwnd;
+        AutomationElement? element = null;
+        if (index is not null)
+        {
+            element = context.State.UiaTree.GetCachedElement(pid, window.WindowId, index.Value);
+            var elementHwnd = ToolWindows.NativeHwndForElement(element);
+            if (elementHwnd != IntPtr.Zero && !isBrowser)
+                targetHwnd = elementHwnd;
+            context.State.LastUiaTextTarget[(pid, window.WindowId)] = element;
+        }
+
+        if (isBrowser)
         {
             var cdpReceipt = await CdpBrowserBridge.TryPressKeyAsync(BrowserToolArgs.CdpPort(args, context), window.WindowId, key, modifiers, cancellationToken).ConfigureAwait(false);
             if (cdpReceipt is not null)
                 return ActionToolResult.FromReceipt(cdpReceipt);
 
+            if (element is null)
+                context.State.LastUiaTextTarget.TryGetValue((pid, window.WindowId), out element);
+
+            if (element is not null)
+            {
+                var backgroundReceipt = await BrowserBackgroundKeyboard.PressKeyAsync(window, element, key, modifiers, cancellationToken).ConfigureAwait(false);
+                if (backgroundReceipt.Ok || backgroundReceipt.ShouldStopFallback)
+                    return ActionToolResult.FromReceipt(backgroundReceipt);
+            }
+
             return ActionToolResult.FromReceipt(ActionReceipt.Failure(
-                "requires_cdp",
-                "Browser hotkeys are not reliably delivered by background HWND messages. Provide cdp_port or configure chromium_debugging_port."));
+                "requires_cdp_or_uia_text_target",
+                "Browser hotkeys need CDP or a prior browser text target so the driver can establish internal browser focus with a background HWND click."));
         }
 
-        var receipt = await WindowMessageInput.PressKeyAsync(window.Hwnd, key, modifiers, cancellationToken).ConfigureAwait(false);
+        if (index is null
+            && context.State.LastTargetHwnd.TryGetValue((pid, window.WindowId), out var clickedTarget)
+            && clickedTarget != IntPtr.Zero)
+        {
+            targetHwnd = clickedTarget;
+        }
+
+        var receipt = await WindowMessageInput.PressKeyAsync(targetHwnd, key, modifiers, cancellationToken).ConfigureAwait(false);
         return ActionToolResult.FromReceipt(receipt);
     }
 

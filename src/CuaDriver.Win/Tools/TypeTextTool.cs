@@ -85,6 +85,13 @@ internal sealed class TypeTextTool : IDriverTool
                         return ActionToolResult.FromReceipt(browserReceipt, "uia.last_text_target.");
                 }
 
+                if (BrowserWindowClassifier.IsLikelyChromium(window) && targetCdpPort is null)
+                {
+                    var browserReceipt = await TypeViaBrowserIa2Async(context, window, textElement, target.Text, target.DelayMs, streamCharacters, cancellationToken).ConfigureAwait(false);
+                    if (browserReceipt.Ok)
+                        return ActionToolResult.FromReceipt(browserReceipt, "uia.last_text_target.");
+                }
+
                 var setReceipt = await TypeViaElementAsync(context, window.Hwnd, textElement, target.Text, target.DelayMs, streamCharacters, target.AllowTransientForeground, cancellationToken).ConfigureAwait(false);
                 if (setReceipt.Ok)
                     return ActionToolResult.FromReceipt(setReceipt, "uia.last_text_target.");
