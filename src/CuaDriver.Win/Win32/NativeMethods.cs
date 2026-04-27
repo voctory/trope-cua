@@ -395,7 +395,24 @@ internal struct INPUT
 internal struct INPUTUNION
 {
     [FieldOffset(0)]
+    public MOUSEINPUT Mouse;
+
+    [FieldOffset(0)]
     public KEYBDINPUT Keyboard;
+
+    [FieldOffset(0)]
+    public HARDWAREINPUT Hardware;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct MOUSEINPUT
+{
+    public int Dx;
+    public int Dy;
+    public uint MouseData;
+    public uint Flags;
+    public uint Time;
+    public IntPtr ExtraInfo;
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -406,4 +423,12 @@ internal struct KEYBDINPUT
     public uint Flags;
     public uint Time;
     public IntPtr ExtraInfo;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct HARDWAREINPUT
+{
+    public uint Msg;
+    public ushort ParamL;
+    public ushort ParamH;
 }
