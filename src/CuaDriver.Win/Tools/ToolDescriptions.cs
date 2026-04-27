@@ -38,6 +38,8 @@ internal static class ToolDescriptions
 
         - x and y are window-local screenshot pixels, top-left origin, in the same pixel space as get_window_state returned. Use this for canvas, WebGL, custom surfaces, or when there is no useful element_index. The driver maps resized screenshot pixels back to native window pixels internally. count: 2 posts a double-click. modifier/modifiers holds ctrl, shift, alt/option, or win/cmd during the pixel click.
 
+        allow_transient_foreground=true is an explicit unsafe override for native or browser UIA controls with no verified background route. It may briefly foreground/focus the target and attempts to restore the previous cursor and foreground afterward. Treat any receipt with background_safe=false, foreground_changed=true, or cursor_moved=true as not background-safe even when ok=true.
+
         Agent rule: after get_window_state exposes an element_index, use it instead of approximating a pixel click. Pixel clicks are for surfaces that do not expose a useful UIA element. Exactly one of element_index or (x and y) must be provided. window_id is required for element_index and recommended for pixel clicks. action is only valid with element_index; count and modifier only affect the pixel route. For Chromium web content, provide cdp_port or configure chromium_debugging_port; blind browser PostMessage clicks are refused to avoid reporting an unsafe foreground-only route as success.
         """;
 
@@ -78,11 +80,13 @@ internal static class ToolDescriptions
 
         delay_ms spaces streamed text chunks so autocomplete and reactive inputs can keep up. Default is 30 ms. Pass delay_ms=0 for the old instant/bulk behavior. For an explicitly atomic write, use set_value.
 
+        allow_transient_foreground=true is an explicit unsafe override for native text controls with no verified background route. It may briefly foreground/focus the target and attempts to restore the previous cursor and foreground afterward. Treat any receipt with background_safe=false, foreground_changed=true, or cursor_moved=true as not background-safe even when ok=true.
+
         Agent rule: use element_index when filling a known field. Do not click the page and then blindly type unless the receipt proves a background-safe text target was established. Special keys such as Return, Escape, arrows, and shortcuts go through press_key or hotkey, not type_text.
         """;
 
     public const string TypeTextChars = """
-        Compatibility surface for type_text. It accepts the same pid, window_id, element_index, text, and cdp_port arguments and routes through the same background-safe text insertion logic.
+        Compatibility surface for type_text. It accepts the same pid, window_id, element_index, text, cdp_port, and allow_transient_foreground arguments and routes through the same background-safe text insertion logic.
 
         delay_ms spaces character delivery. Default is 30 ms, clamped to 0-200. Pass delay_ms=0 when an instant/bulk write is explicitly desired.
 
@@ -94,7 +98,9 @@ internal static class ToolDescriptions
 
         Optional element_index + window_id from the last get_window_state snapshot targets that element's native HWND when available, falling back to the root target window. This preserves control-specific key routing while avoiding parent-session SendInput.
 
-        Agent rule: pass window_id whenever possible and prefer element_index when targeting a specific control. Do not use keys as a fallback to foreground-only typing. Key vocabulary: enter/return, tab, escape/esc, arrows, space, backspace, delete, home, end, pageup, pagedown, f1-f24, plus any letter or digit. modifiers can hold ctrl, shift, alt/option, or win/cmd. For true key combinations such as ctrl+c, use hotkey.
+        For Chromium browser content, press_key uses cdp_port/configured chromium_debugging_port when available because posted HWND key messages can report success without reaching the web page. allow_transient_foreground=true is an explicit unsafe fallback that temporarily foregrounds the browser and injects keyboard input, then attempts to restore foreground. Treat any receipt with background_safe=false, foreground_changed=true, or cursor_moved=true as not background-safe even when ok=true.
+
+        Agent rule: pass window_id whenever possible and prefer element_index when targeting a specific control. Do not use keys as a fallback to foreground-only typing unless allow_transient_foreground=true was explicitly chosen for that unsafe route. Key vocabulary: enter/return, tab, escape/esc, arrows, space, backspace, delete, home, end, pageup, pagedown, f1-f24, plus any letter or digit. modifiers can hold ctrl, shift, alt/option, or win/cmd. For true key combinations such as ctrl+c, use hotkey.
         """;
 
     public const string Hotkey = """
@@ -139,6 +145,8 @@ internal static class ToolDescriptions
 
     public const string SetValue = """
         Directly set a UIA element's value. Use element_index + window_id from the last get_window_state snapshot for controls that expose a settable ValuePattern or RangeValuePattern, such as text fields, sliders, steppers, and editable combo boxes.
+
+        allow_transient_foreground=true is an explicit unsafe override for native controls with no verified background route. It may briefly foreground/focus the target and attempts to restore the previous cursor and foreground afterward. Treat any receipt with background_safe=false, foreground_changed=true, or cursor_moved=true as not background-safe even when ok=true.
 
         For free-form text entry where cursor position matters, prefer type_text. set_value replaces or sets the element value directly.
         """;
