@@ -17,7 +17,7 @@ The lane is guarded by before/after cursor and foreground checks.
 
 ## Lane B: AppBroadcast/InputInjector lane
 
-This is the closest Microsoft-shaped process-bounded input lane. It is not enabled in the default project because it requires restricted Microsoft capabilities. See `docs/appbroadcast-inputinjector.md` and `src/CuaDriver.Win/Automation/AppBroadcastInputInjector.cs`.
+This is the closest Microsoft-shaped process-bounded input lane. It is not enabled in the default project because it requires restricted Microsoft capabilities. See `docs/appbroadcast-inputinjector.md` and `src/CuaDriver.Win/HardCases/AppBroadcastInputInjector.cs`.
 
 ## Lane C: child-session / Picture-in-Picture lane
 

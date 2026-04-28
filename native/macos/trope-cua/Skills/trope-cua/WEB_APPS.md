@@ -21,7 +21,7 @@ These apps share two traits that drive the rest of this file:
 ## Sparse AX trees — populate on first snapshot
 
 Chromium and Electron apps ship with their web accessibility tree
-disabled by default. CuaDriver flips it on automatically the first
+disabled by default. Trope CUA flips it on automatically the first
 time you snapshot such an app — the first `get_window_state` call for
 that pid takes up to ~500 ms while Chromium builds the tree,
 subsequent calls are fast. Because `launch_app` runs hidden, the

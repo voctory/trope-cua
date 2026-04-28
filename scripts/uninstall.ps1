@@ -5,7 +5,7 @@ param(
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "install-common.ps1")
 
-Stop-CuaDriverProcessesForInstallDir -InstallDir $InstallDir
+Stop-TropeCuaProcessesForInstallDir -InstallDir $InstallDir
 
 if (Test-Path $InstallDir) {
   Remove-Item -Recurse -Force $InstallDir

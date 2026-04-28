@@ -10,13 +10,13 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "install-common.ps1")
 if ([string]::IsNullOrWhiteSpace($Runtime)) {
-  $Runtime = Get-CuaDriverDefaultRuntime
+  $Runtime = Get-TropeCuaDefaultRuntime
 }
 $InstallSelfContained = $SelfContained -or -not $FrameworkDependent
 & (Join-Path $PSScriptRoot "build.ps1") -Configuration $Configuration -Runtime $Runtime -SelfContained:$InstallSelfContained
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-Stop-CuaDriverProcessesForInstallDir -InstallDir $InstallDir
+Stop-TropeCuaProcessesForInstallDir -InstallDir $InstallDir
 
 Copy-Item -Recurse -Force (Join-Path $Root "artifacts\publish\*") $InstallDir
 

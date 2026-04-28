@@ -1,13 +1,13 @@
 # Contributing
 
-Thanks for contributing to `cua-driver-win`.
+Thanks for contributing to `trope-cua`.
 
 By contributing, you agree that your contributions are licensed under the MIT
 License in this repository.
 
 ## Development
 
-- Build with `dotnet build cua-driver-win.sln`.
+- Build with `dotnet build trope-cua.sln`.
 - Run formatting checks with `dotnet format --verify-no-changes --no-restore --verbosity minimal`.
 - Run integration tests with `scripts\run-tests.ps1`.
 - Keep changes small and focused. Avoid mixing behavior changes with broad
@@ -25,7 +25,6 @@ Refuse unsafe fallbacks instead of reporting unverified delivery as success.
 
 ## Attribution
 
-This project acknowledges `trycua/cua` as a design reference, but does not
-include upstream source code from that repository. Add file-level notices and
-preserve upstream license text before copying substantial source from upstream
-projects.
+This project includes MIT-licensed macOS driver code from `trycua/cua`; see
+`NOTICE` for attribution. Add file-level notices and preserve upstream license
+text before copying substantial source from upstream projects.

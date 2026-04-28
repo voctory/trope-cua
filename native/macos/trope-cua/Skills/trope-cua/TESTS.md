@@ -97,7 +97,7 @@ backgrounded throughout, and Claude uses the canonical
 
 ## Chromium / Electron targets
 
-These are where CuaDriver's AX-activation trio matters:
+These are where Trope CUA's AX-activation trio matters:
 `AXManualAccessibility` + `AXEnhancedUserInterface` + `AXObserver`.
 
 ### 7. VS Code — command palette

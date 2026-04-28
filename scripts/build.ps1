@@ -8,14 +8,14 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "install-common.ps1")
 if ([string]::IsNullOrWhiteSpace($Runtime)) {
-  $Runtime = Get-CuaDriverDefaultRuntime
+  $Runtime = Get-TropeCuaDefaultRuntime
 }
 $DotnetCliHome = Join-Path $Root "artifacts\.dotnet-cli-home"
 New-Item -ItemType Directory -Force -Path $DotnetCliHome | Out-Null
 $env:DOTNET_CLI_HOME = $DotnetCliHome
 $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = "1"
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = "1"
-$Dotnet = Resolve-CuaDriverDotnet -Root $Root
+$Dotnet = Resolve-TropeCuaDotnet -Root $Root
 $Project = Join-Path $Root "src\CuaDriver.Win\CuaDriver.Win.csproj"
 $Out = Join-Path $Root "artifacts\publish"
 

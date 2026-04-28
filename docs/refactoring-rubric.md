@@ -8,7 +8,8 @@ Use this document as a working rubric. It is not a style checklist for its own s
 
 Observed starting point:
 
-- One production project: `src/CuaDriver.Win/CuaDriver.Win.csproj`.
+- One Windows production project: `src/CuaDriver.Win/CuaDriver.Win.csproj`.
+- One macOS Swift package: `native/macos/trope-cua`.
 - Current target: `net10.0-windows10.0.19041.0`.
 - Nullable, implicit usings, analyzers, warnings-as-errors, and locked restore are enforced through `Directory.Build.props`.
 - Central package management is enabled through `Directory.Packages.props`; there are currently no direct NuGet package dependencies.

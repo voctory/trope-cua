@@ -2,13 +2,13 @@ Trope CUA acknowledgements
 
 Copyright (c) 2026 Victor Vannara
 
-This project includes code from the Cua Driver Mac implementation in:
+This project includes code from the macOS implementation in:
 
   https://github.com/trycua/cua
 
 The imported macOS native driver code is located under:
 
-  native/macos/cua-driver
+  native/macos/trope-cua
 
 The upstream project is released under the MIT License:
 

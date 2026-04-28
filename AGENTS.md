@@ -1,6 +1,6 @@
 # Repository Guidelines
 
-This repo is the Windows CUA driver: a .NET MCP/server driver for background-safe UI automation, target-window capture, and the visual agent cursor overlay.
+This repo is Trope CUA: native MCP/server drivers for background-safe UI automation, target-window capture, and the visual agent cursor overlay on Windows and macOS.
 
 ## Collaboration & Git Safety
 
@@ -21,17 +21,18 @@ This repo is the Windows CUA driver: a .NET MCP/server driver for background-saf
 - `src/CuaDriver.Win/Capture/`: target-window screenshot/capture code.
 - `src/CuaDriver.Win/HardCases/`: child-session/AppBroadcast scaffolding and probes.
 - `tests/integration/`: pytest integration checks against the built executable.
+- `native/macos/trope-cua/`: Swift macOS driver, app bundle, CLI, skills, and macOS integration tests.
 - `docs/`: design, safety, capture, and hard-case implementation notes.
 - `scripts/`: build, install, uninstall, and test scripts.
 
 ## Quick Commands
 
-- Build: `dotnet build cua-driver-win.sln`
+- Build: `dotnet build trope-cua.sln`
 - Publish: `scripts\build.ps1`
 - Publish self-contained: `scripts\build.ps1 -SelfContained`
 - Run tests: `scripts\run-tests.ps1`
 - Install user-level MCP binary: `scripts\install.ps1 -SelfContained`
-- Start daemon: `%LOCALAPPDATA%\Programs\CuaDriverWin\cua-driver-win.exe serve`
+- Start daemon: `%LOCALAPPDATA%\Programs\TropeCUA\trope-cua.exe serve`
 
 ## Engineering Guidelines
 
@@ -46,7 +47,7 @@ This repo is the Windows CUA driver: a .NET MCP/server driver for background-saf
 
 ## Testing Guidelines
 
-- For driver/tool changes, run `dotnet build cua-driver-win.sln` while iterating.
+- For Windows driver/tool changes, run `dotnet build trope-cua.sln` while iterating.
 - Before committing runtime changes, run `scripts\run-tests.ps1`.
 - For install/runtime behavior changes, reinstall with `scripts\install.ps1 -SelfContained` and restart the installed daemon before reporting the result.
 - Pair bug fixes with targeted regression coverage when the repo has a practical seam for it.

@@ -1,4 +1,4 @@
-function Get-CuaDriverConfigDirectory {
+function Get-TropeCuaConfigDirectory {
   if ([string]::IsNullOrWhiteSpace($env:TROPE_CUA_CONFIG_DIR)) {
     return Join-Path $env:LOCALAPPDATA "trope-cua"
   }
@@ -6,7 +6,7 @@ function Get-CuaDriverConfigDirectory {
   return [System.IO.Path]::GetFullPath($env:TROPE_CUA_CONFIG_DIR)
 }
 
-function Get-CuaDriverDefaultRuntime {
+function Get-TropeCuaDefaultRuntime {
   $architecture = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture
   if ($null -eq $architecture) {
     $architecture = [System.Runtime.InteropServices.Architecture]::X64
@@ -15,7 +15,7 @@ function Get-CuaDriverDefaultRuntime {
   return "win-$($architecture.ToString().ToLowerInvariant())"
 }
 
-function Get-CuaDriverRequiredSdkVersion {
+function Get-TropeCuaRequiredSdkVersion {
   param(
     [string]$Root
   )
@@ -28,7 +28,7 @@ function Get-CuaDriverRequiredSdkVersion {
   return (Get-Content -LiteralPath $GlobalJson -Raw | ConvertFrom-Json).sdk.version
 }
 
-function Test-CuaDriverDotnetHasSdk {
+function Test-TropeCuaDotnetHasSdk {
   param(
     [string]$DotnetPath,
     [string]$SdkVersion
@@ -48,12 +48,12 @@ function Test-CuaDriverDotnetHasSdk {
   return [bool]($installedSdks | Where-Object { $_ -match "^$([regex]::Escape($SdkVersion))\s+\[" } | Select-Object -First 1)
 }
 
-function Resolve-CuaDriverDotnet {
+function Resolve-TropeCuaDotnet {
   param(
     [string]$Root
   )
 
-  $requestedSdk = Get-CuaDriverRequiredSdkVersion -Root $Root
+  $requestedSdk = Get-TropeCuaRequiredSdkVersion -Root $Root
   if ([string]::IsNullOrWhiteSpace($requestedSdk)) {
     return "dotnet"
   }
@@ -68,7 +68,7 @@ function Resolve-CuaDriverDotnet {
   $candidates += "dotnet"
 
   foreach ($candidate in ($candidates | Select-Object -Unique)) {
-    if (Test-CuaDriverDotnetHasSdk -DotnetPath $candidate -SdkVersion $requestedSdk) {
+    if (Test-TropeCuaDotnetHasSdk -DotnetPath $candidate -SdkVersion $requestedSdk) {
       return $candidate
     }
   }
@@ -78,7 +78,7 @@ function Resolve-CuaDriverDotnet {
   throw "Required .NET SDK $requestedSdk is not available to dotnet. Install it, add its dotnet.exe to PATH, set DOTNET_ROOT, or update $GlobalJson. Installed SDKs on PATH: $($installedSdks -join '; ')"
 }
 
-function Test-CuaDriverPathUnderDirectory {
+function Test-TropeCuaPathUnderDirectory {
   param(
     [string]$Path,
     [string]$Directory
@@ -97,20 +97,20 @@ function Test-CuaDriverPathUnderDirectory {
   }
 }
 
-function Stop-CuaDriverProcessesForInstallDir {
+function Stop-TropeCuaProcessesForInstallDir {
   param(
     [string]$InstallDir
   )
 
   $InstallRoot = [System.IO.Path]::GetFullPath($InstallDir)
   $InstalledExe = Join-Path $InstallRoot "trope-cua.exe"
-  $RegistryDir = Join-Path (Get-CuaDriverConfigDirectory) "daemons"
+  $RegistryDir = Join-Path (Get-TropeCuaConfigDirectory) "daemons"
 
   if ((Test-Path $InstalledExe) -and (Test-Path $RegistryDir)) {
     Get-ChildItem -LiteralPath $RegistryDir -Filter "*.json" -ErrorAction SilentlyContinue | ForEach-Object {
       try {
         $record = Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json
-        if (Test-CuaDriverPathUnderDirectory -Path $record.exePath -Directory $InstallRoot) {
+        if (Test-TropeCuaPathUnderDirectory -Path $record.exePath -Directory $InstallRoot) {
           & $InstalledExe daemon-stop --instance $record.instanceId *> $null
         }
       } catch {
@@ -119,6 +119,6 @@ function Stop-CuaDriverProcessesForInstallDir {
   }
 
   Get-Process trope-cua -ErrorAction SilentlyContinue |
-    Where-Object { $_.Path -and (Test-CuaDriverPathUnderDirectory -Path $_.Path -Directory $InstallRoot) } |
+    Where-Object { $_.Path -and (Test-TropeCuaPathUnderDirectory -Path $_.Path -Directory $InstallRoot) } |
     Stop-Process -Force
 }

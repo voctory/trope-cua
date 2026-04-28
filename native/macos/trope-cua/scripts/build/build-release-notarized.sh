@@ -78,7 +78,7 @@ cp -f .build/release/trope-cua "$APP_BUNDLE/Contents/MacOS/trope-cua"
 # Stamp and copy Info.plist — the source plist ships with a static
 # `CFBundleShortVersionString` for dev builds; substitute the release
 # version on the way into the bundle so dev state is left untouched.
-sed "s/<string>0.0.1<\/string>/<string>$VERSION<\/string>/" "./App/CuaDriver/Info.plist" > "$APP_BUNDLE/Contents/Info.plist"
+sed "s/<string>0.0.1<\/string>/<string>$VERSION<\/string>/" "./App/TropeCUA/Info.plist" > "$APP_BUNDLE/Contents/Info.plist"
 
 # Claude Code skill pack. install.sh symlinks ~/.claude/skills/trope-cua
 # into this bundle path when a Claude Code install is detected. Ship
@@ -104,7 +104,7 @@ fi
 # Sign the .app bundle
 log "essential" "Signing .app bundle with Developer ID..."
 codesign --force --options runtime --timestamp \
-         --entitlements ./scripts/CuaDriver.entitlements \
+         --entitlements ./scripts/TropeCUA.entitlements \
          --sign "$CERT_APPLICATION_NAME" \
          --keychain "$KEYCHAIN_PATH" \
          "$APP_BUNDLE"

@@ -23,19 +23,19 @@ BUILD_BIN=".build/$CONFIG/trope-cua"
 APP_BUNDLE=".build/TropeCUA.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
-ENTITLEMENTS="scripts/CuaDriver.entitlements"
+ENTITLEMENTS="scripts/TropeCUA.entitlements"
 
 rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_MACOS"
 mkdir -p "$APP_CONTENTS/Resources"
 cp "$BUILD_BIN" "$APP_MACOS/trope-cua"
-cp App/CuaDriver/Info.plist "$APP_CONTENTS/Info.plist"
+cp App/TropeCUA/Info.plist "$APP_CONTENTS/Info.plist"
 # App icon — Info.plist references `AppIcon`, which macOS looks up
 # at `Contents/Resources/AppIcon.icns`. Regenerate from the .iconset
-# with `iconutil -c icns App/CuaDriver/AppIcon.iconset -o
-# App/CuaDriver/AppIcon.icns` when the source PNGs change.
-if [[ -f "App/CuaDriver/AppIcon.icns" ]]; then
-    cp App/CuaDriver/AppIcon.icns "$APP_CONTENTS/Resources/AppIcon.icns"
+# with `iconutil -c icns App/TropeCUA/AppIcon.iconset -o
+# App/TropeCUA/AppIcon.icns` when the source PNGs change.
+if [[ -f "App/TropeCUA/AppIcon.icns" ]]; then
+    cp App/TropeCUA/AppIcon.icns "$APP_CONTENTS/Resources/AppIcon.icns"
 fi
 
 # Claude Code skill pack. install.sh symlinks ~/.claude/skills/trope-cua
