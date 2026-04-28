@@ -53,6 +53,8 @@ def test_mcp_initialize_includes_background_agent_instructions():
     assert "background-safe" in instructions
     assert "list_windows" in instructions
     assert "get_window_state" in instructions
+    assert "capture_mode=ax" in instructions
+    assert "capture_mode=som" in instructions
     assert "Browser text workflow" in instructions
     assert "Do not launch a separate debugging-profile browser" in instructions
     assert "browser_eval with a user-gesture navigation expression" in instructions

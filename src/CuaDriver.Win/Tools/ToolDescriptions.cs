@@ -5,7 +5,7 @@ internal static class ToolDescriptions
     public const string AgentInstructions = """
         Trope CUA is a background-safe Windows computer-use driver. Treat receipts as authoritative: a safe action reports background_safe=true, cursor_moved=false, and foreground_changed=false.
 
-        Workflow: call list_windows, choose an explicit pid/window_id, then call get_window_state for that exact pair. Prefer element_index actions from the latest snapshot. Use pixels only for canvas/custom surfaces or when no useful element exists.
+        Workflow: call list_windows, choose an explicit pid/window_id, then call get_window_state for that exact pair. Use capture_mode=ax for cheap UIA refreshes and capture_mode=som only when pixels are needed. Prefer element_index actions from the latest snapshot. Use pixels only for canvas/custom surfaces or when no useful element exists.
 
         If a route refuses with requires_cdp, requires_child_session, requires_appbroadcast, or requires_background_launch_lane, switch lanes or report the blocker. Do not bypass refusals with blind parent-session input, allow_parent_sendinput, or allow_parent_cursor.
 
