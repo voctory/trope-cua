@@ -10,7 +10,7 @@ The Windows implementation lives at the repository root. The macOS Swift impleme
 
 ## Install From Source
 
-Binary release artifacts are not published yet. Clone the repository, or download a GitHub-generated source archive from the [releases page](https://github.com/voctory/trope-cua/releases), then run the installer script locally.
+Trope CUA is distributed as source. Clone the repository, or download a GitHub-generated source archive from the [releases page](https://github.com/voctory/trope-cua/releases), then run the installer script locally.
 
 Windows requirements:
 
@@ -87,7 +87,7 @@ Mutating actions return receipts. Treat an action as background-safe only when a
 - Not every app exposes a safe UIA/MSAA route.
 - Chromium and Electron parallel work need separate profiles and CDP ports for true isolation.
 - Games, DirectX, Unity, Unreal, raw-input surfaces, and many canvas-heavy apps need child-session or AppBroadcast-style isolation.
-- Binary release artifacts are not published yet; install from source.
+- Trope CUA is distributed as source; install from the repository or GitHub source archive.
 
 Read the full [known limits](docs/limits.md) before giving an agent authority over authenticated apps.
 
