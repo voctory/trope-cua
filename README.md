@@ -64,4 +64,4 @@ Trope CUA is released under the MIT License. See [LICENSE](LICENSE) and [NOTICE]
 
 ## Trademarks
 
-Apple, macOS, Microsoft, Windows, Ubuntu, Canonical, OpenAI, Anthropic, Claude, Cua, and other referenced names are trademarks or registered trademarks of their respective owners. This project is not affiliated with or endorsed by those companies or projects.
+Apple, macOS, Microsoft, Windows, OpenAI, Anthropic, Claude, Cua, and other referenced names are trademarks or registered trademarks of their respective owners. This project is not affiliated with or endorsed by those companies or projects.
