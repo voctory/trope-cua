@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Windows;
 using System.Windows.Automation;
@@ -7,6 +8,8 @@ namespace CuaDriver.Win.Uia;
 
 internal sealed class UiAutomationTree
 {
+    private const int RawHarvestElementThreshold = 20;
+
     private readonly object _gate = new();
     private readonly Dictionary<(int Pid, long WindowId), SessionState> _sessions = new();
     private int _nextTurnId;
@@ -22,16 +25,27 @@ internal sealed class UiAutomationTree
         var elements = new Dictionary<int, AutomationElement>();
         var infos = new List<UiElementInfo>();
         var sb = new StringBuilder();
+        var metrics = new SnapshotMetricsBuilder();
+        var stopwatch = Stopwatch.StartNew();
 
         var turnId = Interlocked.Increment(ref _nextTurnId);
-        Walk(root, root, windowId, pid, 0, 0, elements, infos, sb);
-        HarvestRawElements(root, pid, elements, infos, sb);
+        Walk(root, root, windowId, pid, 0, 0, elements, infos, sb, metrics);
+        if (elements.Count < RawHarvestElementThreshold)
+            HarvestRawElements(root, pid, elements, infos, sb, metrics);
 
         var markdown = sb.ToString().TrimEnd();
         if (!string.IsNullOrWhiteSpace(query))
             markdown = UiTreeMarkdown.Filter(markdown, query!);
 
-        var snapshot = new UiSnapshot(pid, windowId, turnId, markdown, elements.Count, infos);
+        stopwatch.Stop();
+        var snapshot = new UiSnapshot(
+            pid,
+            windowId,
+            turnId,
+            markdown,
+            elements.Count,
+            infos,
+            metrics.Build(stopwatch.ElapsedMilliseconds, markdown.Length));
         lock (_gate)
         {
             _sessions[(pid, windowId)] = new SessionState(turnId, elements, snapshot);
@@ -196,11 +210,13 @@ internal sealed class UiAutomationTree
         int siblingOrdinal,
         Dictionary<int, AutomationElement> cache,
         List<UiElementInfo> infos,
-        StringBuilder sb)
+        StringBuilder sb,
+        SnapshotMetricsBuilder metrics)
     {
         if (depth > 25)
             return;
 
+        metrics.ControlViewVisited++;
         UiElementInfo? info = null;
         try
         {
@@ -231,7 +247,7 @@ internal sealed class UiAutomationTree
         var ordinal = 0;
         while (child is not null && ordinal < 500)
         {
-            Walk(child, root, windowId, pid, depth + 1, ordinal, cache, infos, sb);
+            Walk(child, root, windowId, pid, depth + 1, ordinal, cache, infos, sb, metrics);
             try { child = walker.GetNextSibling(child); }
             catch { break; }
             ordinal++;
@@ -243,8 +259,10 @@ internal sealed class UiAutomationTree
         int pid,
         Dictionary<int, AutomationElement> cache,
         List<UiElementInfo> infos,
-        StringBuilder sb)
+        StringBuilder sb,
+        SnapshotMetricsBuilder metrics)
     {
+        metrics.RawHarvested = true;
         var rootRect = Safe(() => root.Current.BoundingRectangle);
         if (rootRect.IsEmpty)
             return;
@@ -265,6 +283,7 @@ internal sealed class UiAutomationTree
             var indexedInfo = info with { ElementIndex = cache.Count };
             cache[indexedInfo.ElementIndex] = element;
             infos.Add(indexedInfo);
+            metrics.RawElementsAdded++;
             UiTreeMarkdown.AppendElement(sb, indexedInfo, 2, actionable: true);
         }
 
@@ -305,6 +324,7 @@ internal sealed class UiAutomationTree
             while (child is not null && ordinal < 1000 && visited < 5000 && discovered.Count < 500)
             {
                 visited++;
+                metrics.RawViewVisited++;
                 TryRecord(child);
                 VisitRawChildren(child, depth + 1);
 
@@ -352,16 +372,19 @@ internal sealed class UiAutomationTree
     {
         var current = element.Current;
         var rect = Safe(() => current.BoundingRectangle);
-        var patterns = Safe(() => element.GetSupportedPatterns().Select(PatternName).Distinct().OrderBy(x => x).ToArray()) ?? [];
 
         var processId = Safe(() => current.ProcessId);
         var nativeWindowHandle = Safe(() => current.NativeWindowHandle);
         var localizedType = Safe(() => current.LocalizedControlType);
         var programmaticType = Safe(() => current.ControlType.ProgrammaticName);
+        var controlType = string.IsNullOrWhiteSpace(localizedType) ? (programmaticType ?? "element") : localizedType!;
+        var patterns = UiElementClassifier.ShouldReadPatterns(controlType)
+            ? (Safe(() => element.GetSupportedPatterns().Select(PatternName).Distinct().OrderBy(x => x).ToArray()) ?? [])
+            : [];
 
         return new UiElementInfo(
             proposedIndex,
-            string.IsNullOrWhiteSpace(localizedType) ? (programmaticType ?? "element") : localizedType!,
+            controlType,
             Safe(() => current.Name) ?? "",
             Safe(() => current.AutomationId) ?? "",
             Safe(() => current.ClassName) ?? "",
@@ -421,5 +444,21 @@ internal sealed class UiAutomationTree
     {
         try { return f(); }
         catch { return default; }
+    }
+
+    private sealed class SnapshotMetricsBuilder
+    {
+        public int ControlViewVisited { get; set; }
+        public int RawViewVisited { get; set; }
+        public int RawElementsAdded { get; set; }
+        public bool RawHarvested { get; set; }
+
+        public UiSnapshotMetrics Build(long elapsedMs, int markdownChars) => new(
+            elapsedMs,
+            ControlViewVisited,
+            RawViewVisited,
+            RawElementsAdded,
+            RawHarvested,
+            markdownChars);
     }
 }

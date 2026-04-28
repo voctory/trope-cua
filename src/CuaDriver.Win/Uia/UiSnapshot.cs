@@ -6,4 +6,13 @@ internal sealed record UiSnapshot(
     int TurnId,
     string TreeMarkdown,
     int ElementCount,
-    IReadOnlyList<UiElementInfo> Elements);
+    IReadOnlyList<UiElementInfo> Elements,
+    UiSnapshotMetrics Metrics);
+
+internal sealed record UiSnapshotMetrics(
+    long ElapsedMs,
+    int ControlViewVisited,
+    int RawViewVisited,
+    int RawElementsAdded,
+    bool RawHarvested,
+    int MarkdownChars);

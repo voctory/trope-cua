@@ -7,7 +7,25 @@ internal static class UiElementClassifier
         if (info.Patterns.Count > 0)
             return true;
 
-        var type = info.ControlType.ToLowerInvariant();
+        return IsLikelyActionableControlType(info.ControlType);
+    }
+
+    public static bool IsLikelyActionableControlType(string controlType) =>
+        IsLikelyActionableControlTypeCore(controlType.ToLowerInvariant());
+
+    public static bool ShouldReadPatterns(string controlType)
+    {
+        var type = controlType.ToLowerInvariant();
+        return IsLikelyActionableControlTypeCore(type)
+               || type.Contains("check box")
+               || type.Contains("radio button")
+               || type.Contains("split button")
+               || type.Contains("data item")
+               || type.Contains("custom");
+    }
+
+    private static bool IsLikelyActionableControlTypeCore(string type)
+    {
         return type.Contains("button")
                || type.Contains("edit")
                || type.Contains("hyperlink")

@@ -9,23 +9,17 @@ internal static class UiTreeMarkdown
         var indent = new string(' ', depth * 2);
         var indexText = actionable ? $"[element_index {info.ElementIndex}] " : "";
         var name = string.IsNullOrWhiteSpace(info.Name) ? "" : $" \"{Escape(info.Name)}\"";
-        var autoId = string.IsNullOrWhiteSpace(info.AutomationId) ? "" : $" automation_id={Escape(info.AutomationId)}";
-        var cls = string.IsNullOrWhiteSpace(info.ClassName) ? "" : $" class={Escape(info.ClassName)}";
-        var patterns = info.Patterns.Count == 0 ? "" : $" patterns={string.Join(",", info.Patterns)}";
-        var enabled = info.IsEnabled ? "enabled" : "disabled";
+        var id = string.IsNullOrWhiteSpace(info.AutomationId) ? "" : $" id={Escape(info.AutomationId)}";
+        var disabled = actionable && !info.IsEnabled ? " disabled" : "";
         var offscreen = info.IsOffscreen ? " offscreen" : "";
         sb.Append(indent)
           .Append("- ")
           .Append(indexText)
           .Append(info.ControlType)
           .Append(name)
-          .Append(' ')
-          .Append(enabled)
+          .Append(id)
+          .Append(disabled)
           .Append(offscreen)
-          .Append(" bounds=(").Append(info.Bounds.X).Append(',').Append(info.Bounds.Y).Append(',').Append(info.Bounds.Width).Append(',').Append(info.Bounds.Height).Append(')')
-          .Append(autoId)
-          .Append(cls)
-          .Append(patterns)
           .AppendLine();
     }
 

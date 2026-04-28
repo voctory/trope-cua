@@ -47,6 +47,16 @@ internal static class ToolJson
         ["patterns"] = Array(element.Patterns)
     };
 
+    public static JsonObject UiSnapshotMetrics(UiSnapshotMetrics metrics) => new()
+    {
+        ["elapsed_ms"] = metrics.ElapsedMs,
+        ["control_view_visited"] = metrics.ControlViewVisited,
+        ["raw_view_visited"] = metrics.RawViewVisited,
+        ["raw_elements_added"] = metrics.RawElementsAdded,
+        ["raw_harvested"] = metrics.RawHarvested,
+        ["markdown_chars"] = metrics.MarkdownChars
+    };
+
     public static JsonObject Rect(RectDto rect) => new()
     {
         ["x"] = rect.X,

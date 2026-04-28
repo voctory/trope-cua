@@ -75,7 +75,7 @@ internal sealed class GetWindowStateTool : IDriverTool
                     ["turn_id"] = snapshot.TurnId,
                     ["element_count"] = snapshot.ElementCount,
                     ["tree_markdown"] = snapshot.TreeMarkdown,
-                    ["elements"] = ToolJson.Array(snapshot.Elements, ToolJson.Element)
+                    ["metrics"] = ToolJson.UiSnapshotMetrics(snapshot.Metrics)
                 };
                 sb.AppendLine(CultureInfo.InvariantCulture, $"{ToolText.OkPrefix}{window.AppName} — {snapshot.ElementCount} elements, turn {snapshot.TurnId} [uia/{mode.ToString().ToLowerInvariant()} mode]");
                 if (snapshot.ElementCount <= 15)
