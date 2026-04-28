@@ -137,6 +137,8 @@ Supported keys:
 
 Use `get_config` to inspect the current values.
 
+`max_image_dimension` defaults to `1024` for lower per-turn image payloads. Raise it when the screenshot needs more detail, then use `zoom` for localized inspection.
+
 ## Parallel cursor palettes
 
 Plain MCP sessions without an explicit instance id claim a runtime identity and a palette. The first live session uses `default_blue`; later sessions rotate through:

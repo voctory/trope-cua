@@ -27,7 +27,7 @@ internal sealed record DriverConfig
     public CaptureMode CaptureMode { get; init; } = CaptureMode.Som;
 
     [JsonPropertyName("max_image_dimension")]
-    public int MaxImageDimension { get; init; } = 1568;
+    public int MaxImageDimension { get; init; } = 1024;
 
     [JsonPropertyName("chromium_debugging_port")]
     public int? ChromiumDebuggingPort { get; init; }

@@ -11,7 +11,7 @@ internal sealed record CapturedImage(byte[] Data, int Width, int Height, int Ori
 
 internal static class WindowCapture
 {
-    public static CapturedImage Capture(IntPtr hwnd, int maxImageDimension, long quality = 85, string format = "jpeg")
+    public static CapturedImage Capture(IntPtr hwnd, int maxImageDimension, long quality = 75, string format = "jpeg")
     {
         var rect = NativeMethods.GetBestWindowRect(hwnd);
         if (rect.IsEmpty)

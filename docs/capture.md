@@ -10,6 +10,8 @@ Production capture path:
 4. Request borderless capture when permitted and set `IsBorderRequired = false`.
 5. Copy the frame to an encoded JPEG/PNG.
 
+`get_window_state` uses JPEG for window screenshots and defaults to a 1024px longest side so MCP turns stay reasonably small. Increase `max_image_dimension` when a task needs more global detail; use `zoom` for local detail.
+
 Why this is a seam in this source drop:
 
 - The implementation requires Windows-only WinRT/D3D interop packages and target-machine validation.
