@@ -91,7 +91,7 @@ internal static class ToolDescriptions
     public const string ListApps = """
         List installed and running Windows apps with process identity when available.
 
-        Use this for app discovery ("is X installed or running?"). For window-level reasoning such as which window to inspect, whether a window is minimized, where it is on screen, or which HWND to pass as window_id, call list_windows. list_apps is not a prerequisite for launch_app when you already know a path or executable name.
+        Use query to search installed apps. Default output is compact: running apps plus a small installed sample. Pass verbose=true only when every matched app and expanded fields are needed. For window-level reasoning and window_id, call list_windows.
         """;
 
     public const string ListWindows = """
