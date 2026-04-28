@@ -8,12 +8,12 @@ namespace CuaDriver.Win.Browser;
 internal sealed class BrowserAutomationLease : IDisposable
 {
     private static readonly TimeSpan DefaultWait = TimeSpan.FromMilliseconds(250);
-    private readonly Mutex _mutex;
+    private readonly Semaphore _semaphore;
     private bool _owns;
 
-    private BrowserAutomationLease(Mutex mutex)
+    private BrowserAutomationLease(Semaphore semaphore)
     {
-        _mutex = mutex;
+        _semaphore = semaphore;
         _owns = true;
     }
 
@@ -23,21 +23,22 @@ internal sealed class BrowserAutomationLease : IDisposable
         if (cdpPort is not null || !BrowserWindowClassifier.IsLikelyChromium(window))
             return null;
 
-        var mutex = new Mutex(initiallyOwned: false, MutexNameFor(window.Pid));
+        var semaphore = new Semaphore(initialCount: 1, maximumCount: 1, SemaphoreNameFor(window.Pid));
         bool acquired;
         try
         {
-            acquired = mutex.WaitOne(DefaultWait);
+            acquired = semaphore.WaitOne(DefaultWait);
         }
-        catch (AbandonedMutexException)
+        catch
         {
-            acquired = true;
+            semaphore.Dispose();
+            throw;
         }
 
         if (acquired)
-            return new BrowserAutomationLease(mutex);
+            return new BrowserAutomationLease(semaphore);
 
-        mutex.Dispose();
+        semaphore.Dispose();
         contention = ActionReceipt.Failure(
             "browser.chromium_fallback.contended",
             $"Another trope-cua daemon is already driving Chromium accessibility for pid {window.Pid}. Retry this same action up to 3 times after the active action completes. If contention persists or true parallel browser work is required, use an isolated browser profile with its own CDP port or target a different browser process.");
@@ -52,15 +53,15 @@ internal sealed class BrowserAutomationLease : IDisposable
         _owns = false;
         try
         {
-            _mutex.ReleaseMutex();
+            _semaphore.Release();
         }
         finally
         {
-            _mutex.Dispose();
+            _semaphore.Dispose();
         }
     }
 
-    private static string MutexNameFor(int pid) => $@"Local\trope-cua-browser-uia-{UserKey()}-{pid}";
+    private static string SemaphoreNameFor(int pid) => $@"Local\trope-cua-browser-uia-semaphore-{UserKey()}-{pid}";
 
     private static string UserKey()
     {
