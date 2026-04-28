@@ -294,6 +294,7 @@ internal sealed class AgentCursorOverlay
         private long _lastFrameTimestamp = Stopwatch.GetTimestamp();
         private double _heading = RestingHeadingRadians;
         private double _displayHeading = RestingHeadingRadians;
+        private double _lastGlideHeading = RestingHeadingRadians;
         private PlannedCursorPath? _path;
         private long _glideStartedTimestamp;
         private double _glideDurationSeconds;
@@ -384,6 +385,7 @@ internal sealed class AgentCursorOverlay
                 _current = AgentCursorGeometry.VisualPositionForTip(ToLocal(screenX, screenY), DpiScaleForPoint(screenX, screenY));
                 _heading = RestingHeadingRadians;
                 _displayHeading = _heading;
+                _lastGlideHeading = _heading;
                 _hasPosition = true;
             }
 
@@ -441,6 +443,7 @@ internal sealed class AgentCursorOverlay
                 _current = AgentCursorGeometry.InitialPosition(scale);
                 _heading = RestingHeadingRadians;
                 _displayHeading = _heading;
+                _lastGlideHeading = _heading;
                 _hasPosition = true;
             }
             else
@@ -448,6 +451,7 @@ internal sealed class AgentCursorOverlay
                 var visiblePose = RenderPose(scale);
                 _current = visiblePose.Center;
                 _heading = visiblePose.Heading;
+                _lastGlideHeading = _heading;
 
                 var currentTip = AgentCursorGeometry.TipPointFromVisualPosition(_current, scale, _heading);
                 if (Hypot(currentTip.X - targetTip.X, currentTip.Y - targetTip.Y) <= SameTargetTipTolerance * scale)
@@ -456,6 +460,7 @@ internal sealed class AgentCursorOverlay
                     _arrival = arrival;
                     _current = target;
                     _heading = RestingHeadingRadians;
+                    _lastGlideHeading = _heading;
                     _path = null;
                     _glideStartedTimestamp = 0;
                     _glideDurationSeconds = 0;
@@ -495,6 +500,7 @@ internal sealed class AgentCursorOverlay
             {
                 _current = target;
                 _heading = RestingHeadingRadians;
+                _lastGlideHeading = _heading;
                 _isGliding = false;
                 _path = null;
                 _glideStartedTimestamp = 0;
@@ -576,9 +582,9 @@ internal sealed class AgentCursorOverlay
 
                 if (progress >= 1)
                 {
-                    var endState = path.Sample(path.Length);
                     _current = path.TargetPoint;
-                    _heading = path.EndVisualHeading;
+                    _heading = ContinueAngle(_lastGlideHeading, path.EndVisualHeading);
+                    _lastGlideHeading = _heading;
                     _path = null;
                     _glideStartedTimestamp = 0;
                     _glideDurationSeconds = 0;
@@ -591,7 +597,9 @@ internal sealed class AgentCursorOverlay
                 {
                     var state = path.Sample(easedProgress * path.Length);
                     _current = new PointF((float)state.X, (float)state.Y);
-                    _heading = AgentCursorKinematics.RotateToward(_heading, state.Heading + Math.PI, 18 * dt);
+                    var pathHeading = ContinueAngle(_lastGlideHeading, state.Heading + Math.PI);
+                    _lastGlideHeading = pathHeading;
+                    _heading = MoveTowardContinuous(_heading, pathHeading, 18 * dt);
                 }
 
                 changed = true;
@@ -940,9 +948,9 @@ internal sealed class AgentCursorOverlay
         private bool UpdateDisplayHeading(double dt)
         {
             var previous = _displayHeading;
-            _displayHeading = AgentCursorKinematics.RotateToward(
+            _displayHeading = MoveTowardContinuous(
                 _displayHeading,
-                DesiredDisplayHeading(),
+                ContinueAngle(_displayHeading, DesiredDisplayHeading()),
                 VisualHeadingCatchUpRadiansPerSecond * dt);
             return Math.Abs(AgentCursorKinematics.AngularDifference(previous, _displayHeading)) > 0.0001;
         }
@@ -1032,6 +1040,22 @@ internal sealed class AgentCursorOverlay
                 response * BezierProgressDamping + clamped * (1 - BezierProgressDamping),
                 0,
                 1);
+        }
+
+        private static double ContinueAngle(double reference, double angle)
+        {
+            var tau = Math.PI * 2;
+            while (angle - reference > Math.PI)
+                angle -= tau;
+            while (angle - reference < -Math.PI)
+                angle += tau;
+            return angle;
+        }
+
+        private static double MoveTowardContinuous(double current, double desired, double maxStep)
+        {
+            var delta = desired - current;
+            return current + Math.Max(-maxStep, Math.Min(maxStep, delta));
         }
 
         private void CloseSiblingOverlayWindows()
