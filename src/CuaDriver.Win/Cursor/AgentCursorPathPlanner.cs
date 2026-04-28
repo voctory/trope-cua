@@ -26,7 +26,7 @@ internal static class AgentCursorPathPlanner
     {
         var start = new PointF((float)x0, (float)y0);
         var end = new PointF((float)x1, (float)y1);
-        return PlannedCursorPath.Bezier(start, end, endVisualHeading, targetPoint, bounds);
+        return PlannedCursorPath.Bezier(start, end, th0, th1, endVisualHeading, targetPoint, bounds);
     }
 }
 
@@ -99,6 +99,8 @@ internal readonly record struct PlannedCursorPath(
     public static PlannedCursorPath Bezier(
         PointF start,
         PointF end,
+        double startHeading,
+        double endHeading,
         double endVisualHeading,
         PointF targetPoint,
         RectangleF? bounds)
@@ -106,8 +108,8 @@ internal readonly record struct PlannedCursorPath(
         var delta = new PointF(end.X - start.X, end.Y - start.Y);
         var distance = Hypot(delta.X, delta.Y);
         var segments = distance < 4
-            ? DirectSegments(start, end, delta, distance)
-            : CandidateSegments(start, end, delta, distance, bounds);
+            ? DirectSegments(start, end, delta, distance, startHeading, endHeading)
+            : CandidateSegments(start, end, delta, distance, startHeading, endHeading, bounds);
         var length = Math.Max(1, segments.Sum(segment => segment.Length));
         return new PlannedCursorPath(length, distance, endVisualHeading, targetPoint, segments);
     }
@@ -151,13 +153,17 @@ internal readonly record struct PlannedCursorPath(
         PointF end,
         PointF delta,
         double distance,
+        double startHeading,
+        double endHeading,
         RectangleF? bounds)
     {
         var unit = new PointF((float)(delta.X / distance), (float)(delta.Y / distance));
         var normal = new PointF(-unit.Y, unit.X);
+        var startUnit = UnitFor(startHeading);
+        var endUnit = UnitFor(endHeading);
         var baseControl = Math.Min(Math.Min(640, distance * 0.9), Math.Max(Math.Min(48, distance * 0.33), distance * 0.41960295031576633));
         var baseArc = Math.Min(Math.Min(440, distance * 0.65), Math.Max(Math.Min(18, distance * 0.18), distance * 0.2765523188064277));
-        var direct = DirectSegments(start, end, delta, distance);
+        var direct = DirectSegments(start, end, delta, distance, startHeading, endHeading);
         if (distance <= AgentCursorPathPlanner.DirectDistanceThreshold)
             return direct;
 
@@ -183,13 +189,13 @@ internal readonly record struct PlannedCursorPath(
             {
                 CursorMotionSegment.Create(
                     start,
-                    new PointF((float)(start.X + unit.X * control), (float)(start.Y + unit.Y * control)),
+                    new PointF((float)(start.X + startUnit.X * control), (float)(start.Y + startUnit.Y * control)),
                     new PointF((float)(mid.X - unit.X * midControl), (float)(mid.Y - unit.Y * midControl)),
                     mid),
                 CursorMotionSegment.Create(
                     mid,
                     new PointF((float)(mid.X + unit.X * midControl), (float)(mid.Y + unit.Y * midControl)),
-                    new PointF((float)(end.X - unit.X * control), (float)(end.Y - unit.Y * control)),
+                    new PointF((float)(end.X - endUnit.X * control), (float)(end.Y - endUnit.Y * control)),
                     end)
             };
             var measurement = Measure(segments, bounds, 72);
@@ -205,7 +211,13 @@ internal readonly record struct PlannedCursorPath(
                ?? direct;
     }
 
-    private static CursorMotionSegment[] DirectSegments(PointF start, PointF end, PointF delta, double distance)
+    private static CursorMotionSegment[] DirectSegments(
+        PointF start,
+        PointF end,
+        PointF delta,
+        double distance,
+        double startHeading,
+        double endHeading)
     {
         if (distance <= 0)
         {
@@ -215,13 +227,14 @@ internal readonly record struct PlannedCursorPath(
         var directControl = Math.Min(
             Math.Min(Math.Min(640, distance * 0.9), Math.Max(Math.Min(48, distance * 0.33), distance * 0.41960295031576633)),
             distance * 0.45);
-        var unit = new PointF((float)(delta.X / distance), (float)(delta.Y / distance));
+        var startUnit = UnitFor(startHeading);
+        var endUnit = UnitFor(endHeading);
         return
         [
             CursorMotionSegment.Create(
                 start,
-                new PointF((float)(start.X + unit.X * directControl), (float)(start.Y + unit.Y * directControl)),
-                new PointF((float)(end.X - unit.X * directControl), (float)(end.Y - unit.Y * directControl)),
+                new PointF((float)(start.X + startUnit.X * directControl), (float)(start.Y + startUnit.Y * directControl)),
+                new PointF((float)(end.X - endUnit.X * directControl), (float)(end.Y - endUnit.Y * directControl)),
                 end)
         ];
     }
@@ -297,6 +310,8 @@ internal readonly record struct PlannedCursorPath(
             delta += 2 * Math.PI;
         return delta;
     }
+
+    private static PointF UnitFor(double heading) => new((float)Math.Cos(heading), (float)Math.Sin(heading));
 
     private static double Hypot(double x, double y) => Math.Sqrt(x * x + y * y);
 }
