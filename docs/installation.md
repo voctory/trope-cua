@@ -1,8 +1,8 @@
 # Installation
 
-Install Trope CUA from this repository on Windows 10 1903+ or Windows 11.
+Install Trope CUA from this repository. Windows and macOS are separate native installs.
 
-## Requirements
+## Windows Requirements
 
 - Windows 10 1903+ or Windows 11.
 - PowerShell.
@@ -11,7 +11,7 @@ Install Trope CUA from this repository on Windows 10 1903+ or Windows 11.
 
 The project targets .NET for Windows and publishes a single user-level executable.
 
-## Build
+## Windows Build
 
 From the repository root:
 
@@ -31,12 +31,12 @@ Use `-SelfContained` when the published build should carry its own runtime:
 .\scripts\build.ps1 -SelfContained
 ```
 
-## Install
+## Windows Install
 
 Install a self-contained user-level build:
 
 ```powershell
-.\scripts\install.ps1 -SelfContained
+.\scripts\install-windows.ps1 -SelfContained
 ```
 
 The installer publishes the binary and copies it to:
@@ -68,6 +68,23 @@ Trope CUA speaks MCP over stdio. Register the installed executable with any MCP-
 ```
 
 Plain MCP sessions without `--instance` automatically claim a runtime cursor identity and palette. The first live cursor uses `default_blue`; later live sessions rotate through 9 alternate palettes. Set `CUA_DRIVER_INSTANCE` or pass `--instance` only when you need a stable named cursor identity.
+
+## macOS Install
+
+The macOS native driver lives under `native/macos/cua-driver` and keeps its own Swift package and scripts.
+
+```bash
+./scripts/install-macos.sh
+```
+
+You can also run the platform script directly:
+
+```bash
+cd native/macos/cua-driver
+./scripts/install.sh
+```
+
+macOS builds and permission checks must be run on macOS.
 
 ## Run the daemon
 

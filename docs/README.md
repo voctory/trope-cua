@@ -17,6 +17,7 @@ This documentation is organized for two readers:
 
 - [Tools and command modes](reference-tools.md)
 - [Known limits](limits.md)
+- [Native platform layout](native-layout.md)
 
 ## Engineering notes
 
