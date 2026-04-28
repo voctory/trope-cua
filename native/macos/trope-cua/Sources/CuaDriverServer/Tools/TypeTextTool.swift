@@ -111,6 +111,12 @@ public enum TypeTextTool {
                         )
                     }
                     let target = AXInput.describe(element)
+                    if target.role == "AXTextField" || target.role == "AXTextArea" {
+                        await AppStateRegistry.textTargets.remember(
+                            pid: pid,
+                            windowId: windowId,
+                            element: element)
+                    }
                     let summary =
                         "✅ Inserted \(text.count) char(s) into [\(index)] \(target.role ?? "?") \"\(target.title ?? "")\" on pid \(rawPid)."
                     return CallTool.Result(

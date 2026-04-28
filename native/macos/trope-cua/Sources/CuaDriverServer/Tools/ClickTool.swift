@@ -303,6 +303,11 @@ public enum ClickTool {
                let role = target.role,
                role == "AXTextField" || role == "AXTextArea"
             {
+                await AppStateRegistry.textTargets.remember(
+                    pid: pid,
+                    windowId: windowId,
+                    element: element
+                )
                 try? await Task.sleep(for: .milliseconds(800))
             }
             // AX-dispatched clicks can raise the target window to

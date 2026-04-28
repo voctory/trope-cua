@@ -1,3 +1,4 @@
+import ApplicationServices
 import CuaDriverCore
 
 /// Shared actor instances used by server-side tools.
@@ -24,4 +25,37 @@ public enum AppStateRegistry {
         systemPreventer: systemFocusStealPreventer
     )
     public static let systemFocusStealPreventer = SystemFocusStealPreventer()
+    public static let textTargets = TextTargetRegistry()
+}
+
+public actor TextTargetRegistry {
+    private var targets: [TextTargetKey: AXUIElement] = [:]
+
+    public init() {}
+
+    public func remember(pid: Int32, windowId: UInt32, element: AXUIElement) {
+        targets[TextTargetKey(pid: pid, windowId: windowId)] = element
+    }
+
+    public func lookup(pid: Int32, windowId: UInt32) -> AXUIElement? {
+        targets[TextTargetKey(pid: pid, windowId: windowId)]
+    }
+
+    public func lookup(pid: Int32) -> (windowId: UInt32, element: AXUIElement)? {
+        if let frontmost = WindowEnumerator.frontmostWindowID(forPid: pid),
+           let windowId = UInt32(exactly: frontmost),
+           let element = targets[TextTargetKey(pid: pid, windowId: windowId)]
+        {
+            return (windowId, element)
+        }
+
+        let matches = targets.filter { $0.key.pid == pid }
+        guard matches.count == 1, let match = matches.first else { return nil }
+        return (match.key.windowId, match.value)
+    }
+}
+
+private struct TextTargetKey: Hashable, Sendable {
+    let pid: Int32
+    let windowId: UInt32
 }

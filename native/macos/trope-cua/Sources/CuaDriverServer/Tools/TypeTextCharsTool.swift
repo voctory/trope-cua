@@ -1,3 +1,5 @@
+import ApplicationServices
+import CoreGraphics
 import CuaDriverCore
 import Foundation
 import MCP
@@ -21,10 +23,11 @@ public enum TypeTextCharsTool {
 
                 Use this when the AX-based `type_text` silently drops
                 characters — typical for Chromium / Electron text inputs
-                that don't expose `kAXSelectedText`. The target does NOT
-                need to be frontmost; keyboard focus within the target pid
-                determines where characters land, so focus the receiving
-                element first (e.g. via `click` on the input).
+                that don't expose `kAXSelectedText`. Optional
+                `element_index` + `window_id` focuses that element while
+                the characters are posted. When omitted, the tool reuses
+                the last text target established by `click` / `type_text`
+                when available. The target does NOT need to be frontmost.
 
                 `delay_ms` (0-200) spaces successive characters so
                 autocomplete and IME paths can keep up. Default 30.
@@ -40,6 +43,16 @@ public enum TypeTextCharsTool {
                     "text": [
                         "type": "string",
                         "description": "Text to type into the target's focused element.",
+                    ],
+                    "element_index": [
+                        "type": "integer",
+                        "description":
+                            "Optional element_index from the last get_window_state for the same (pid, window_id). When present, the element is focused before typing. Requires window_id.",
+                    ],
+                    "window_id": [
+                        "type": "integer",
+                        "description":
+                            "CGWindowID for the window whose get_window_state produced the element_index. Also selects a cached text target when element_index is omitted.",
                     ],
                     "delay_ms": [
                         "type": "integer",
@@ -70,18 +83,67 @@ public enum TypeTextCharsTool {
                 return errorResult(
                     "pid \(rawPid) is outside the supported Int32 range.")
             }
+            let elementIndex = arguments?["element_index"]?.intValue
+            let rawWindowId = arguments?["window_id"]?.intValue
+            if elementIndex != nil && rawWindowId == nil {
+                return errorResult(
+                    "window_id is required when element_index is used — the "
+                    + "element_index cache is scoped per (pid, window_id). Pass "
+                    + "the same window_id you used in `get_window_state`.")
+            }
+
+            let windowId: UInt32?
+            if let rawWindowId {
+                guard let checked = UInt32(exactly: rawWindowId) else {
+                    return errorResult(
+                        "window_id \(rawWindowId) is outside the supported UInt32 range.")
+                }
+                windowId = checked
+            } else {
+                windowId = nil
+            }
 
             do {
-                try KeyboardInput.typeCharacters(
-                    text,
-                    delayMilliseconds: delayMs,
-                    toPid: pid
-                )
+                if let index = elementIndex, let windowId {
+                    let element = try await AppStateRegistry.engine.lookup(
+                        pid: pid,
+                        windowId: windowId,
+                        elementIndex: index)
+                    try await typeIntoElement(
+                        text,
+                        delayMs: delayMs,
+                        pid: pid,
+                        windowId: windowId,
+                        element: element)
+                    await AppStateRegistry.textTargets.remember(
+                        pid: pid,
+                        windowId: windowId,
+                        element: element)
+                } else if let target = await cachedTextTarget(
+                    pid: pid, windowId: windowId)
+                {
+                    try await typeIntoElement(
+                        text,
+                        delayMs: delayMs,
+                        pid: pid,
+                        windowId: target.windowId,
+                        element: target.element)
+                } else {
+                    try KeyboardInput.typeCharacters(
+                        text,
+                        delayMilliseconds: delayMs,
+                        toPid: pid
+                    )
+                }
                 let summary =
                     "✅ Typed \(text.count) character(s) on pid \(rawPid) with \(delayMs)ms delay."
                 return CallTool.Result(
                     content: [.text(text: summary, annotations: nil, _meta: nil)]
                 )
+            } catch let error as AppStateError {
+                return errorResult(error.description)
+            } catch let error as AXInputError {
+                return errorResult(error.description)
             } catch let error as KeyboardError {
                 return errorResult(error.description)
             } catch {
@@ -107,5 +169,47 @@ public enum TypeTextCharsTool {
             content: [.text(text: message, annotations: nil, _meta: nil)],
             isError: true
         )
+    }
+
+    private static func cachedTextTarget(
+        pid: Int32,
+        windowId: UInt32?
+    ) async -> (windowId: UInt32, element: AXUIElement)? {
+        if let windowId {
+            guard let element = await AppStateRegistry.textTargets.lookup(
+                pid: pid,
+                windowId: windowId)
+            else { return nil }
+            return (windowId, element)
+        }
+        return await AppStateRegistry.textTargets.lookup(pid: pid)
+    }
+
+    private static func typeIntoElement(
+        _ text: String,
+        delayMs: Int,
+        pid: Int32,
+        windowId: UInt32,
+        element: AXUIElement
+    ) async throws {
+        try await AppStateRegistry.focusGuard.withFocusSuppressed(
+            pid: pid,
+            element: element
+        ) {
+            _ = FocusWithoutRaise.activateWithoutRaise(
+                targetPid: pid,
+                targetWid: CGWindowID(windowId))
+            try? await Task.sleep(for: .milliseconds(50))
+            try? AXInput.setAttribute(
+                "AXFocused",
+                on: element,
+                value: kCFBooleanTrue as CFTypeRef
+            )
+            try KeyboardInput.typeCharacters(
+                text,
+                delayMilliseconds: delayMs,
+                toPid: pid
+            )
+        }
     }
 }

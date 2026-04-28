@@ -1,3 +1,5 @@
+import ApplicationServices
+import CoreGraphics
 import CuaDriverCore
 import Foundation
 import MCP
@@ -13,9 +15,9 @@ import MCP
 /// `element_index` is optional. When present, the element is
 /// focused via `AXSetAttribute(kAXFocused, true)` before the key is
 /// posted — the canonical path for "type into this text field, then
-/// press Return on it." When absent, the key is posted to the pid
-/// directly with no focus change — the canonical path for scroll
-/// keys (End / PageDown / Home) on the already-focused web area.
+/// press Return on it." When absent, the tool first tries the cached
+/// text target established by recent text-field actions, then falls
+/// back to posting to the pid directly.
 public enum PressKeyTool {
     public static let handler = ToolHandler(
         tool: Tool(
@@ -29,10 +31,12 @@ public enum PressKeyTool {
                 `get_window_state` snapshot of that window) pre-focuses
                 that element (via `AXSetAttribute(kAXFocused, true)`)
                 before the key fires; useful for "type into field →
-                press Return on field." Without `element_index`, the
-                key is posted to the pid with whatever element is
-                already focused receiving it — useful for scroll keys
-                on a backgrounded web view.
+                press Return on field." Without `element_index`, the tool
+                reuses the last text target established by `click` /
+                `type_text_chars` when available, otherwise the key is
+                posted to the pid with whatever element is already focused
+                receiving it — useful for scroll keys on a backgrounded
+                web view.
 
                 The key is delivered via SkyLight's `SLEventPostToPid`
                 with an attached `SLSEventAuthenticationMessage`,
@@ -75,7 +79,7 @@ public enum PressKeyTool {
                     "window_id": [
                         "type": "integer",
                         "description":
-                            "CGWindowID for the window whose get_window_state produced the element_index. Required when element_index is used.",
+                            "CGWindowID for the window whose get_window_state produced the element_index. Required when element_index is used; also selects a cached text target when element_index is omitted.",
                     ],
                 ],
                 "additionalProperties": false,
@@ -130,23 +134,43 @@ public enum PressKeyTool {
                     // action mapping is a foot-gun — AXConfirm silently
                     // no-ops on Chromium and other web targets. Uniform
                     // focus-then-keystroke works everywhere.
-                    try await AppStateRegistry.focusGuard.withFocusSuppressed(
-                        pid: pid, element: element
-                    ) {
-                        try? AXInput.setAttribute(
-                            "AXFocused",
-                            on: element,
-                            value: kCFBooleanTrue as CFTypeRef
-                        )
-                        try KeyboardInput.press(
-                            key, modifiers: modifiers, toPid: pid)
-                    }
+                    try await pressKey(
+                        key,
+                        modifiers: modifiers,
+                        pid: pid,
+                        windowId: windowId,
+                        element: element)
                     let target = AXInput.describe(element)
+                    if target.role == "AXTextField" || target.role == "AXTextArea" {
+                        await AppStateRegistry.textTargets.remember(
+                            pid: pid,
+                            windowId: windowId,
+                            element: element)
+                    }
                     return CallTool.Result(
                         content: [
                             .text(
                                 text:
                                     "✅ Focused [\(index)] \(target.role ?? "?") and pressed \(key) on pid \(rawPid).",
+                                annotations: nil, _meta: nil)
+                        ]
+                    )
+                } else if let target = await cachedTextTarget(
+                    pid: pid,
+                    rawWindowId: rawWindowId)
+                {
+                    try await pressKey(
+                        key,
+                        modifiers: modifiers,
+                        pid: pid,
+                        windowId: target.windowId,
+                        element: target.element)
+                    let described = AXInput.describe(target.element)
+                    return CallTool.Result(
+                        content: [
+                            .text(
+                                text:
+                                    "✅ Focused cached \(described.role ?? "?") and pressed \(key) on pid \(rawPid).",
                                 annotations: nil, _meta: nil)
                         ]
                     )
@@ -179,5 +203,43 @@ public enum PressKeyTool {
             content: [.text(text: message, annotations: nil, _meta: nil)],
             isError: true
         )
+    }
+
+    private static func cachedTextTarget(
+        pid: Int32,
+        rawWindowId: Int?
+    ) async -> (windowId: UInt32, element: AXUIElement)? {
+        if let rawWindowId, let windowId = UInt32(exactly: rawWindowId) {
+            guard let element = await AppStateRegistry.textTargets.lookup(
+                pid: pid,
+                windowId: windowId)
+            else { return nil }
+            return (windowId, element)
+        }
+        return await AppStateRegistry.textTargets.lookup(pid: pid)
+    }
+
+    private static func pressKey(
+        _ key: String,
+        modifiers: [String],
+        pid: Int32,
+        windowId: UInt32,
+        element: AXUIElement
+    ) async throws {
+        try await AppStateRegistry.focusGuard.withFocusSuppressed(
+            pid: pid,
+            element: element
+        ) {
+            _ = FocusWithoutRaise.activateWithoutRaise(
+                targetPid: pid,
+                targetWid: CGWindowID(windowId))
+            try? await Task.sleep(for: .milliseconds(50))
+            try? AXInput.setAttribute(
+                "AXFocused",
+                on: element,
+                value: kCFBooleanTrue as CFTypeRef
+            )
+            try KeyboardInput.press(key, modifiers: modifiers, toPid: pid)
+        }
     }
 }
