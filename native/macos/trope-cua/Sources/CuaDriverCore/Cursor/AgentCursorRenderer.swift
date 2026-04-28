@@ -9,8 +9,6 @@ public final class AgentCursorRenderer {
     public static let shared = AgentCursorRenderer()
 
     private static let restingHeading = Double.pi / 4
-    fileprivate static let directDistanceThreshold = 18.0
-    fileprivate static let shortMoveDirectDistanceThreshold = 72.0
     private static let nominalGlideDuration = 0.16
     private static let minMoveDuration = 0.08
     private static let maxMoveDuration = 0.34
@@ -199,6 +197,9 @@ public final class AgentCursorRenderer {
 }
 
 private struct PlannedCursorPath {
+    private static let directDistanceThreshold = 18.0
+    private static let shortMoveDirectDistanceThreshold = 72.0
+
     let length: Double
     let straightLineDistance: Double
     let endVisualHeading: Double
@@ -281,7 +282,7 @@ private struct PlannedCursorPath {
             endHeading: endHeading,
             options: options
         )
-        if Double(distance) <= AgentCursorRenderer.directDistanceThreshold {
+        if Double(distance) <= Self.directDistanceThreshold {
             return direct
         }
 
@@ -301,7 +302,7 @@ private struct PlannedCursorPath {
         let preferredSign = dx >= 0 ? 1.0 : -1.0
         var candidates: [([CursorMotionSegment], CursorMotionMeasurement, Double)] = []
 
-        if Double(distance) <= AgentCursorRenderer.shortMoveDirectDistanceThreshold {
+        if Double(distance) <= Self.shortMoveDirectDistanceThreshold {
             let measured = measure(direct)
             candidates.append((direct, measured, score(measured)))
         }
