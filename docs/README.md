@@ -1,6 +1,6 @@
 # Trope CUA documentation
 
-Trope CUA is a native background computer-use driver for agent harnesses. It exposes target-window screenshots, accessibility trees, and cursor-safe action tools over MCP, a long-running daemon, or direct CLI calls.
+Trope CUA lets agents inspect and operate real desktop apps while avoiding accidental movement of the user's real cursor or changes to the active app when the OS and target app support safe routes. It exposes target-window screenshots, accessibility trees, and action receipts over MCP, a long-running daemon, or direct CLI calls.
 
 This documentation is organized for two readers:
 
@@ -12,12 +12,14 @@ This documentation is organized for two readers:
 - [What is Trope CUA?](introduction.md)
 - [Installation](installation.md)
 - [Quickstart](quickstart.md)
+- [Workflows](workflows.md)
 - [macOS operations](macos.md)
 
 ## Reference
 
 - [Tools and command modes](reference-tools.md)
 - [Known limits](limits.md)
+- [Threat model](threat-model.md)
 - [Native platform layout](native-layout.md)
 - [Platform API map](api-map.md)
 
