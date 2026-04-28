@@ -212,6 +212,54 @@ public struct ToolRegistry: Sendable {
         return .default
     }
 
+    /// MCP stdio clients launch `trope-cua mcp` as a direct child process, so
+    /// macOS attributes Screen Recording to the host app instead of
+    /// TropeCUA.app. Keep stdio as a protocol facade and run all tools through
+    /// the LaunchServices-started daemon, which owns the correct TCC grants.
+    public static func daemonProxy(socketPath: String) -> ToolRegistry {
+        ToolRegistry(
+            handlers: ToolRegistry.default.allTools.map { tool in
+                ToolHandler(tool: tool) { arguments in
+                    let request = DaemonRequest(
+                        method: "call",
+                        name: tool.name,
+                        args: arguments
+                    )
+                    switch DaemonClient.sendRequest(
+                        request,
+                        socketPath: socketPath
+                    ) {
+                    case .ok(let response):
+                        guard response.ok else {
+                            return errorResult(
+                                response.error ?? "daemon reported failure"
+                            )
+                        }
+                        guard case .call(let result) = response.result else {
+                            return errorResult(
+                                "daemon returned unexpected result kind for call"
+                            )
+                        }
+                        return result
+                    case .noDaemon:
+                        return errorResult(
+                            "trope-cua daemon is not running; start it with `open -n -g -a TropeCUA --args serve`."
+                        )
+                    case .error(let message):
+                        return errorResult(message)
+                    }
+                }
+            }
+        )
+    }
+
+    private static func errorResult(_ message: String) -> CallTool.Result {
+        CallTool.Result(
+            content: [.text(text: message, annotations: nil, _meta: nil)],
+            isError: true
+        )
+    }
+
     public static let `default` = ToolRegistry(handlers: [
         ListAppsTool.handler,
         ListWindowsTool.handler,

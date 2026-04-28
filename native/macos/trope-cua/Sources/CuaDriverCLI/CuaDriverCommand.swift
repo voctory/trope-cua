@@ -297,54 +297,42 @@ struct CuaDriverEntryPoint {
     }
 }
 
-struct MCPCommand: ParsableCommand {
+struct MCPCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "mcp",
         abstract: "Run the stdio MCP server."
     )
 
-    func run() throws {
-        // MCP stdio runs for the lifetime of the host process, so we
-        // bootstrap AppKit here — the agent cursor overlay (disabled
-        // by default, enabled via `set_agent_cursor_enabled`) needs a
-        // live NSApplication event loop to draw. When the cursor's
-        // never enabled, this costs us one idle run-loop.
-        AppKitBootstrap.runBlockingAppKitWith {
-            // Preflight TCC grants. When both are already active this
-            // returns immediately; otherwise a small panel guides the
-            // user through granting them and we resume once everything
-            // flips green. User closing the panel without granting ->
-            // exit with a clear message.
-            let granted = await MainActor.run {
-                PermissionsGate.shared
-            }.ensureGranted()
-            if !granted {
-                FileHandle.standardError.write(
-                    Data(
-                        "trope-cua: required permissions (Accessibility + Screen Recording) not granted; MCP server exiting.\n"
-                            .utf8))
-                throw AppKitBootstrapError.permissionsDenied
+    func run() async throws {
+        let socketPath = DaemonPaths.defaultSocketPath()
+        if !DaemonClient.isDaemonListening(socketPath: socketPath) {
+            try startDefaultDaemon()
+            waitForDefaultDaemon(socketPath: socketPath)
+        }
+
+        let server = await CuaDriverMCPServer.make(
+            registry: .daemonProxy(socketPath: socketPath)
+        )
+        let transport = StdioTransport()
+        try await server.start(transport: transport)
+        await server.waitUntilCompleted()
+    }
+
+    private func startDefaultDaemon() throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        process.arguments = ["-n", "-g", "-a", "TropeCUA", "--args", "serve"]
+        try process.run()
+        process.waitUntilExit()
+    }
+
+    private func waitForDefaultDaemon(socketPath: String) {
+        let deadline = Date().addingTimeInterval(8)
+        while Date() < deadline {
+            if DaemonClient.isDaemonListening(socketPath: socketPath) {
+                return
             }
-
-            // Same startup-warm as `serve`: surface any config decode
-            // warnings on the host's stderr before the first tool call
-            // hits the disk-read path.
-            let config = await ConfigStore.shared.load()
-
-            // Apply persisted agent-cursor preferences to the live
-            // singleton so stdio MCP sessions also honor the user's
-            // last-written state.
-            await MainActor.run {
-                AgentCursor.shared.claimPalette(
-                    context: "mcp:\(ProcessInfo.processInfo.processIdentifier)"
-                )
-                AgentCursor.shared.apply(config: config.agentCursor)
-            }
-
-            let server = await CuaDriverMCPServer.make()
-            let transport = StdioTransport()
-            try await server.start(transport: transport)
-            await server.waitUntilCompleted()
+            Thread.sleep(forTimeInterval: 0.1)
         }
     }
 }
