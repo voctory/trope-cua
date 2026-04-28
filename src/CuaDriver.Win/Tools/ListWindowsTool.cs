@@ -13,38 +13,71 @@ internal sealed class ListWindowsTool : IDriverTool
         ToolDescriptions.ListWindows,
         JsonArgs.Schema(
             ("pid", JsonArgs.Prop("integer", "Optional pid filter.")),
-            ("on_screen_only", JsonArgs.Prop("boolean", "When true, omit hidden/minimized windows."))),
+            ("on_screen_only", JsonArgs.Prop("boolean", "When true, omit hidden/minimized windows.")),
+            ("verbose", JsonArgs.Prop("boolean", "When true, include class, DPI, z-index, and every returned window in the text output. Structured output always includes the full list."))),
         ReadOnly: true);
 
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
         var pid = JsonArgs.OptionalInt(args, "pid");
         var visibleOnly = JsonArgs.OptionalBool(args, "on_screen_only");
+        var verbose = JsonArgs.OptionalBool(args, "verbose");
         var windows = WindowEnumerator.AllWindows(pid, visibleOnly);
 
         var sb = new StringBuilder();
-        sb.AppendLine(CultureInfo.InvariantCulture, $"{ToolText.OkPrefix}Found {windows.Count} window(s).");
-        foreach (var w in windows)
+        var shown = verbose ? windows : CompactWindowList(windows);
+        sb.Append(CultureInfo.InvariantCulture, $"{ToolText.OkPrefix}Found {windows.Count} window(s)");
+        if (!verbose)
+            sb.Append(CultureInfo.InvariantCulture, $", showing {shown.Count} likely target(s)");
+        sb.AppendLine(".");
+
+        foreach (var w in shown)
         {
-            sb.Append("- ")
-              .Append(w.AppName)
-              .Append(" pid=").Append(w.Pid)
-              .Append(" window_id=").Append(w.WindowId)
-              .Append(" z_index=").Append(w.ZIndex)
-              .Append(w.IsVisible ? " visible" : " hidden")
-              .Append(w.IsMinimized ? " minimized" : "")
-              .Append(" dpi=").Append(w.Dpi)
-              .Append(" bounds=(").Append(w.Bounds.X).Append(',').Append(w.Bounds.Y).Append(',').Append(w.Bounds.Width).Append(',').Append(w.Bounds.Height).Append(')')
-              .Append(" class=").Append(w.ClassName)
-              .Append(" title=\"").Append(w.Title.Replace("\"", "\\\"")).AppendLine("\"");
+            AppendWindowLine(sb, w, verbose);
         }
+
+        if (!verbose && shown.Count < windows.Count)
+            sb.AppendLine(CultureInfo.InvariantCulture, $"-> Full list is in structuredContent.windows; pass verbose=true for expanded text.");
 
         return Task.FromResult(ToolResult.Text(sb.ToString().TrimEnd(), new JsonObject
         {
             ["count"] = windows.Count,
+            ["shown_count"] = shown.Count,
             ["pid_filter"] = pid,
             ["on_screen_only"] = visibleOnly,
+            ["verbose"] = verbose,
             ["windows"] = ToolJson.Array(windows, ToolJson.Window)
         }));
+    }
+
+    private static WindowInfo[] CompactWindowList(IReadOnlyList<WindowInfo> windows)
+    {
+        var likelyTargets = windows
+            .Where(w => w.IsVisible && !w.IsMinimized && !string.IsNullOrWhiteSpace(w.Title))
+            .Take(12)
+            .ToArray();
+
+        return likelyTargets.Length > 0 ? likelyTargets : windows.Take(12).ToArray();
+    }
+
+    private static void AppendWindowLine(StringBuilder sb, WindowInfo w, bool verbose)
+    {
+        sb.Append("- ")
+          .Append(w.AppName)
+          .Append(" pid=").Append(w.Pid)
+          .Append(" window_id=").Append(w.WindowId)
+          .Append(w.IsVisible ? " visible" : " hidden")
+          .Append(w.IsMinimized ? " minimized" : "")
+          .Append(" bounds=(").Append(w.Bounds.X).Append(',').Append(w.Bounds.Y).Append(',').Append(w.Bounds.Width).Append(',').Append(w.Bounds.Height).Append(')')
+          .Append(" title=\"").Append(w.Title.Replace("\"", "\\\"")).Append('"');
+
+        if (verbose)
+        {
+            sb.Append(" z_index=").Append(w.ZIndex)
+              .Append(" dpi=").Append(w.Dpi)
+              .Append(" class=").Append(w.ClassName);
+        }
+
+        sb.AppendLine();
     }
 }

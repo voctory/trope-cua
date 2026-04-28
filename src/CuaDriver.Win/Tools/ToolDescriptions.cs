@@ -129,7 +129,7 @@ internal static class ToolDescriptions
     public const string ListWindows = """
         List top-level Windows HWNDs with owning pid/app, title, class name, bounds, visibility, minimized state, z-order, and DPI.
 
-        Use this, not list_apps, for any window-level reasoning: choosing the window_id for get_window_state, deciding which of a pid's windows is main, checking whether a target is visible/minimized, or comparing stacking order. Pass pid to restrict the result to one process. on_screen_only=false is useful for automation because background/minimized windows can still be addressable by UIA or HWND routes.
+        Use this, not list_apps, for any window-level reasoning: choosing the window_id for get_window_state, deciding which of a pid's windows is main, checking whether a target is visible/minimized, or comparing stacking order. Pass pid to restrict the result to one process. on_screen_only=false is useful for automation because background/minimized windows can still be addressable by UIA or HWND routes. Text output is compact by default; structuredContent.windows always contains the full list. Pass verbose=true only when the expanded text form is useful.
         """;
 
     public const string Screenshot = """
