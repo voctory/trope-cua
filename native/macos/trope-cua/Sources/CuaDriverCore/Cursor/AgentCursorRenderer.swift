@@ -22,7 +22,6 @@ public final class AgentCursorRenderer {
     public private(set) var position = CGPoint(x: -200, y: -200)
     public private(set) var heading = restingHeading
     public private(set) var opacity = 1.0
-    public var focusRect: CGRect? = nil
 
     private var path: PlannedCursorPath?
     private var glideStartedAt: CFTimeInterval = 0

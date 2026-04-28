@@ -315,14 +315,6 @@ public enum ClickTool {
             await MainActor.run {
                 AgentCursor.shared.pinAbove(pid: pid)
             }
-            // If the element has a bounding rect, show a glowing focus
-            // highlight on the cursor overlay so the user can see which
-            // element the agent is targeting.
-            if let rect = AXInput.screenBoundingRect(of: element) {
-                await MainActor.run {
-                    AgentCursor.shared.showFocusRect(rect)
-                }
-            }
             // Press-in / release pulse on the cursor — purely
             // visual confirmation that the click fired.
             // No-op when disabled.

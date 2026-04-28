@@ -458,7 +458,6 @@ public final class AgentCursor {
         missedPinCount = 0
         continuousRepinTask?.cancel()
         continuousRepinTask = nil
-        clearFocusRect()
     }
 
     /// Move the cursor immediately to a screen-point coordinate. No
@@ -562,20 +561,6 @@ public final class AgentCursor {
     public func finishMove() {
         guard isEnabled else { return }
         scheduleIdleHide()
-    }
-
-    /// Show a glowing highlight rectangle around the given screen rect.
-    /// Used by ClickTool to draw a focus indicator on the targeted AX
-    /// element. Pass nil to clear the rect. No-op when disabled.
-    public func showFocusRect(_ rect: CGRect?) {
-        guard isEnabled else { return }
-        AgentCursorRenderer.shared.focusRect = rect
-    }
-
-    /// Clear the glowing focus rect. Called by hide() so the rect
-    /// doesn't linger after the cursor auto-hides.
-    private func clearFocusRect() {
-        AgentCursorRenderer.shared.focusRect = nil
     }
 
     /// For tests + spike code: tear down the window so the next
