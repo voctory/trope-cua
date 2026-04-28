@@ -5,8 +5,11 @@ def test_list_windows_smoke():
     assert "content" in result
     assert result["content"][0]["type"] == "text"
     assert "windows" in result["structuredContent"]
-    assert result["structuredContent"]["count"] == len(result["structuredContent"]["windows"])
+    assert result["structuredContent"]["shown_count"] == len(result["structuredContent"]["windows"])
     assert result["structuredContent"]["shown_count"] <= result["structuredContent"]["count"]
+    assert result["structuredContent"]["omitted_count"] == (
+        result["structuredContent"]["count"] - result["structuredContent"]["shown_count"]
+    )
 
 
 def test_list_windows_verbose_expands_text():
@@ -15,4 +18,5 @@ def test_list_windows_verbose_expands_text():
 
     assert verbose["structuredContent"]["verbose"] is True
     assert verbose["structuredContent"]["shown_count"] == verbose["structuredContent"]["count"]
+    assert len(verbose["structuredContent"]["windows"]) == verbose["structuredContent"]["count"]
     assert len(verbose["content"][0]["text"]) >= len(compact["content"][0]["text"])

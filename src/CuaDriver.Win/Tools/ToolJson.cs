@@ -21,6 +21,18 @@ internal static class ToolJson
         ["dpi"] = window.Dpi
     };
 
+    public static JsonObject CompactWindow(WindowInfo window) => new()
+    {
+        ["window_id"] = window.WindowId,
+        ["pid"] = window.Pid,
+        ["app_name"] = window.AppName,
+        ["title"] = window.Title,
+        ["bounds"] = Rect(window.Bounds),
+        ["visible"] = window.IsVisible,
+        ["minimized"] = window.IsMinimized,
+        ["z_index"] = window.ZIndex
+    };
+
     public static JsonObject Capture(CapturedImage capture) => new()
     {
         ["route"] = capture.Route,

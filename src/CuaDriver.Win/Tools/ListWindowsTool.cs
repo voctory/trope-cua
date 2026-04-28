@@ -14,7 +14,7 @@ internal sealed class ListWindowsTool : IDriverTool
         JsonArgs.Schema(
             ("pid", JsonArgs.Prop("integer", "Optional pid filter.")),
             ("on_screen_only", JsonArgs.Prop("boolean", "When true, omit hidden/minimized windows.")),
-            ("verbose", JsonArgs.Prop("boolean", "When true, include class, DPI, z-index, and every returned window in the text output. Structured output always includes the full list."))),
+            ("verbose", JsonArgs.Prop("boolean", "When true, include class, DPI, z-index, and every returned window in text and structured output."))),
         ReadOnly: true);
 
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
@@ -37,16 +37,19 @@ internal sealed class ListWindowsTool : IDriverTool
         }
 
         if (!verbose && shown.Count < windows.Count)
-            sb.AppendLine(CultureInfo.InvariantCulture, $"-> Full list is in structuredContent.windows; pass verbose=true for expanded text.");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"-> Pass verbose=true for every window and expanded fields.");
 
         return Task.FromResult(ToolResult.Text(sb.ToString().TrimEnd(), new JsonObject
         {
             ["count"] = windows.Count,
             ["shown_count"] = shown.Count,
+            ["omitted_count"] = windows.Count - shown.Count,
             ["pid_filter"] = pid,
             ["on_screen_only"] = visibleOnly,
             ["verbose"] = verbose,
-            ["windows"] = ToolJson.Array(windows, ToolJson.Window)
+            ["windows"] = verbose
+                ? ToolJson.Array(windows, ToolJson.Window)
+                : ToolJson.Array(shown, ToolJson.CompactWindow)
         }));
     }
 
