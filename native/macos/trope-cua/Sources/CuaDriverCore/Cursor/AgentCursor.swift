@@ -84,7 +84,7 @@ public struct AgentCursorStyle: Sendable {
         // 22pt gives a visible cursor around 16-17pt — comparable to the
         // macOS system cursor.
         shapeSize: 22,
-        // cua-driver heritage gradient: ice-blue tip → cyan body → mint
+        // trope-cua heritage gradient: ice-blue tip → cyan body → mint
         // tail. Axial 135° (from upper-left to lower-right) traces the
         // cursor's own tip-to-tail axis, so the tip reads brightest.
         strokeGradientStops: [

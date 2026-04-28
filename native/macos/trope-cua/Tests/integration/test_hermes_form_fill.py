@@ -3,7 +3,7 @@
 Goal
 ----
 One test per HTML input type. Each test asks hermes to interact with exactly
-ONE element in a Safari window that is NOT frontmost — verifying that cua-driver
+ONE element in a Safari window that is NOT frontmost — verifying that trope-cua
 can synthesise events without stealing keyboard/mouse focus from the foreground app
 (FocusMonitorApp).
 
@@ -198,7 +198,7 @@ class _HermesFormBase(unittest.TestCase):
         env = os.environ.copy()
         env["ANTHROPIC_API_KEY"] = _ANTHROPIC_KEY
         env["HERMES_COMPUTER_USE_BACKEND"] = "cua"
-        env["HERMES_CUA_DRIVER_CMD"] = default_binary_path()
+        env["HERMES_TROPE_CUA_CMD"] = default_binary_path()
 
         result = subprocess.run(
             [

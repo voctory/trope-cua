@@ -35,7 +35,7 @@ public enum CheckPermissionsTool {
         invoke: { arguments in
             // Default to prompting. The point of `check_permissions` is to
             // surface and resolve missing grants — a read-only status check
-            // that leaves the user hunting for `CuaDriver.app` in System
+            // that leaves the user hunting for `TropeCUA.app` in System
             // Settings is the wrong default. Apple's request APIs no-op
             // when the grant is already active, so prompting is safe.
             let shouldPrompt = arguments?["prompt"]?.boolValue ?? true

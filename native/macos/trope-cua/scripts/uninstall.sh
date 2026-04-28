@@ -1,26 +1,22 @@
 #!/usr/bin/env bash
-# cua-driver uninstaller. Removes everything install.sh laid down:
+# trope-cua uninstaller. Removes everything install.sh laid down:
 #
-#   - ~/.local/bin/cua-driver symlink
-#   - /Applications/CuaDriver.app bundle
-#   - ~/.cua-driver/ (telemetry id + install marker)
-#   - ~/Library/Application Support/Cua Driver/ (config.json)
+#   - ~/.local/bin/trope-cua symlink
+#   - /Applications/TropeCUA.app bundle
+#   - ~/.trope-cua/ (telemetry id + install marker)
+#   - ~/Library/Application Support/Trope CUA/ (config.json)
 #
 # Does NOT revoke TCC grants (Accessibility + Screen Recording).
 #
 # Usage:
-#   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/uninstall.sh)"
+#   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/voctory/trope-cua/main/native/macos/trope-cua/scripts/uninstall.sh)"
 set -euo pipefail
 
-USER_BIN_LINK="$HOME/.local/bin/cua-driver"
-SYSTEM_BIN_LINK="/usr/local/bin/cua-driver"
-APP_BUNDLE="/Applications/CuaDriver.app"
-USER_DATA="$HOME/.cua-driver"
-CONFIG_DIR="$HOME/Library/Application Support/Cua Driver"
-# Legacy — remove if present from older installs.
-LEGACY_UPDATE_SCRIPT="/usr/local/bin/cua-driver-update"
-LEGACY_UPDATER_PLIST="$HOME/Library/LaunchAgents/com.trycua.cua_driver_updater.plist"
-
+USER_BIN_LINK="$HOME/.local/bin/trope-cua"
+SYSTEM_BIN_LINK="/usr/local/bin/trope-cua"
+APP_BUNDLE="/Applications/TropeCUA.app"
+USER_DATA="$HOME/.trope-cua"
+CONFIG_DIR="$HOME/Library/Application Support/Trope CUA"
 log() { printf '==> %s\n' "$*"; }
 
 # CLI symlinks. Try the user-bin first (no sudo), then the legacy
@@ -33,18 +29,6 @@ for BIN_LINK in "$USER_BIN_LINK" "$SYSTEM_BIN_LINK"; do
         log "removed $BIN_LINK"
     fi
 done
-
-# Legacy update script + LaunchAgent (present in installs before 0.0.6).
-if [[ -f "$LEGACY_UPDATE_SCRIPT" ]]; then
-    SUDO=""; [[ ! -w "$(dirname "$LEGACY_UPDATE_SCRIPT")" ]] && SUDO="sudo"
-    $SUDO rm -f "$LEGACY_UPDATE_SCRIPT"
-    log "removed legacy $LEGACY_UPDATE_SCRIPT"
-fi
-if [[ -f "$LEGACY_UPDATER_PLIST" ]]; then
-    launchctl unload "$LEGACY_UPDATER_PLIST" 2>/dev/null || true
-    rm -f "$LEGACY_UPDATER_PLIST"
-    log "removed legacy $LEGACY_UPDATER_PLIST"
-fi
 
 # .app bundle (in /Applications, usually writable by the user).
 if [[ -d "$APP_BUNDLE" ]]; then
@@ -77,12 +61,12 @@ fi
 # Agent skill symlinks (Claude Code + Codex). Only remove when the link
 # is ours — a dev user pointing the symlink at a working copy of the repo
 # keeps theirs untouched.
-SKILL_TARGET_EXPECTED="$APP_BUNDLE/Contents/Resources/Skills/cua-driver"
+SKILL_TARGET_EXPECTED="$APP_BUNDLE/Contents/Resources/Skills/trope-cua"
 for SKILL_LINK in \
-    "$HOME/.claude/skills/cua-driver" \
-    "$HOME/.agents/skills/cua-driver" \
-    "$HOME/.openclaw/skills/cua-driver" \
-    "$HOME/.config/opencode/skills/cua-driver"; do
+    "$HOME/.claude/skills/trope-cua" \
+    "$HOME/.agents/skills/trope-cua" \
+    "$HOME/.openclaw/skills/trope-cua" \
+    "$HOME/.config/opencode/skills/trope-cua"; do
     if [[ -L "$SKILL_LINK" ]] && [[ "$(readlink "$SKILL_LINK")" == "$SKILL_TARGET_EXPECTED" ]]; then
         rm -f "$SKILL_LINK"
         log "removed $SKILL_LINK"
@@ -93,12 +77,12 @@ done
 
 cat << 'FINALUNMSG'
 
-cua-driver uninstalled.
+trope-cua uninstalled.
 
 TCC grants (Accessibility + Screen Recording) remain in System
 Settings > Privacy & Security. Reset them explicitly if you want a
 clean re-install flow:
 
-  tccutil reset Accessibility com.trycua.driver
-  tccutil reset ScreenCapture com.trycua.driver
+  tccutil reset Accessibility com.tropecua.driver
+  tccutil reset ScreenCapture com.tropecua.driver
 FINALUNMSG

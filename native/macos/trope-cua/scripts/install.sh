@@ -1,34 +1,34 @@
 #!/usr/bin/env bash
-# cua-driver installer — download the latest signed + notarized tarball
-# from GitHub Releases, move CuaDriver.app to /Applications, and symlink
-# the `cua-driver` binary into ~/.local/bin so shell users can invoke
+# trope-cua installer — download the latest signed + notarized tarball
+# from GitHub Releases, move TropeCUA.app to /Applications, and symlink
+# the `trope-cua` binary into ~/.local/bin so shell users can invoke
 # it without typing the bundle path. Sudo-free.
 #
 # Usage (from README + release body):
-#   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install.sh)"
+#   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/voctory/trope-cua/main/native/macos/trope-cua/scripts/install.sh)"
 #
 # Flags:
-#   --bin-dir <path>     install the cua-driver wrapper to <path> instead of
+#   --bin-dir <path>     install the trope-cua wrapper to <path> instead of
 #                        ~/.local/bin (e.g. /usr/local/bin — that target needs sudo)
 #   --no-modify-path     skip auto-appending an `export PATH=...` line to your
 #                        shell rc when ~/.local/bin is missing from PATH
 #
 # Env overrides:
-#   CUA_DRIVER_VERSION=0.1.0   pin a specific release tag
-#   CUA_DRIVER_BIN_DIR=PATH    same as --bin-dir
-#   CUA_DRIVER_NO_MODIFY_PATH=1  same as --no-modify-path
+#   TROPE_CUA_VERSION=0.1.0   pin a specific release tag
+#   TROPE_CUA_BIN_DIR=PATH    same as --bin-dir
+#   TROPE_CUA_NO_MODIFY_PATH=1  same as --no-modify-path
 #
 # Uninstall:
-#   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/uninstall.sh)"
+#   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/voctory/trope-cua/main/native/macos/trope-cua/scripts/uninstall.sh)"
 set -euo pipefail
 
-REPO="trycua/cua"
-APP_NAME="CuaDriver.app"
-BINARY_NAME="cua-driver"
-TAG_PREFIX="cua-driver-v"
+REPO="voctory/trope-cua"
+APP_NAME="TropeCUA.app"
+BINARY_NAME="trope-cua"
+TAG_PREFIX="trope-cua-v"
 APP_DEST="/Applications/$APP_NAME"
-BIN_DIR="${CUA_DRIVER_BIN_DIR:-$HOME/.local/bin}"
-NO_MODIFY_PATH="${CUA_DRIVER_NO_MODIFY_PATH:-0}"
+BIN_DIR="${TROPE_CUA_BIN_DIR:-$HOME/.local/bin}"
+NO_MODIFY_PATH="${TROPE_CUA_NO_MODIFY_PATH:-0}"
 
 # Lightweight flag parsing (avoid getopt; macOS getopt is GNU-incompatible).
 while [[ $# -gt 0 ]]; do
@@ -50,7 +50,7 @@ err() { printf 'error: %s\n' "$*" >&2; }
 # --- Sanity checks ------------------------------------------------------
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
-    err "cua-driver is macOS-only; uname reports $(uname -s)"
+    err "trope-cua is macOS-only; uname reports $(uname -s)"
     exit 1
 fi
 
@@ -63,9 +63,9 @@ done
 
 # --- Resolve release tag ------------------------------------------------
 
-if [[ -n "${CUA_DRIVER_VERSION:-}" ]]; then
-    TAG="${TAG_PREFIX}${CUA_DRIVER_VERSION#v}"
-    log "using version from CUA_DRIVER_VERSION: $TAG"
+if [[ -n "${TROPE_CUA_VERSION:-}" ]]; then
+    TAG="${TAG_PREFIX}${TROPE_CUA_VERSION#v}"
+    log "using version from TROPE_CUA_VERSION: $TAG"
 else
     log "resolving latest $TAG_PREFIX* release via GitHub API"
     TAG=$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=40" \
@@ -85,12 +85,12 @@ fi
 
 ARCH=$(uname -m)
 VERSION="${TAG#${TAG_PREFIX}}"
-TARBALL="cua-driver-${VERSION}-darwin-${ARCH}.tar.gz"
+TARBALL="trope-cua-${VERSION}-darwin-${ARCH}.tar.gz"
 URL="https://github.com/$REPO/releases/download/$TAG/$TARBALL"
 
 log "downloading $URL"
 if ! curl -fsSL -o "$TMP_DIR/$TARBALL" "$URL"; then
-    err "download failed; try CUA_DRIVER_VERSION=<version> to pin a specific release"
+    err "download failed; try TROPE_CUA_VERSION=<version> to pin a specific release"
     exit 1
 fi
 
@@ -100,25 +100,6 @@ tar -xzf "$TMP_DIR/$TARBALL" -C "$TMP_DIR"
 if [[ ! -d "$TMP_DIR/$APP_NAME" ]]; then
     err "$APP_NAME not found inside $TARBALL (tarball layout may have changed)"
     exit 1
-fi
-
-# --- Clean up legacy bits from ≤ v0.0.5 ---------------------------------
-#
-# v0.0.5 and earlier installed a weekly LaunchAgent. v0.0.6 dropped it in
-# favor of an explicit `cua-driver update` command. The companion
-# /usr/local/bin/cua-driver-update script is root-owned and removed by
-# `cua-driver doctor` (sudo prompt) — we keep install.sh fully sudo-free.
-
-LEGACY_UPDATER_PLIST="$HOME/Library/LaunchAgents/com.trycua.cua_driver_updater.plist"
-LEGACY_UPDATE_SCRIPT="/usr/local/bin/cua-driver-update"
-
-if [[ -f "$LEGACY_UPDATER_PLIST" ]]; then
-    launchctl unload "$LEGACY_UPDATER_PLIST" 2>/dev/null || true
-    rm -f "$LEGACY_UPDATER_PLIST"
-    log "removed legacy LaunchAgent $LEGACY_UPDATER_PLIST"
-fi
-if [[ -f "$LEGACY_UPDATE_SCRIPT" ]]; then
-    log "legacy $LEGACY_UPDATE_SCRIPT still present (run \`cua-driver doctor\` to remove — needs sudo)"
 fi
 
 # --- Install .app bundle ------------------------------------------------
@@ -133,8 +114,8 @@ ditto "$TMP_DIR/$APP_NAME" "$APP_DEST"
 
 # --- Wrapper / symlink for CLI ------------------------------------------
 #
-# Default install location is ~/.local/bin/cua-driver — no sudo. Power
-# users can override via --bin-dir or $CUA_DRIVER_BIN_DIR. We refuse to
+# Default install location is ~/.local/bin/trope-cua — no sudo. Power
+# users can override via --bin-dir or $TROPE_CUA_BIN_DIR. We refuse to
 # write to root-owned dirs (e.g. /usr/local/bin) without an explicit opt-in.
 
 APP_BINARY="$APP_DEST/Contents/MacOS/$BINARY_NAME"
@@ -151,20 +132,11 @@ fi
 ln -sf "$APP_BINARY" "$BIN_LINK"
 log "symlinked $BIN_LINK -> $APP_BINARY"
 
-# Existing /usr/local/bin/cua-driver from older installs stays in place
-# so MCP client configs that reference it keep working — its target is the
-# same /Applications/CuaDriver.app/.../cua-driver binary that we just
-# refreshed, so the link is still valid post-upgrade.
-LEGACY_BIN_LINK="/usr/local/bin/$BINARY_NAME"
-if [[ "$BIN_LINK" != "$LEGACY_BIN_LINK" ]] && [[ -L "$LEGACY_BIN_LINK" ]]; then
-    log "kept legacy $LEGACY_BIN_LINK in place for backwards compatibility"
-fi
-
 # --- Install agent skill pack -------------------------------------------
 #
 # Drop a symlink for each detected agent that auto-loads Anthropic-format
 # SKILL.md skills from a folder. Auto-updates atomically replace
-# /Applications/CuaDriver.app so the symlinks stay valid across releases.
+# /Applications/TropeCUA.app so the symlinks stay valid across releases.
 # We never overwrite an existing link or directory — dev users with a
 # symlink pointing at a working copy of the repo keep theirs.
 #
@@ -183,12 +155,12 @@ fi
 #             user customisations.
 #   - Pi    : SYSTEM.md / AGENTS.md are single-file replacements; same risk.
 
-SKILL_TARGET="$APP_DEST/Contents/Resources/Skills/cua-driver"
+SKILL_TARGET="$APP_DEST/Contents/Resources/Skills/trope-cua"
 
 link_skill_into() {
     local parent_dir="$1"        # e.g. $HOME/.claude/skills
     local label="$2"             # e.g. "Claude Code"
-    local link_path="$parent_dir/cua-driver"
+    local link_path="$parent_dir/trope-cua"
 
     if [[ ! -d "$parent_dir" ]]; then
         return 0
@@ -264,7 +236,7 @@ if [[ "$PATH_NEEDS_FIX" == "1" ]]; then
                 log "$BIN_DIR already referenced in $RC_FILE (skipping rc edit)"
             else
                 {
-                    printf '\n# Added by cua-driver installer — see https://github.com/trycua/cua\n'
+                    printf '\n# Added by trope-cua installer -- see https://github.com/voctory/trope-cua\n'
                     printf '%s\n' "$EXPORT_LINE"
                 } >> "$RC_FILE"
                 log "appended PATH entry to $RC_FILE — restart your shell or run: source $RC_FILE"
@@ -277,39 +249,39 @@ fi
 
 # --- Done ---------------------------------------------------------------
 
-log "cua-driver $VERSION installed"
+log "trope-cua $VERSION installed"
 cat <<FINALEOF
 
 Next steps:
 
   1. Grant macOS permissions (required either way):
-       open -n -g -a CuaDriver --args serve
-       cua-driver check_permissions
+       open -n -g -a TropeCUA --args serve
+       trope-cua check_permissions
      macOS raises the Accessibility + Screen Recording dialogs.
      Grant both, then re-run check_permissions to confirm.
 
-  2. Pick how you want to use cua-driver — pick ONE, both, or switch later:
+  2. Pick how you want to use trope-cua — pick ONE, both, or switch later:
 
      A. As a CLI from the shell (no extra config needed):
-          cua-driver list_apps
-          cua-driver --help
+          trope-cua list_apps
+          trope-cua --help
 
      B. As an MCP server — run the one matching your client. Each is also
-        available via 'cua-driver mcp-config --client <name>':
+        available via 'trope-cua mcp-config --client <name>':
 
         • Claude Code:
-            claude mcp add --transport stdio cua-driver -- $BIN_LINK mcp
+            claude mcp add --transport stdio trope-cua -- $BIN_LINK mcp
 
         • Codex (OpenAI):
-            codex mcp add cua-driver -- $BIN_LINK mcp
+            codex mcp add trope-cua -- $BIN_LINK mcp
 
         • OpenClaw:
-            cua-driver mcp-config --client openclaw
+            trope-cua mcp-config --client openclaw
 
         • GitHub Copilot CLI (paste into ~/.copilot/mcp-config.json):
             {
               "mcpServers": {
-                "cua-driver": {
+                "trope-cua": {
                   "type": "local",
                   "command": "$BIN_LINK",
                   "args": ["mcp"],
@@ -320,12 +292,12 @@ Next steps:
             Or inside gh copilot chat: /mcp add → type=STDIO, command=$BIN_LINK, args=mcp
 
         • Cursor / OpenCode / Hermes (no add CLI — paste config):
-            cua-driver mcp-config --client cursor     # JSON for ~/.cursor/mcp.json
-            cua-driver mcp-config --client opencode   # JSON for opencode.json
-            cua-driver mcp-config --client hermes     # YAML for ~/.hermes/config.yaml
+            trope-cua mcp-config --client cursor     # JSON for ~/.cursor/mcp.json
+            trope-cua mcp-config --client opencode   # JSON for opencode.json
+            trope-cua mcp-config --client hermes     # YAML for ~/.hermes/config.yaml
 
         For other clients accepting the generic mcpServers shape:
-            cua-driver mcp-config
+            trope-cua mcp-config
 
-Docs: https://github.com/trycua/cua/tree/main/libs/cua-driver
+Docs: https://github.com/voctory/trope-cua
 FINALEOF

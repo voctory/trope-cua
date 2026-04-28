@@ -97,7 +97,7 @@ public enum ScreenshotTool {
                             text: """
                                 Screen Recording permission not granted. Call \
                                 `check_permissions` with {"prompt": true} to request it, \
-                                then allow cua-driver in System Settings → Privacy & \
+                                then allow trope-cua in System Settings → Privacy & \
                                 Security → Screen Recording.
                                 """,
                             annotations: nil,

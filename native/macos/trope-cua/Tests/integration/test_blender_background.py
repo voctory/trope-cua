@@ -16,7 +16,7 @@ Prerequisites:
   - Blender installed at /Applications/Blender.app
 
 Run:
-    CUA_DRIVER_BINARY=... python3 -m unittest Tests.integration.test_blender_background
+    TROPE_CUA_BINARY=... python3 -m unittest Tests.integration.test_blender_background
 """
 
 from __future__ import annotations

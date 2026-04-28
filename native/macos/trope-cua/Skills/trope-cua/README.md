@@ -1,8 +1,8 @@
-# cua-driver — Claude Code skill
+# trope-cua — Claude Code skill
 
 A [Claude Code](https://code.claude.com) skill that teaches Claude to
 drive native macOS apps via the
-[`cua-driver`](https://github.com/trycua/cua/tree/main/libs/cua-driver)
+[`trope-cua`](https://github.com/voctory/trope-cua)
 CLI — snapshot an app's accessibility tree, click/type/scroll by
 `element_index`, and verify via re-snapshot. Backgrounded-first: no
 focus steal, no cursor warp, no Space follow.
@@ -28,23 +28,23 @@ See `SKILL.md` for the main body.
 
 1. **macOS 14 or newer** — the driver depends on SkyLight private SPIs
    that were stabilized in Sonoma.
-2. **`cua-driver` CLI + `CuaDriver.app`** — installable one-liner:
+2. **`trope-cua` CLI + `TropeCUA.app`** — installable one-liner:
    ```bash
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install.sh)"
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/voctory/trope-cua/main/native/macos/trope-cua/scripts/install.sh)"
    ```
-   Or from a clone of `trycua/cua`:
+   Or from a clone of `voctory/trope-cua`:
    ```bash
-   cd libs/cua-driver
+   cd native/macos/trope-cua
    scripts/install-local.sh   # builds + installs + symlinks for dev use
    ```
    The driver runs as an `.app` bundle because macOS TCC grants are
-   tied to a stable bundle id (`com.trycua.driver`). The CLI symlink
+   tied to a stable bundle id (`com.tropecua.driver`). The CLI symlink
    lets Claude invoke tools via plain shell.
-3. **TCC grants on `CuaDriver.app`** — **Accessibility** and
+3. **TCC grants on `TropeCUA.app`** — **Accessibility** and
    **Screen Recording** in System Settings → Privacy & Security.
    Verify with:
    ```bash
-   cua-driver check_permissions
+   trope-cua check_permissions
    ```
    Both fields must be `true`. If not, the app appears in the
    relevant panes of System Settings after first use; toggle it on
@@ -58,20 +58,20 @@ The skill is two drop-in directories.
 
 ```bash
 mkdir -p ~/.claude/skills
-cp -R Skills/cua-driver ~/.claude/skills/
+cp -R Skills/trope-cua ~/.claude/skills/
 ```
 
 Or symlink if you want edits-in-place:
 
 ```bash
-ln -s "$PWD/Skills/cua-driver" ~/.claude/skills/cua-driver
+ln -s "$PWD/Skills/trope-cua" ~/.claude/skills/trope-cua
 ```
 
 **Project scope** (committed alongside a specific repo):
 
 ```bash
 mkdir -p .claude/skills
-cp -R /path/to/cua/libs/cua-driver/Skills/cua-driver .claude/skills/
+cp -R /path/to/trope-cua/native/macos/trope-cua/Skills/trope-cua .claude/skills/
 ```
 
 ## Invoking the skill
@@ -82,7 +82,7 @@ Save button in Numbers", "navigate to trycua.com in Chrome". You can
 also invoke it explicitly:
 
 ```
-/cua-driver
+/trope-cua
 ```
 
 ## Files
@@ -96,15 +96,15 @@ also invoke it explicitly:
 
 ## Troubleshooting
 
-- `cua-driver: command not found` → re-run the installer or add
-  `.build/CuaDriver.app/Contents/MacOS/` to `$PATH`.
+- `trope-cua: command not found` → re-run the installer or add
+  `.build/TropeCUA.app/Contents/MacOS/` to `$PATH`.
 - `No cached AX state for pid X window_id W` → element_index was
   reused across turns, or across different windows of the same app.
   Call `get_window_state({pid, window_id})` first in the same turn,
   with the same window_id you're about to act against.
 - Empty `tree_markdown` → `capture_mode` is set to `vision`, which
   skips the AX walk by design. Flip back to the default `som`
-  (`cua-driver config set capture_mode som`) to get the tree.
+  (`trope-cua config set capture_mode som`) to get the tree.
   Tiny screenshot → likely a stale window capture. See "Behavior
   matrix" in SKILL.md for the full mode table.
 - System-alert beep when pressing Return on a minimized Chrome
@@ -117,12 +117,12 @@ also invoke it explicitly:
 The skill evolves alongside the driver. To update:
 
 ```bash
-cd /path/to/cua && git pull
+cd /path/to/trope-cua && git pull
 # if you copied: re-copy
-cp -R libs/cua-driver/Skills/cua-driver ~/.claude/skills/
+cp -R native/macos/trope-cua/Skills/trope-cua ~/.claude/skills/
 # if you symlinked: nothing needed
 ```
 
 ## License
 
-MIT. Same license as the parent `trycua/cua` repo.
+MIT. Same license as the parent `voctory/trope-cua` repo.

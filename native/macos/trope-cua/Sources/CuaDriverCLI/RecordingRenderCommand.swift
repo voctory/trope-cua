@@ -2,7 +2,7 @@ import ArgumentParser
 import CuaDriverCore
 import Foundation
 
-/// `cua-driver recording render <input-dir> --output <out.mp4>` — post-process
+/// `trope-cua recording render <input-dir> --output <out.mp4>` — post-process
 /// a recording directory produced by `recording start … --video-experimental`
 /// into a zoomed output MP4.
 ///
@@ -10,7 +10,7 @@ import Foundation
 /// through the daemon — it's pure file-to-file work with no shared
 /// in-process state, so the simplest path is to run it in the CLI
 /// process directly. That also means `recording render` works fine
-/// without a running `cua-driver serve`.
+/// without a running `trope-cua serve`.
 struct RecordingRenderCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "render",
@@ -25,9 +25,9 @@ struct RecordingRenderCommand: AsyncParsableCommand {
             independent of the zoom math.
 
             Examples:
-              cua-driver recording render ~/cua-rec --output /tmp/out.mp4
-              cua-driver recording render ~/cua-rec --output /tmp/baseline.mp4 --no-zoom
-              cua-driver recording render ~/cua-rec --output /tmp/out.mp4 --scale 2.5
+              trope-cua recording render ~/cua-rec --output /tmp/out.mp4
+              trope-cua recording render ~/cua-rec --output /tmp/baseline.mp4 --no-zoom
+              trope-cua recording render ~/cua-rec --output /tmp/out.mp4 --scale 2.5
             """
     )
 

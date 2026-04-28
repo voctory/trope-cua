@@ -22,7 +22,7 @@ public enum GetConfigTool {
 
                 Pure read-only. Returns defaults when the file doesn't
                 exist or fails to decode — same fallback the daemon uses
-                at startup. Sibling to `set_config` / `cua-driver config`.
+                at startup. Sibling to `set_config` / `trope-cua config`.
 
                 Current schema:
 

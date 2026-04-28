@@ -1,11 +1,11 @@
 ---
-name: cua-driver
-description: Drive a native macOS app via the cua-driver CLI (default) or MCP server — snapshot its AX tree, click/type/scroll by element_index, verify via re-snapshot. Use when the user asks you to operate, drive, automate, or perform a GUI task in a real macOS application on the host (e.g. "open a file in TextEdit", "navigate to /Applications in Finder", "click the Save button in Numbers").
+name: trope-cua
+description: Drive a native macOS app via the trope-cua CLI (default) or MCP server — snapshot its AX tree, click/type/scroll by element_index, verify via re-snapshot. Use when the user asks you to operate, drive, automate, or perform a GUI task in a real macOS application on the host (e.g. "open a file in TextEdit", "navigate to /Applications in Finder", "click the Save button in Numbers").
 ---
 
-# cua-driver
+# trope-cua
 
-Orchestrates macOS app automation via `cua-driver`. Whenever a user
+Orchestrates macOS app automation via `trope-cua`. Whenever a user
 asks to drive a native macOS app, follow the loop in this skill rather
 than calling tools ad-hoc — the snapshot-before-action invariant is not
 optional and silently breaks if you skip it.
@@ -13,7 +13,7 @@ optional and silently breaks if you skip it.
 ## The no-foreground contract — read this first
 
 **The user's frontmost app MUST NOT change.** This is the whole
-reason cua-driver exists. Users pay for the right to keep typing in
+reason trope-cua exists. Users pay for the right to keep typing in
 their editor while an agent drives another app in the background.
 Violate this rule and every other nice property the driver gives
 you (no cursor warp, no Space switch, no window raise) stops
@@ -92,7 +92,7 @@ frontmost state:
   browsers open each URL in a new **window**. Each window has its own
   `window_id`, its own AX tree, and can be inspected / interacted with
   via `element_index` without activating or switching anything. Tabs
-  are a UX grouping for humans; cua-driver workflows should default to
+  are a UX grouping for humans; trope-cua workflows should default to
   windows. See `WEB_APPS.md` → "Tabs vs windows" for the full pattern.
 
   Tab-title enumeration (read-only) IS safe — walk a window's toolbar
@@ -118,7 +118,7 @@ or pixel clicks — both paths are frontmost-insensitive. Full
 rationale in "Navigating native menu bars" below.
 
 **"Open \<app\>" in user speech means launch, not activate.**
-`cua-driver launch_app` is the one correct path for process
+`trope-cua launch_app` is the one correct path for process
 startup — it's idempotent (no-op on a running app), returns the
 pid, and has an internal `FocusRestoreGuard` that catches
 `NSApp.activate(ignoringOtherApps:)` calls the target makes during
@@ -128,16 +128,16 @@ was before the launch. That guard is why `launch_app` with `urls`
 is safe even for apps that normally foreground on media-load
 (Chrome, Electron, media players).
 
-## Defaults — always prefer cua-driver over shell shims
+## Defaults — always prefer trope-cua over shell shims
 
-**Default transport is the `cua-driver` CLI** — `Bash` shelling out
-to `cua-driver <tool-name> '<JSON-args>'`. MCP tools (prefix
-`mcp__cua-driver__*`) only when the user explicitly asks for them.
+**Default transport is the `trope-cua` CLI** — `Bash` shelling out
+to `trope-cua <tool-name> '<JSON-args>'`. MCP tools (prefix
+`mcp__trope-cua__*`) only when the user explicitly asks for them.
 CLI wins because it picks up rebuilds instantly, failures are
 easier to diagnose, and there's no per-tool schema-load overhead.
 
 Every reference to `click(...)`, `get_window_state(...)` etc. in this
-skill means `cua-driver click '{...}'` — translate to MCP form only
+skill means `trope-cua click '{...}'` — translate to MCP form only
 when MCP is requested.
 
 Intent → tool mapping. If you find yourself reaching for the right
@@ -164,10 +164,10 @@ to see X"). Reaching for it because a tool call returned something
 confusing is wrong — that's the skill's classic foot-in-the-door
 failure mode and it steals focus every time.
 
-When a cua-driver call surprises you, diagnose cua-driver first:
+When a trope-cua call surprises you, diagnose trope-cua first:
 
 - **Tiny screenshot / empty `tree_markdown`?** Check
-  `cua-driver get_config` → `capture_mode`. Default `"vision"` omits
+  `trope-cua get_config` → `capture_mode`. Default `"vision"` omits
   the AX tree (PNG only), `"ax"` omits the PNG, `"som"` returns
   both. If a snapshot lacks a tree, `capture_mode` is almost
   certainly `"vision"` — either reason purely from the PNG or flip
@@ -197,14 +197,14 @@ Before every `Bash` call whose command line touches any macOS app
 run the self-check:
 
 1. **Does this command foreground the target?** If yes — stop and
-   translate to the cua-driver equivalent from the mapping table.
+   translate to the trope-cua equivalent from the mapping table.
 2. **Does this command move the user's real cursor?** (`cliclick`,
    any `CGEventPost` at `cghidEventTap` over another app's window).
    If yes — stop; use `click({pid, x, y})` which routes per-pid
    via SkyLight and never warps the cursor.
-3. **Does this command bypass cua-driver entirely?** (`osascript`
+3. **Does this command bypass trope-cua entirely?** (`osascript`
    mutating GUI state, AppleScript files, external helpers.) If
-   yes — stop; find the cua-driver tool that does the intent.
+   yes — stop; find the trope-cua tool that does the intent.
 
 If all three are "no," the command is safe. If you can't answer,
 default to stop and ask rather than proceed. A single `open -a`
@@ -213,61 +213,61 @@ editor state.
 
 ## Prerequisites — check before starting
 
-1. `cua-driver` is on `$PATH` (`which cua-driver`). If not, point the
+1. `trope-cua` is on `$PATH` (`which trope-cua`). If not, point the
    user at `scripts/install-local.sh` and stop.
-2. Run `cua-driver check_permissions` (with the daemon up — see step 3).
+2. Run `trope-cua check_permissions` (with the daemon up — see step 3).
    The default behavior also raises the system permission dialogs for
    any missing grants, so the user can grant on the spot. If either
    grant still reads `false` after that (user dismissed the dialog),
    tell them to open System Settings → Privacy & Security and grant
-   Accessibility and Screen Recording to `CuaDriver.app`, then stop.
+   Accessibility and Screen Recording to `TropeCUA.app`, then stop.
    Pass `'{"prompt":false}'` for a purely read-only status check that
    won't steal focus.
-3. Start the daemon with `open -n -g -a CuaDriver --args serve` (the
+3. Start the daemon with `open -n -g -a TropeCUA --args serve` (the
    recommended form — goes through LaunchServices so TCC attributes
-   the process to CuaDriver.app). `cua-driver serve &` also works;
-   the CLI auto-relaunches through `open -n -g -a CuaDriver` when it
+   the process to TropeCUA.app). `trope-cua serve &` also works;
+   the CLI auto-relaunches through `open -n -g -a TropeCUA` when it
    detects a wrong-TCC context (any IDE-spawned shell: Claude Code,
-   Cursor, VS Code, Conductor). Verify with `cua-driver status`.
+   Cursor, VS Code, Conductor). Verify with `trope-cua status`.
 
-## Using cua-driver from the shell
+## Using trope-cua from the shell
 
 Tool names are `snake_case`, management subcommands are
-`kebab-case` — no ambiguity. Tools invoked as `cua-driver
+`kebab-case` — no ambiguity. Tools invoked as `trope-cua
 <tool-name> '<JSON-args>'`. Management subcommands:
 
-- `open -n -g -a CuaDriver --args serve` — start persistent daemon
+- `open -n -g -a TropeCUA --args serve` — start persistent daemon
   (**required** for `element_index` workflows; without it each CLI
   invocation spawns a fresh process and the per-pid element cache
-  dies between calls). `cua-driver serve &` also works — the CLI
+  dies between calls). `trope-cua serve &` also works — the CLI
   auto-relaunches via `open` when the shell's TCC context is wrong.
-  Pass `--no-relaunch` / `CUA_DRIVER_NO_RELAUNCH=1` to opt out.
-- `cua-driver stop` / `status`
-- `cua-driver list-tools`, `describe <tool>`
-- `cua-driver recording start|stop|status` — see `RECORDING.md`
+  Pass `--no-relaunch` / `TROPE_CUA_NO_RELAUNCH=1` to opt out.
+- `trope-cua stop` / `status`
+- `trope-cua list-tools`, `describe <tool>`
+- `trope-cua recording start|stop|status` — see `RECORDING.md`
 
 Canonical multi-step workflow:
 
 ```
-open -n -g -a CuaDriver --args serve
-cua-driver launch_app '{"bundle_id":"com.apple.calculator"}'
+open -n -g -a TropeCUA --args serve
+trope-cua launch_app '{"bundle_id":"com.apple.calculator"}'
 # → {pid: 844, windows: [{window_id: 10725, ...}]}
-cua-driver get_window_state '{"pid":844,"window_id":10725}'
-cua-driver click '{"pid":844,"window_id":10725,"element_index":14}'
-cua-driver stop
+trope-cua get_window_state '{"pid":844,"window_id":10725}'
+trope-cua click '{"pid":844,"window_id":10725,"element_index":14}'
+trope-cua stop
 ```
 
 ## Agent cursor overlay
 
 Visual cursor overlay for demos and screen recordings. Default:
-enabled. Toggle with `cua-driver set_agent_cursor_enabled
+enabled. Toggle with `trope-cua set_agent_cursor_enabled
 '{"enabled":true|false}'`. A triangle pointer Bezier-glides to each
 click target, ring-ripples on landing, idle-hides after ~1.5s.
 Motion knobs: `set_agent_cursor_motion` takes any subset of
 `start_handle`, `end_handle`, `arc_size`, `arc_flow`, `spring` —
 tuneable at runtime, persisted to config.
 
-Requires an AppKit runloop, which `cua-driver serve` / `mcp`
+Requires an AppKit runloop, which `trope-cua serve` / `mcp`
 bootstraps. One-shot CLI invocations skip the overlay entirely.
 
 ## The core invariant — snapshot before AND after every action
@@ -325,7 +325,7 @@ work. Note the tool named `screenshot` is separate (raw PNG, no AX
 walk) and unrelated to the capture mode.
 
 When a snapshot looks wrong (tiny screenshot / empty tree), check
-`cua-driver get_config` for `capture_mode` before anything else.
+`trope-cua get_config` for `capture_mode` before anything else.
 
 Pure-vision mode has its own caveats — Claude Code's vision
 pipeline downsamples dense text aggressively, so pixel grounding
@@ -376,7 +376,7 @@ side effects) and gives you the pid in one call — no `list_apps` hop.
 - `launch_app({name: "Calculator"})` — when bundle_id isn't known.
 
 `launch_app` is a **hidden-launch primitive by design** — that's the
-entire point of cua-driver: agents drive apps in the background while
+entire point of trope-cua: agents drive apps in the background while
 the user keeps typing in their real foreground app. The target's
 window is initialized (AX tree fully populated, clickable via
 `element_index`, the pid appears in `list_apps`) but not drawn on
@@ -398,7 +398,7 @@ from `Info.plist` and use `launch_app` with that), `osascript 'tell
 app … to launch/open'`, or similar. Those paths activate the target,
 bypass the driver's focus-restore guard, and require a Bash
 permission prompt the agent loop shouldn't be burning on app launch.
-See "Prefer cua-driver tools over shell shims" above for the full
+See "Prefer trope-cua tools over shell shims" above for the full
 intent → tool mapping.
 
 `list_apps` is for app-level discovery (answering "what's installed /
@@ -419,7 +419,7 @@ you're interacting with a long-lived process). In the default
 — no AX tree — so the canonical loop is `list_windows →
 get_window_state → reason over PNG → pixel click`. When you need
 `element_index` dispatch (AX-addressable elements, backgrounded
-clicks), flip to `som` first: `cua-driver set_config '{"key":
+clicks), flip to `som` first: `trope-cua set_config '{"key":
 "capture_mode", "value": "som"}'`, or call `get_accessibility_tree`
 directly. The rest of this section walks through `som` mode, which
 is what you want once you've decided element-indexed addressing is
@@ -450,12 +450,12 @@ In `som` mode the response carries:
 # canonical, works in every capture mode — writes the image bytes
 # wherever you point, stdout stays readable (tree in som, summary
 # in vision). stderr warns (exit 0) if the response had no image.
-cua-driver get_window_state '{"pid":N,"window_id":W}' --image-out /tmp/shot.png
+trope-cua get_window_state '{"pid":N,"window_id":W}' --image-out /tmp/shot.png
 
 # som-only legacy path: pull the spliced base64 out of structuredContent.
 # Prefer --image-out above — it's one flag vs a probe + pipe.
-if [ "$(cua-driver get_window_state '{"pid":N,"window_id":W}' | jq -r '.has_screenshot')" = "true" ]; then
-  cua-driver get_window_state '{"pid":N,"window_id":W}' | jq -r '.screenshot_png_b64' | base64 -d > shot.png
+if [ "$(trope-cua get_window_state '{"pid":N,"window_id":W}' | jq -r '.has_screenshot')" = "true" ]; then
+  trope-cua get_window_state '{"pid":N,"window_id":W}' | jq -r '.screenshot_png_b64' | base64 -d > shot.png
 fi
 ```
 
@@ -487,7 +487,7 @@ video / WebGL / custom-drawn surface that isn't in the AX tree
 (see Pixel-coordinate clicks below).
 
 The `actions=[...]` list on each element is **advisory**, not
-authoritative. cua-driver does not pre-flight check against it —
+authoritative. trope-cua does not pre-flight check against it —
 `click({pid, element_index})` always attempts `AXPress` (or the
 action you pass) and surfaces whatever the target returns. Many
 apps accept `AXPress` on elements that don't advertise it — Chrome's
@@ -636,7 +636,7 @@ The working pattern:
    acceptable here — this is the carve-out the skill's osascript
    gate allows).
 2. `CGEvent.post(tap: .cghidEventTap)` with a leading `mouseMoved`
-   event (~30 ms before the click). `cua-driver click` when the
+   event (~30 ms before the click). `trope-cua click` when the
    target is frontmost automatically takes this path.
 3. Accept that the real cursor visibly moves — `cghidEventTap` is
    the system HID stream, the cursor warps to the click point.
@@ -646,7 +646,7 @@ There is no backgrounded path that reaches these apps today.
 ## Navigating native menu bars (AXMenuBar)
 
 **Only drive the menu bar when the target app is frontmost.** This
-is the single most-misused cua-driver capability. If the target is
+is the single most-misused trope-cua capability. If the target is
 backgrounded, don't reach for `AXMenuBarItem` + AXPick — use
 in-window `element_index` or pixel clicks instead. Two reasons, one
 functional and one perceptual:
@@ -808,7 +808,7 @@ Supported backends:
 Sandboxed Electron apps (VS Code, Cursor) strip `require` and Electron
 APIs there. Useful for: `process.env`, `process.versions`, `process.cwd()`,
 `process.pid`. For full DOM/renderer access, launch the app with
-`--remote-debugging-port=9222` — cua-driver will detect and prefer the
+`--remote-debugging-port=9222` — trope-cua will detect and prefer the
 page target automatically.
 
 Arc returns no values; Firefox has no JS-via-AppleEvents support — see
@@ -833,7 +833,7 @@ silently-dropped actions — the single most common failure mode.
 Session-scoped action recording + replay, for demos, regressions, and
 training data. Only invoke when the user explicitly asks to record a
 session — the skill does not auto-enable this. CLI surface:
-`cua-driver recording start|stop|status`; raw tool: `set_recording`.
+`trope-cua recording start|stop|status`; raw tool: `set_recording`.
 
 See **`RECORDING.md`** for the full flow: enable/disable, turn folder
 contents, replay via `replay_trajectory`, and the element_index

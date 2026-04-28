@@ -44,7 +44,7 @@ public actor VideoRecorder {
     public static let targetFrameRate: Int = 30
 
     private let log = Logger(
-        subsystem: "com.trycua.driver",
+        subsystem: "com.tropecua.driver",
         category: "VideoRecorder"
     )
 
@@ -263,7 +263,7 @@ private final class StreamOutputHandler: NSObject, SCStreamOutput, SCStreamDeleg
     private var appendedFrameCount: Int = 0
 
     private let log = Logger(
-        subsystem: "com.trycua.driver",
+        subsystem: "com.tropecua.driver",
         category: "VideoRecorder"
     )
 

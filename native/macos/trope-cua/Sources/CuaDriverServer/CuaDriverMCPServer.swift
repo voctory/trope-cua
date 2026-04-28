@@ -11,7 +11,7 @@ public enum CuaDriverMCPServer {
         registry: ToolRegistry = .default
     ) async -> Server {
         let server = Server(
-            name: "cua-driver",
+            name: "trope-cua",
             version: version,
             capabilities: Server.Capabilities(tools: .init(listChanged: false))
         )

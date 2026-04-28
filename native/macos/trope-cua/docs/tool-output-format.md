@@ -1,4 +1,4 @@
-# cua-driver MCP Tool Output Format
+# trope-cua MCP Tool Output Format
 
 Every tool call returns a ✅ checkmark + concise summary. No structured JSON output.
 

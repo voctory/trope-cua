@@ -50,7 +50,7 @@ public actor RecordingSession {
     /// contexts — `record(...)` skips the AX snapshot when this is nil.
     private var engine: AppStateEngine?
     private let log = Logger(
-        subsystem: "com.trycua.driver",
+        subsystem: "com.tropecua.driver",
         category: "RecordingSession"
     )
 

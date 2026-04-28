@@ -3,7 +3,7 @@ import CuaDriverServer
 import Foundation
 import MCP
 
-/// `cua-driver recording <start|stop|status>` — convenience wrappers
+/// `trope-cua recording <start|stop|status>` — convenience wrappers
 /// around the `set_recording` / `get_recording_state` MCP tools so
 /// trajectory-capture operations don't require hand-crafted JSON args.
 ///
@@ -11,22 +11,22 @@ import MCP
 /// escape: recording state is per-process, so running this against a
 /// one-shot CLI would arm a recorder that dies immediately). The error
 /// message on the unreachable path points the user at
-/// `cua-driver serve`.
+/// `trope-cua serve`.
 struct RecordingCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "recording",
-        abstract: "Control the trajectory recorder on a running cua-driver daemon.",
+        abstract: "Control the trajectory recorder on a running trope-cua daemon.",
         discussion: """
             Wraps the `set_recording` and `get_recording_state` tools
             with human-friendly output. All subcommands require a
-            running daemon (`cua-driver serve`) because recording
+            running daemon (`trope-cua serve`) because recording
             state lives in-process and doesn't survive CLI-process
             lifetimes.
 
             Examples:
-              cua-driver recording start ~/cua-trajectories/demo1
-              cua-driver recording status
-              cua-driver recording stop
+              trope-cua recording start ~/cua-trajectories/demo1
+              trope-cua recording status
+              trope-cua recording stop
 
             Turn folders appear under the start-time `<output-dir>`
             as `turn-00001/`, `turn-00002/`, …
@@ -40,7 +40,7 @@ struct RecordingCommand: AsyncParsableCommand {
     )
 }
 
-/// `cua-driver recording start <output-dir>` — enables the recorder
+/// `trope-cua recording start <output-dir>` — enables the recorder
 /// and points it at `<output-dir>`. Expands `~` and creates the
 /// directory (+ intermediates) if missing.
 struct RecordingStartCommand: AsyncParsableCommand {
@@ -89,7 +89,7 @@ struct RecordingStartCommand: AsyncParsableCommand {
 
         guard DaemonClient.isDaemonListening(socketPath: socketPath) else {
             printErr(
-                "cua-driver daemon is not running — start it with `cua-driver serve &`.")
+                "trope-cua daemon is not running — start it with `trope-cua serve &`.")
             throw ExitCode(1)
         }
 
@@ -122,7 +122,7 @@ struct RecordingStartCommand: AsyncParsableCommand {
     }
 }
 
-/// `cua-driver recording stop` — disables the recorder. Prints the
+/// `trope-cua recording stop` — disables the recorder. Prints the
 /// last-recorded turn count and the directory it was writing into
 /// when available (so the user knows where to look).
 struct RecordingStopCommand: AsyncParsableCommand {
@@ -139,7 +139,7 @@ struct RecordingStopCommand: AsyncParsableCommand {
 
         guard DaemonClient.isDaemonListening(socketPath: socketPath) else {
             printErr(
-                "cua-driver daemon is not running — start it with `cua-driver serve &`.")
+                "trope-cua daemon is not running — start it with `trope-cua serve &`.")
             throw ExitCode(1)
         }
 
@@ -171,7 +171,7 @@ struct RecordingStopCommand: AsyncParsableCommand {
     }
 }
 
-/// `cua-driver recording status` — prints whether recording is on.
+/// `trope-cua recording status` — prints whether recording is on.
 /// Exits 0 either way — "disabled" is a valid state, not an error.
 struct RecordingStatusCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -187,7 +187,7 @@ struct RecordingStatusCommand: AsyncParsableCommand {
 
         guard DaemonClient.isDaemonListening(socketPath: socketPath) else {
             printErr(
-                "cua-driver daemon is not running — start it with `cua-driver serve &`.")
+                "trope-cua daemon is not running — start it with `trope-cua serve &`.")
             throw ExitCode(1)
         }
 
@@ -255,7 +255,7 @@ private func callDaemonTool(
         return result
     case .noDaemon:
         printErr(
-            "cua-driver daemon disappeared — start it with `cua-driver serve &`.")
+            "trope-cua daemon disappeared — start it with `trope-cua serve &`.")
         throw ExitCode(1)
     case .error(let message):
         printErr("daemon error: \(message)")

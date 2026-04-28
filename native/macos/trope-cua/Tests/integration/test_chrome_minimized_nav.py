@@ -213,7 +213,7 @@ class ChromeMinimizedNavTests(unittest.TestCase):
             pass
 
     def setUp(self) -> None:
-        # Minimize Chrome via hotkey — cua-driver delivers Cmd+M to the pid
+        # Minimize Chrome via hotkey — trope-cua delivers Cmd+M to the pid
         # via CGEvent.postToPid without stealing focus.
         with DriverClient(self.binary) as c:
             c.call_tool("hotkey", {

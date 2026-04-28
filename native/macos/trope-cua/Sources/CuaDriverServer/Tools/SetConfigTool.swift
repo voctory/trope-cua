@@ -127,7 +127,7 @@ public struct ConfigKeyError: Error {
 public func applyConfigKey(_ key: String, value: Value) async throws {
     // Subtree-not-leaf guard first so the caller gets a targeted hint
     // rather than a generic "unknown key" when they strip the leaf by
-    // accident (`cua-driver config set agent_cursor '{"enabled": false}'`).
+    // accident (`trope-cua config set agent_cursor '{"enabled": false}'`).
     if key == "agent_cursor" || key == "agent_cursor.motion" {
         throw ConfigKeyError(
             message:

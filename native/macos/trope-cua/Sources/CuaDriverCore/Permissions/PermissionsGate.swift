@@ -59,7 +59,7 @@ public final class PermissionsGate {
     /// When `alwaysPresentWindow` is `true` the gate shows its
     /// window regardless of current state and waits for the user to
     /// close it. Use case: bare-launch from Finder / Spotlight on
-    /// CuaDriver.app, where "nothing happens" is the wrong UX even
+    /// TropeCUA.app, where "nothing happens" is the wrong UX even
     /// when permissions are already green — the user deserves a
     /// visible "ready" confirmation before the process quits.
     public func ensureGranted(alwaysPresentWindow: Bool = false) async -> Bool {
@@ -95,7 +95,7 @@ public final class PermissionsGate {
         let hostingController = NSHostingController(rootView: rootView)
         let window = NSWindow(contentViewController: hostingController)
         window.styleMask = [.titled, .closable]
-        window.title = "CuaDriver Permissions"
+        window.title = "Trope CUA Permissions"
         window.isReleasedWhenClosed = false
         window.level = .floating
         window.center()
@@ -140,7 +140,7 @@ public final class PermissionsGate {
     /// When one permission flips from red→green and the other is
     /// still red, auto-open the remaining Settings pane so the user
     /// can grant both in a single Settings visit. Avoids the
-    /// "grant one, close Settings, come back to CuaDriver, click the
+    /// "grant one, close Settings, come back to Trope CUA, click the
     /// other row, go back to Settings" round trip. macOS's forced
     /// "Quit & Reopen" dialog — which fires after Accessibility is
     /// granted — is then only relevant once, after both are green.
@@ -237,10 +237,10 @@ private struct PermissionsRootView: View {
     }
 
     private var heading: String {
-        if allGranted { return "CuaDriver is ready" }
+        if allGranted { return "Trope CUA is ready" }
         if onlyAccessibility { return "One more permission" }
         if onlyScreenRecording { return "One more permission" }
-        return "CuaDriver needs your permission"
+        return "Trope CUA needs your permission"
     }
 
     private var subheading: String {
@@ -256,7 +256,7 @@ private struct PermissionsRootView: View {
             return "Screen Recording is granted. Now grant Accessibility "
                 + "in the System Settings window that just opened."
         }
-        return "Grant both so CuaDriver can inspect and drive native "
+        return "Grant both so Trope CUA can inspect and drive native "
             + "apps on your behalf. This window closes on its own "
             + "once each item turns green."
     }
@@ -275,7 +275,7 @@ private struct PermissionsRootView: View {
             PermissionRowSwiftUI(
                 title: "Accessibility",
                 subtitle:
-                    "Lets CuaDriver read the accessibility tree of running apps "
+                    "Lets Trope CUA read the accessibility tree of running apps "
                     + "and send clicks / keystrokes via AX RPC.",
                 granted: model.status.accessibility,
                 onOpen: onOpenAccessibility
@@ -284,7 +284,7 @@ private struct PermissionsRootView: View {
             PermissionRowSwiftUI(
                 title: "Screen Recording",
                 subtitle:
-                    "Lets CuaDriver capture per-window screenshots so agents can "
+                    "Lets Trope CUA capture per-window screenshots so agents can "
                     + "see the current UI state alongside the tree.",
                 granted: model.status.screenRecording,
                 onOpen: onOpenScreenRecording
@@ -298,7 +298,7 @@ private struct PermissionsRootView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.seal.fill")
                         .foregroundColor(.green)
-                    Text("All set. CuaDriver is ready to use.")
+                    Text("All set. Trope CUA is ready to use.")
                         .font(.system(size: 12))
                 }
                 .padding(.horizontal, 12)

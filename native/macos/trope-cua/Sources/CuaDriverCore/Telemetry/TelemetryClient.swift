@@ -5,11 +5,11 @@ import Foundation
 /// env-override support, and installation-record-once behavior.
 ///
 /// Differences from lume:
-///  - Events are prefixed `cua_driver_` instead of `lume_`.
-///  - Installation ID + marker live under `~/.cua-driver/` instead
+///  - Events are prefixed `trope_cua_` instead of `lume_`.
+///  - Installation ID + marker live under `~/.trope-cua/` instead
 ///    of `~/.lume/`.
-///  - Env overrides are `CUA_DRIVER_TELEMETRY_ENABLED` and
-///    `CUA_DRIVER_TELEMETRY_DEBUG`.
+///  - Env overrides are `TROPE_CUA_TELEMETRY_ENABLED` and
+///    `TROPE_CUA_TELEMETRY_DEBUG`.
 ///  - Opt-out flag is persisted inside our existing `CuaDriverConfig`
 ///    (`telemetryEnabled` field) via `ConfigStore`, rather than a
 ///    separate YAML like lume's.
@@ -27,9 +27,9 @@ public final class TelemetryClient: @unchecked Sendable {
         static let captureURL = "https://eu.i.posthog.com/capture/"
         static let telemetryIdFileName = ".telemetry_id"
         static let installationRecordedFileName = ".installation_recorded"
-        static let homeSubdirectory = "~/.cua-driver"
-        static let envTelemetryEnabled = "CUA_DRIVER_TELEMETRY_ENABLED"
-        static let envTelemetryDebug = "CUA_DRIVER_TELEMETRY_DEBUG"
+        static let homeSubdirectory = "~/.trope-cua"
+        static let envTelemetryEnabled = "TROPE_CUA_TELEMETRY_ENABLED"
+        static let envTelemetryDebug = "TROPE_CUA_TELEMETRY_DEBUG"
     }
 
     // MARK: - Singleton
@@ -57,7 +57,7 @@ public final class TelemetryClient: @unchecked Sendable {
     /// becomes a no-op when telemetry is disabled.
     ///
     /// - Parameters:
-    ///   - event: Event name (e.g. `"cua_driver_mcp"`).
+    ///   - event: Event name (e.g. `"trope_cua_mcp"`).
     ///   - properties: Additional event properties merged on top of
     ///     the default envelope (version / OS / arch / etc.).
     public func record(event: String, properties: [String: Any] = [:]) {
@@ -123,12 +123,12 @@ public final class TelemetryClient: @unchecked Sendable {
         let version = CuaDriverCore.version
 
         var eventProperties = properties
-        eventProperties["cua_driver_version"] = version
+        eventProperties["trope_cua_version"] = version
         eventProperties["os"] = "macos"
         eventProperties["os_version"] = ProcessInfo.processInfo.operatingSystemVersionString
         eventProperties["arch"] = Self.architecture
         eventProperties["is_ci"] = Self.isCI
-        eventProperties["$lib"] = "cua-driver-swift"
+        eventProperties["$lib"] = "trope-cua-swift"
         eventProperties["$lib_version"] = version
 
         let payload: [String: Any] = [
@@ -248,21 +248,21 @@ public final class TelemetryClient: @unchecked Sendable {
 public enum TelemetryEvent {
     /// One-time installation ping. Sent regardless of opt-out (see
     /// `recordInstallation`); all other events respect the flag.
-    public static let install = "cua_driver_install"
+    public static let install = "trope_cua_install"
 
     // CLI entry points
-    public static let mcp = "cua_driver_mcp"
-    public static let serve = "cua_driver_serve"
-    public static let stop = "cua_driver_stop"
-    public static let status = "cua_driver_status"
-    public static let call = "cua_driver_call"
-    public static let listTools = "cua_driver_list_tools"
-    public static let describe = "cua_driver_describe"
-    public static let recording = "cua_driver_recording"
-    public static let config = "cua_driver_config"
-    public static let guiLaunch = "cua_driver_gui_launch"
+    public static let mcp = "trope_cua_mcp"
+    public static let serve = "trope_cua_serve"
+    public static let stop = "trope_cua_stop"
+    public static let status = "trope_cua_status"
+    public static let call = "trope_cua_call"
+    public static let listTools = "trope_cua_list_tools"
+    public static let describe = "trope_cua_describe"
+    public static let recording = "trope_cua_recording"
+    public static let config = "trope_cua_config"
+    public static let guiLaunch = "trope_cua_gui_launch"
 
     /// Prefix for per-MCP-tool events. `apiPrefix + tool_name`
-    /// produces e.g. `cua_driver_api_click`.
-    public static let apiPrefix = "cua_driver_api_"
+    /// produces e.g. `trope_cua_api_click`.
+    public static let apiPrefix = "trope_cua_api_"
 }

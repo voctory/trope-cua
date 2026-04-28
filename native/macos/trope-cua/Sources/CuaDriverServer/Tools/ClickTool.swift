@@ -393,7 +393,7 @@ public enum ClickTool {
 
     /// Build the error message surfaced when `lookup(pid:windowId:elementIndex:)`
     /// misses. If no daemon is listening on the UDS the caller almost
-    /// certainly ran `cua-driver click` in-process, which starts with
+    /// certainly ran `trope-cua click` in-process, which starts with
     /// an empty `AppStateRegistry.engine` cache — prepend a hint to
     /// start the daemon before calling element-indexed actions, since
     /// the default `AppStateError.noCachedState` description assumes
@@ -403,8 +403,8 @@ public enum ClickTool {
         if !DaemonClient.isDaemonListening(socketPath: socketPath) {
             return
                 "No cached AX state for pid \(pid). Start the daemon first: "
-                + "`open -n -g -a CuaDriver --args serve` "
-                + "(or `cua-driver serve &` — the CLI auto-relaunches via "
+                + "`open -n -g -a TropeCUA --args serve` "
+                + "(or `trope-cua serve &` — the CLI auto-relaunches via "
                 + "`open` if your shell's TCC context is wrong). "
                 + "Element-indexed clicks read a cache populated by "
                 + "`get_window_state`, which only persists across CLI "

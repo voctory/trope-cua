@@ -7,9 +7,9 @@ import MCP
 /// under (when enabled), and the 1-based counter for the next turn. Pure
 /// read-only — no side effects.
 ///
-/// Primary caller is the `cua-driver recording status` CLI subcommand,
+/// Primary caller is the `trope-cua recording status` CLI subcommand,
 /// which formats these fields for human consumption. Also callable from
-/// MCP / `cua-driver get_recording_state` for programmatic checks.
+/// MCP / `trope-cua get_recording_state` for programmatic checks.
 public enum GetRecordingStateTool {
     public static let handler = ToolHandler(
         tool: Tool(
@@ -22,7 +22,7 @@ public enum GetRecordingStateTool {
                 recorded action tool call and resets to 1 each time
                 recording is (re-)enabled.
 
-                Pure read-only. Typical use: `cua-driver recording
+                Pure read-only. Typical use: `trope-cua recording
                 status` surfaces these fields for human consumption;
                 programmatic callers use it to confirm recording is
                 armed before kicking off a session.

@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "CuaDriver",
+    name: "TropeCUA",
     platforms: [
         .macOS(.v14)
     ],
     products: [
-        .executable(name: "cua-driver", targets: ["CuaDriverCLI"]),
+        .executable(name: "trope-cua", targets: ["CuaDriverCLI"]),
         .library(name: "CuaDriverCore", targets: ["CuaDriverCore"]),
         .library(name: "CuaDriverServer", targets: ["CuaDriverServer"]),
     ],

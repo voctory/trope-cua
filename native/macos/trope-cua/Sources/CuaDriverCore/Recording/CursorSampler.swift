@@ -14,7 +14,7 @@ import os
 ///
 /// Coordinate convention: `NSEvent.mouseLocation` returns Cocoa screen
 /// points (y-up, origin at bottom-left of the main screen). We flip Y
-/// to match cua-driver's top-left-origin click-coord convention before
+/// to match trope-cua's top-left-origin click-coord convention before
 /// writing, so downstream tools consume a single consistent screen-point
 /// space.
 public actor CursorSampler {
@@ -38,7 +38,7 @@ public actor CursorSampler {
     private var sampleCount: Int = 0
 
     private let log = Logger(
-        subsystem: "com.trycua.driver",
+        subsystem: "com.tropecua.driver",
         category: "CursorSampler"
     )
 
@@ -97,7 +97,7 @@ public actor CursorSampler {
 
         let cocoaPoint = NSEvent.mouseLocation
         // Cocoa y-up → top-left-origin: y_top = mainHeight - y_cocoa.
-        // Matches the convention used elsewhere in cua-driver for click
+        // Matches the convention used elsewhere in trope-cua for click
         // coords (see MouseInput.cocoaLocation(fromScreenPoint:)).
         let mainScreenHeight = NSScreen.main?.frame.height
             ?? NSScreen.screens.first?.frame.height

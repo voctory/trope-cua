@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build cua-driver and wrap it in a minimal CuaDriver.app bundle with a
+# Build trope-cua and wrap it in a minimal TropeCUA.app bundle with a
 # stable CFBundleIdentifier. TCC keys its grants on the identifier so
 # grants survive every `swift build` rebuild.
 #
@@ -9,7 +9,7 @@
 # MouseInput.swift). Fall back to ad-hoc otherwise so `swift build`
 # still works on contributor machines without a cert.
 #
-# Bundle ends up at .build/CuaDriver.app — not production, just for dev
+# Bundle ends up at .build/TropeCUA.app -- not production, just for dev
 # + integration tests. The real signed cask build lives elsewhere.
 set -euo pipefail
 
@@ -19,8 +19,8 @@ CONFIG="${1:-debug}"
 echo "==> swift build ($CONFIG)"
 swift build -c "$CONFIG"
 
-BUILD_BIN=".build/$CONFIG/cua-driver"
-APP_BUNDLE=".build/CuaDriver.app"
+BUILD_BIN=".build/$CONFIG/trope-cua"
+APP_BUNDLE=".build/TropeCUA.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
 ENTITLEMENTS="scripts/CuaDriver.entitlements"
@@ -28,7 +28,7 @@ ENTITLEMENTS="scripts/CuaDriver.entitlements"
 rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_MACOS"
 mkdir -p "$APP_CONTENTS/Resources"
-cp "$BUILD_BIN" "$APP_MACOS/cua-driver"
+cp "$BUILD_BIN" "$APP_MACOS/trope-cua"
 cp App/CuaDriver/Info.plist "$APP_CONTENTS/Info.plist"
 # App icon — Info.plist references `AppIcon`, which macOS looks up
 # at `Contents/Resources/AppIcon.icns`. Regenerate from the .iconset
@@ -38,13 +38,13 @@ if [[ -f "App/CuaDriver/AppIcon.icns" ]]; then
     cp App/CuaDriver/AppIcon.icns "$APP_CONTENTS/Resources/AppIcon.icns"
 fi
 
-# Claude Code skill pack. install.sh symlinks ~/.claude/skills/cua-driver
+# Claude Code skill pack. install.sh symlinks ~/.claude/skills/trope-cua
 # to this path when a Claude Code install is detected on the user's
 # machine. Ships inside the bundle so it survives auto-updates and
-# relocations of CuaDriver.app.
-if [[ -d "Skills/cua-driver" ]]; then
+# relocations of TropeCUA.app.
+if [[ -d "Skills/trope-cua" ]]; then
     mkdir -p "$APP_CONTENTS/Resources/Skills"
-    cp -R Skills/cua-driver "$APP_CONTENTS/Resources/Skills/cua-driver"
+    cp -R Skills/trope-cua "$APP_CONTENTS/Resources/Skills/trope-cua"
 fi
 
 # Prefer Developer ID Application cert if available; fall back to ad-hoc.
@@ -73,17 +73,17 @@ if [[ -n "$CERT_SHA" ]]; then
         --force \
         --deep \
         --sign "$CERT_SHA" \
-        --identifier com.trycua.driver \
+        --identifier com.tropecua.driver \
         --entitlements "$ENTITLEMENTS" \
         --options runtime \
         --timestamp=none \
         "$APP_BUNDLE"
 else
-    echo "==> codesign (ad-hoc fallback, identifier com.trycua.driver)"
+    echo "==> codesign (ad-hoc fallback, identifier com.tropecua.driver)"
     codesign \
         --force \
         --sign - \
-        --identifier com.trycua.driver \
+        --identifier com.tropecua.driver \
         --entitlements "$ENTITLEMENTS" \
         --options runtime \
         --timestamp=none \
@@ -91,4 +91,4 @@ else
 fi
 
 echo "==> built $APP_BUNDLE"
-echo "    binary: $APP_MACOS/cua-driver"
+echo "    binary: $APP_MACOS/trope-cua"

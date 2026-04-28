@@ -9,7 +9,7 @@ import os
 /// no state, no async, no actor isolation; just pure image I/O.
 enum ClickMarkerRenderer {
     private static let log = Logger(
-        subsystem: "com.trycua.driver",
+        subsystem: "com.tropecua.driver",
         category: "ClickMarkerRenderer"
     )
 

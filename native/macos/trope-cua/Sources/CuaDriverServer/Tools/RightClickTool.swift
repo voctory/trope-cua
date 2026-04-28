@@ -227,7 +227,7 @@ public enum RightClickTool {
 
     /// Build the error message surfaced when the element-index cache
     /// misses. If no daemon is listening on the UDS the caller is
-    /// running `cua-driver right_click` in-process, which starts
+    /// running `trope-cua right_click` in-process, which starts
     /// with an empty cache. Prepend a hint to start the daemon first
     /// since the default description assumes the cache is live and
     /// just needs a `get_window_state` refresh. Mirrors
@@ -237,8 +237,8 @@ public enum RightClickTool {
         if !DaemonClient.isDaemonListening(socketPath: socketPath) {
             return
                 "No cached AX state for pid \(pid). Start the daemon first: "
-                + "`open -n -g -a CuaDriver --args serve` "
-                + "(or `cua-driver serve &` — the CLI auto-relaunches via "
+                + "`open -n -g -a TropeCUA --args serve` "
+                + "(or `trope-cua serve &` — the CLI auto-relaunches via "
                 + "`open` if your shell's TCC context is wrong). "
                 + "Element-indexed clicks read a cache populated by "
                 + "`get_window_state`, which only persists across CLI "

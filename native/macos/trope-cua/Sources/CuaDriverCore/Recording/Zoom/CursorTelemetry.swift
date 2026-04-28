@@ -2,7 +2,7 @@
 // binary-search-then-lerp on a sorted timeline, and classic exponential
 // smoothing (prev + α·(raw - prev)) — see any intro signal-processing text.
 //
-// Coordinates are cua-driver's screen-points convention: top-left origin,
+// Coordinates are trope-cua's screen-points convention: top-left origin,
 // y-down, units matching what `CursorSampler` writes to `cursor.jsonl`.
 
 import Foundation

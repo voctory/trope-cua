@@ -1,11 +1,11 @@
-"""Integration test: `cua-driver check_permissions` CLI behavior.
+"""Integration test: `trope-cua check_permissions` CLI behavior.
 
 Covers the TCC-responsibility-chain fix:
 
   1. When no daemon is running, the CLI's in-process fallback emits a
      stderr warning explaining that AXIsProcessTrusted() /
      SCShareableContent.current are evaluated against the calling shell's
-     TCC context (not CuaDriver.app), so "NOT granted" here is not
+     TCC context (not TropeCUA.app), so "NOT granted" here is not
      authoritative. Users need that warning — otherwise they burn 15min
      of onboarding time chasing a non-bug.
 
@@ -36,7 +36,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from driver_client import default_binary_path
 
 
-WARNING_MARKER = "Not running inside the cua-driver daemon process"
+WARNING_MARKER = "Not running inside the trope-cua daemon process"
 
 
 def _run_cli(binary: str, *args: str) -> subprocess.CompletedProcess:
@@ -60,15 +60,15 @@ def _stop_daemon(binary: str) -> None:
 
 def _start_daemon(binary: str) -> None:
     """Launch the daemon via the .app bundle so it has the right TCC
-    responsibility chain — plain `cua-driver serve &` from the shell
+    responsibility chain — plain `trope-cua serve &` from the shell
     inherits the shell's TCC context, defeating the point of the test."""
     # Resolve the .app path from the binary path. The build script puts
-    # the binary at `.build/CuaDriver.app/Contents/MacOS/cua-driver`.
+    # the binary at `.build/TropeCUA.app/Contents/MacOS/trope-cua`.
     app_path = os.path.abspath(
         os.path.join(os.path.dirname(binary), "..", "..")
     )
     assert app_path.endswith(".app"), (
-        f"expected binary inside CuaDriver.app, got {app_path!r}"
+        f"expected binary inside TropeCUA.app, got {app_path!r}"
     )
     subprocess.run(
         ["open", "-a", app_path, "--args", "serve"],

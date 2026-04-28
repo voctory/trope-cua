@@ -1,4 +1,4 @@
-# Natural-language tests for `cua-driver`
+# Natural-language tests for `trope-cua`
 
 Prompts you can copy-paste into Claude Code to exercise the skill
 end-to-end. Each one has an explicit success criterion you can verify.
@@ -57,12 +57,12 @@ backgrounded throughout, and Claude uses the canonical
 ---
 
 ### 4. Notes — native text entry
-**Prompt:** `Create a new note in Notes titled 'cua-driver test' with the body 'native text entry verification'.`
+**Prompt:** `Create a new note in Notes titled 'trope-cua test' with the body 'native text entry verification'.`
 
 **Exercises:** `type_text_in` via `kAXSelectedText` against native AppKit text fields.
 
 **Success:**
-- Re-snapshot of Notes shows a note row in the sidebar whose title contains `cua-driver test`.
+- Re-snapshot of Notes shows a note row in the sidebar whose title contains `trope-cua test`.
 - The note body AX text contains `native text entry verification`.
 
 **Fail signals:** text lands in the wrong field (title text in body or vice versa), only title typed, Return key not sent, or Notes asks for account setup (test aborted with a clear message is OK, silent failure is not).

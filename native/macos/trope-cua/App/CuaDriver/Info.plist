@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.trycua.driver</string>
+    <string>com.tropecua.driver</string>
     <key>CFBundleName</key>
-    <string>Cua Driver</string>
+    <string>Trope CUA</string>
     <key>CFBundleDisplayName</key>
-    <string>Cua Driver</string>
+    <string>Trope CUA</string>
     <key>CFBundleExecutable</key>
-    <string>cua-driver</string>
+    <string>trope-cua</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIconName</key>

@@ -1,6 +1,6 @@
 """Integration test: agent-cursor overlay z-ordering.
 
-Verifies that after driving a backgrounded window the cua-driver overlay
+Verifies that after driving a backgrounded window the trope-cua overlay
 is z-ordered JUST ABOVE the target window (NSWindowLevel.normal + ordered
 above target) rather than at NSWindowLevel.floating (above ALL normal windows).
 
@@ -18,7 +18,7 @@ Two assertions are verified:
    overlay AFTER the click.
 
 Run:
-    CUA_DRIVER_BINARY=.build/CuaDriver.app/Contents/MacOS/cua-driver \\
+    TROPE_CUA_BINARY=.build/TropeCUA.app/Contents/MacOS/trope-cua \\
       python3 -m unittest test_overlay_z_order -v
 """
 
@@ -148,7 +148,7 @@ class TestOverlayZOrder(unittest.TestCase):
         overlay_wins = [w for w in all_after if w["pid"] == driver_pid]
         self.assertTrue(
             overlay_wins,
-            f"cua-driver overlay NOT visible in list_windows at layer=0 "
+            f"trope-cua overlay NOT visible in list_windows at layer=0 "
             f"(driver pid={driver_pid}). "
             f"Expected NSWindowLevel.normal overlay to appear as a layer-0 window. "
             f"If level is still .floating (layer 3) it would be filtered out here.",

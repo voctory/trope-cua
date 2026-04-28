@@ -1,4 +1,4 @@
-// Read-only loader for a `cua-driver recording … --video-experimental`
+// Read-only loader for a `trope-cua recording … --video-experimental`
 // output directory. Turns `session.json` + `cursor.jsonl` + every
 // `turn-*/action.json` into the inputs the zoom-math library + renderer
 // expect: a `SessionMetadata` block, a `[ClickEvent]`, and a

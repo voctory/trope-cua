@@ -1,6 +1,6 @@
 import Foundation
 
-/// Persistent, on-disk configuration for the cua-driver daemon. Stored as
+/// Persistent, on-disk configuration for the trope-cua daemon. Stored as
 /// JSON at `~/Library/Application Support/<app-name>/config.json` so
 /// settings survive daemon restarts, unlike the session-scoped
 /// `RecordingSession` / live `AgentCursor` state.
@@ -35,13 +35,13 @@ public struct CuaDriverConfig: Codable, Sendable, Equatable {
 
     /// Anonymous telemetry opt-out. Default `true` (opt-in) to match
     /// lume's posture. Override at run time via
-    /// `CUA_DRIVER_TELEMETRY_ENABLED={0|1}` or mutate persistently via
-    /// `cua-driver config telemetry {enable|disable}`.
+    /// `TROPE_CUA_TELEMETRY_ENABLED={0|1}` or mutate persistently via
+    /// `trope-cua config telemetry {enable|disable}`.
     public var telemetryEnabled: Bool
 
     /// Automatic update opt-out. Default `true` (auto-update enabled).
-    /// Override at run time via `CUA_DRIVER_AUTO_UPDATE_ENABLED={0|1}`
-    /// or mutate persistently via `cua-driver config updates {enable|disable}`.
+    /// Override at run time via `TROPE_CUA_AUTO_UPDATE_ENABLED={0|1}`
+    /// or mutate persistently via `trope-cua config updates {enable|disable}`.
     public var autoUpdateEnabled: Bool
 
     /// The default long-side cap applied when a config is absent OR

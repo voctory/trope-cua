@@ -135,7 +135,7 @@ public struct AgentCursorPalette: @unchecked Sendable {
 
 public enum AgentCursorPaletteRegistry {
     public static func claimSlot(context: String) -> Int {
-        if let forced = ProcessInfo.processInfo.environment["CUA_DRIVER_CURSOR_PALETTE"],
+        if let forced = ProcessInfo.processInfo.environment["TROPE_CUA_CURSOR_PALETTE"],
            let slot = AgentCursorPalette.slot(named: forced)
         {
             return slot

@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 
 scripts/build-app.sh >/dev/null
 
-export CUA_DRIVER_BINARY="$(pwd)/.build/CuaDriver.app/Contents/MacOS/cua-driver"
+export TROPE_CUA_BINARY="$(pwd)/.build/TropeCUA.app/Contents/MacOS/trope-cua"
 
 cd Tests/integration
 

@@ -26,11 +26,11 @@ struct JSONOutputOptions: ParsableArguments {
 }
 
 /// Shared flag block controlling whether the CLI forwards to a running
-/// `cua-driver serve` daemon when one is reachable on the socket. Every
+/// `trope-cua serve` daemon when one is reachable on the socket. Every
 /// stateful CLI op (call/list-tools/describe) picks up these flags so
 /// users can force in-process behavior for debugging.
 struct DaemonForwardingOptions: ParsableArguments {
-    @Flag(name: .long, help: "Skip the cua-driver daemon even if one is running.")
+    @Flag(name: .long, help: "Skip the trope-cua daemon even if one is running.")
     var noDaemon: Bool = false
 
     @Option(name: .long, help: "Override the daemon Unix socket path.")
@@ -61,13 +61,13 @@ struct CallCommand: AsyncParsableCommand {
             provided, the tool is called with no arguments.
 
             Examples:
-              cua-driver call list_apps
-              cua-driver call launch_app '{"bundle_id":"com.apple.finder"}'
-              echo '{"pid":844,"window_id":1234}' | cua-driver call get_window_state
+              trope-cua call list_apps
+              trope-cua call launch_app '{"bundle_id":"com.apple.finder"}'
+              echo '{"pid":844,"window_id":1234}' | trope-cua call get_window_state
             """
     )
 
-    @Argument(help: "Name of the tool to invoke (see `cua-driver list-tools`).")
+    @Argument(help: "Name of the tool to invoke (see `trope-cua list-tools`).")
     var toolName: String
 
     @Argument(help: "JSON object string for the tool's inputSchema. If omitted, reads from stdin when stdin is a pipe.")
@@ -145,23 +145,23 @@ struct CallCommand: AsyncParsableCommand {
         }
 
         // `check_permissions` in-process is ONLY correct when the process
-        // is running from CuaDriver.app (the daemon). Any one-shot CLI
+        // is running from TropeCUA.app (the daemon). Any one-shot CLI
         // spawned by an IDE terminal (Conductor, VS Code, Cursor, Claude
         // Code) inherits the IDE's TCC responsibility chain, so
         // AXIsProcessTrusted() / SCShareableContent.current read against
-        // the IDE's bundle — not com.trycua.driver — and report
+        // the IDE's bundle — not com.tropecua.driver — and report
         // "NOT granted" even when the user has granted both permissions
-        // to CuaDriver.app. If the daemon were up we'd already have
+        // to TropeCUA.app. If the daemon were up we'd already have
         // forwarded in run(); reaching this branch means no daemon is
         // listening. Warn the user that the fallback answer is unreliable,
         // and force `prompt: false` — the tool's default would otherwise
         // raise a TCC dialog attributed to the calling shell/IDE bundle,
-        // not CuaDriver.app, so the user would grant the wrong identity.
+        // not TropeCUA.app, so the user would grant the wrong identity.
         if toolName == "check_permissions" {
             printToStderr(
                 """
-                ⚠️ Not running inside the cua-driver daemon process. Results may be inaccurate — TCC checks the calling process, not CuaDriver.app, so permissions granted to CuaDriver.app may read as "NOT granted" here.
-                For authoritative results, start the daemon first: `open -n -g -a CuaDriver --args serve`, then re-run this check.
+                ⚠️ Not running inside the trope-cua daemon process. Results may be inaccurate — TCC checks the calling process, not TropeCUA.app, so permissions granted to TropeCUA.app may read as "NOT granted" here.
+                For authoritative results, start the daemon first: `open -n -g -a TropeCUA --args serve`, then re-run this check.
                 """
             )
             var coerced = arguments ?? [:]
@@ -270,7 +270,7 @@ struct CallCommand: AsyncParsableCommand {
 struct ListToolsCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list-tools",
-        abstract: "List every tool exposed by cua-driver with its one-line description."
+        abstract: "List every tool exposed by trope-cua with its one-line description."
     )
 
     @OptionGroup var daemon: DaemonForwardingOptions
@@ -489,7 +489,7 @@ enum DaemonCLIError: Error {
 
 /// MCP delivers screenshot bytes as a native `.image()` content block
 /// separate from `structuredContent`, so shell consumers of
-/// `cua-driver <tool>` only see the metadata half ("has_screenshot",
+/// `trope-cua <tool>` only see the metadata half ("has_screenshot",
 /// dimensions) and the base64 pixels silently vanish. This reunites them
 /// at CLI emit time: if any image block is present in `content`, splice
 /// its base64 into the outgoing JSON as `screenshot_png_b64` (plus

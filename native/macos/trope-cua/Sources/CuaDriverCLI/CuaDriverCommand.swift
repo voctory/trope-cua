@@ -7,7 +7,7 @@ import MCP
 
 struct CuaDriverCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "cua-driver",
+        commandName: "trope-cua",
         abstract: "macOS Accessibility-driven computer-use agent — MCP stdio server.",
         version: CuaDriverCore.version,
         subcommands: [
@@ -23,15 +23,14 @@ struct CuaDriverCommand: AsyncParsableCommand {
             MCPConfigCommand.self,
             UpdateCommand.self,
             DiagnoseCommand.self,
-            DoctorCommand.self,
         ]
     )
 }
 
-/// `cua-driver mcp-config` — print the JSON snippet that MCP clients
+/// `trope-cua mcp-config` — print the JSON snippet that MCP clients
 /// (Claude Code, Cursor, custom SDK clients) need to register
-/// cua-driver as an MCP server. Paste into `~/.claude/mcp.json` (or
-/// equivalent) and the client auto-spawns cua-driver on demand.
+/// trope-cua as an MCP server. Paste into `~/.claude/mcp.json` (or
+/// equivalent) and the client auto-spawns trope-cua on demand.
 struct MCPConfigCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "mcp-config",
@@ -48,16 +47,16 @@ struct MCPConfigCommand: ParsableCommand {
         case nil, "":
             print(genericMcpServersSnippet(binary: binary, includeType: false))
         case "claude":
-            print("claude mcp add --transport stdio cua-driver -- \(binary) mcp")
+            print("claude mcp add --transport stdio trope-cua -- \(binary) mcp")
         case "codex":
-            print("codex mcp add cua-driver -- \(binary) mcp")
+            print("codex mcp add trope-cua -- \(binary) mcp")
         case "cursor":
             // Cursor has no CLI — emit JSON the user pastes into
             // ~/.cursor/mcp.json (global) or .cursor/mcp.json (project).
             print(genericMcpServersSnippet(binary: binary, includeType: true))
         case "openclaw":
             // OpenClaw has a CLI registry — set with a JSON arg.
-            print("openclaw mcp set cua-driver '{\"command\":\"\(binary)\",\"args\":[\"mcp\"]}'")
+            print("openclaw mcp set trope-cua '{\"command\":\"\(binary)\",\"args\":[\"mcp\"]}'")
         case "opencode":
             // OpenCode (sst/opencode) uses opencode.json with type:"local"
             // and command as a single merged array.
@@ -66,7 +65,7 @@ struct MCPConfigCommand: ParsableCommand {
             {
               "$schema": "https://opencode.ai/config.json",
               "mcp": {
-                "cua-driver": {
+                "trope-cua": {
                   "type": "local",
                   "command": ["\(binary)", "mcp"],
                   "enabled": true
@@ -82,20 +81,20 @@ struct MCPConfigCommand: ParsableCommand {
             # paste under mcp_servers in ~/.hermes/config.yaml,
             # then run /reload-mcp inside Hermes:
             mcp_servers:
-              cua-driver:
+              trope-cua:
                 command: "\(binary)"
                 args: ["mcp"]
             """
             print(snippet)
         case "pi":
             // Pi (badlogic/pi-mono) intentionally rejects MCP. Skip MCP and
-            // point at the shell-tool path — Pi can shell-out to cua-driver
+            // point at the shell-tool path — Pi can shell-out to trope-cua
             // directly the same way it would call any other CLI tool.
             print("""
             Pi (badlogic/pi-mono) does not support MCP natively — the author
             has stated MCP support will not be added for context-budget reasons.
 
-            Use cua-driver as a plain CLI from inside Pi instead:
+            Use trope-cua as a plain CLI from inside Pi instead:
 
                 \(binary) list_apps
                 \(binary) click  '{"pid": 1234, "x": 100, "y": 200}'
@@ -121,7 +120,7 @@ struct MCPConfigCommand: ParsableCommand {
         return """
         {
           "mcpServers": {
-            "cua-driver": {
+            "trope-cua": {
               "command": "\(binary)",
               "args": ["mcp"]\(typeLine)
             }
@@ -137,16 +136,16 @@ struct MCPConfigCommand: ParsableCommand {
         if let path = Bundle.main.executablePath {
             return path
         }
-        return CommandLine.arguments.first ?? "cua-driver"
+        return CommandLine.arguments.first ?? "trope-cua"
     }
 }
 
 /// Top-level entry point. Before handing to ArgumentParser, rewrite
 /// argv so unknown first positional args dispatch to `call`:
 ///
-///     cua-driver list_apps                   →  cua-driver call list_apps
-///     cua-driver launch_app '{...}'          →  cua-driver call launch_app '{...}'
-///     cua-driver get_window_state '{"pid":844,"window_id":1234}'
+///     trope-cua list_apps                   →  trope-cua call list_apps
+///     trope-cua launch_app '{...}'          →  trope-cua call launch_app '{...}'
+///     trope-cua get_window_state '{"pid":844,"window_id":1234}'
 ///
 /// Known subcommands (`mcp`, `serve`, `stop`, `status`, `list-tools`,
 /// `describe`, `call`, `help`) and any flag-prefixed arg stay untouched.
@@ -172,7 +171,6 @@ struct CuaDriverEntryPoint {
         "config",
         "update",
         "diagnose",
-        "doctor",
         "help",
     ]
 
@@ -180,7 +178,7 @@ struct CuaDriverEntryPoint {
         let original = Array(CommandLine.arguments.dropFirst())
 
         // First-run installation ping. Fires at most once per install
-        // (guarded by a marker file under ~/.cua-driver/) and bypasses
+        // (guarded by a marker file under ~/.trope-cua/) and bypasses
         // the opt-out check so we can count adoption. Every subsequent
         // event honors the opt-out flag.
         TelemetryClient.shared.recordInstallation()
@@ -191,7 +189,7 @@ struct CuaDriverEntryPoint {
         TelemetryClient.shared.record(event: entryEvent)
 
         // Bare launch (no args) — typically a double-click from Finder
-        // / Spotlight / Dock on CuaDriver.app. LSUIElement=true keeps
+        // / Spotlight / Dock on TropeCUA.app. LSUIElement=true keeps
         // the binary headless by default, so without this branch a
         // DMG user sees "nothing happens" on open. Route through the
         // permissions gate instead: it's our one visible surface and
@@ -267,9 +265,9 @@ struct CuaDriverEntryPoint {
 
     /// Map the (pre-rewrite) argv to a telemetry event name. No argv
     /// values are ever included — just the subcommand name. `call`
-    /// invocations report as `cua_driver_api_<tool>` so per-tool usage
+    /// invocations report as `trope_cua_api_<tool>` so per-tool usage
     /// shows up in aggregate; everything else maps to a canonical
-    /// `cua_driver_<subcommand>` event.
+    /// `trope_cua_<subcommand>` event.
     static func telemetryEntryEvent(for args: [String]) -> String {
         guard let first = args.first else {
             return TelemetryEvent.guiLaunch
@@ -278,7 +276,7 @@ struct CuaDriverEntryPoint {
         if first == "call", args.count >= 2 {
             return TelemetryEvent.apiPrefix + args[1]
         }
-        // Implicit-call form — `cua-driver list_apps` rewrites to
+        // Implicit-call form — `trope-cua list_apps` rewrites to
         // `call list_apps` internally, so we check the same shape here
         // before fallback-mapping.
         if !first.hasPrefix("-") && !managementSubcommands.contains(first) {
@@ -286,7 +284,7 @@ struct CuaDriverEntryPoint {
         }
         switch first {
         case "mcp": return TelemetryEvent.mcp
-        case "mcp-config": return "cua_driver_mcp_config"
+        case "mcp-config": return "trope_cua_mcp_config"
         case "serve": return TelemetryEvent.serve
         case "stop": return TelemetryEvent.stop
         case "status": return TelemetryEvent.status
@@ -323,7 +321,7 @@ struct MCPCommand: ParsableCommand {
             if !granted {
                 FileHandle.standardError.write(
                     Data(
-                        "cua-driver: required permissions (Accessibility + Screen Recording) not granted; MCP server exiting.\n"
+                        "trope-cua: required permissions (Accessibility + Screen Recording) not granted; MCP server exiting.\n"
                             .utf8))
                 throw AppKitBootstrapError.permissionsDenied
             }
@@ -391,10 +389,10 @@ enum AppKitBootstrap {
                     try await work()
                 } catch AppKitBootstrapError.permissionsDenied {
                     // Already logged by the caller; skip the generic
-                    // "cua-driver: <error>" line to avoid duplicating.
+                    // "trope-cua: <error>" line to avoid duplicating.
                 } catch {
                     FileHandle.standardError.write(
-                        Data("cua-driver: \(error)\n".utf8)
+                        Data("trope-cua: \(error)\n".utf8)
                     )
                 }
                 await MainActor.run { NSApp.terminate(nil) }
@@ -405,11 +403,11 @@ enum AppKitBootstrap {
     }
 }
 
-/// `cua-driver update` — check for a newer release and optionally apply it.
+/// `trope-cua update` — check for a newer release and optionally apply it.
 struct UpdateCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "update",
-        abstract: "Check for a newer cua-driver release and apply it."
+        abstract: "Check for a newer trope-cua release and apply it."
     )
 
     @Flag(name: .long, help: "Download and apply the update without prompting.")
@@ -435,103 +433,23 @@ struct UpdateCommand: AsyncParsableCommand {
         if !apply {
             print("")
             print("Run with --apply to download and install it:")
-            print("  cua-driver update --apply")
+            print("  trope-cua update --apply")
             print("")
             print("Or reinstall directly:")
-            print("  curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install.sh | bash")
+            print("  curl -fsSL https://raw.githubusercontent.com/voctory/trope-cua/main/native/macos/trope-cua/scripts/install.sh | bash")
             return
         }
 
-        print("Downloading and installing cua-driver \(latest)…")
+        print("Downloading and installing trope-cua \(latest)…")
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/bash")
         proc.arguments = ["-c",
-            "curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install.sh | bash"]
+            "curl -fsSL https://raw.githubusercontent.com/voctory/trope-cua/main/native/macos/trope-cua/scripts/install.sh | bash"]
         try proc.run()
         proc.waitUntilExit()
         if proc.terminationStatus != 0 {
             print("Installation failed — run the command above manually for details.")
             throw ExitCode(Int32(proc.terminationStatus))
-        }
-    }
-}
-
-/// `cua-driver doctor` — clean up stale install bits left from older versions.
-///
-/// v0.0.5 and earlier installed a weekly LaunchAgent at
-/// `~/Library/LaunchAgents/com.trycua.cua_driver_updater.plist` and a companion
-/// `/usr/local/bin/cua-driver-update` script. v0.0.6 dropped both in favor of
-/// the explicit `cua-driver update` command, but users who upgraded via the
-/// legacy auto-updater path still have these dead files lingering.
-///
-/// Removing the LaunchAgent stops the weekly cron from firing the stale
-/// update script. The plist lives under `$HOME` (no sudo). The companion
-/// script under `/usr/local/bin` is root-owned, so we print the exact
-/// `sudo rm` command for the user to run if it still exists.
-struct DoctorCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "doctor",
-        abstract: "Clean up stale install bits left from older cua-driver versions."
-    )
-
-    func run() throws {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let legacyPlist = "\(home)/Library/LaunchAgents/com.trycua.cua_driver_updater.plist"
-        let legacyScript = "/usr/local/bin/cua-driver-update"
-
-        var removedCount = 0
-        var manualSteps: [String] = []
-
-        // LaunchAgent — no sudo needed, lives under $HOME.
-        if FileManager.default.fileExists(atPath: legacyPlist) {
-            // Best-effort unload before removal — tolerate failure since the
-            // agent may not be loaded.
-            let unload = Process()
-            unload.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-            unload.arguments = ["unload", legacyPlist]
-            unload.standardOutput = Pipe()
-            unload.standardError = Pipe()
-            try? unload.run()
-            unload.waitUntilExit()
-
-            do {
-                try FileManager.default.removeItem(atPath: legacyPlist)
-                print("✓ removed legacy LaunchAgent: \(legacyPlist)")
-                removedCount += 1
-            } catch {
-                print("✗ could not remove \(legacyPlist): \(error)")
-            }
-        }
-
-        // Update script — root-owned. Try without sudo first; on failure,
-        // surface the exact command for the user to run manually.
-        if FileManager.default.fileExists(atPath: legacyScript) {
-            if FileManager.default.isWritableFile(atPath: legacyScript)
-               && FileManager.default.isWritableFile(atPath: "/usr/local/bin")
-            {
-                do {
-                    try FileManager.default.removeItem(atPath: legacyScript)
-                    print("✓ removed legacy update script: \(legacyScript)")
-                    removedCount += 1
-                } catch {
-                    manualSteps.append("sudo rm -f \(legacyScript)")
-                }
-            } else {
-                manualSteps.append("sudo rm -f \(legacyScript)")
-            }
-        }
-
-        if removedCount == 0 && manualSteps.isEmpty {
-            print("Nothing to clean — install is up to date.")
-            return
-        }
-
-        if !manualSteps.isEmpty {
-            print("")
-            print("The following needs to be removed manually (root-owned):")
-            for step in manualSteps {
-                print("  \(step)")
-            }
         }
     }
 }

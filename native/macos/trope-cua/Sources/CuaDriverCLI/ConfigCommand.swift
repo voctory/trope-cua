@@ -4,7 +4,7 @@ import CuaDriverServer
 import Foundation
 import MCP
 
-/// `cua-driver config [get <key> | set <key> <value> | reset]` —
+/// `trope-cua config [get <key> | set <key> <value> | reset]` —
 /// management interface for the persistent driver config at
 /// `~/Library/Application Support/<app-name>/config.json`.
 ///
@@ -23,18 +23,18 @@ import MCP
 struct ConfigCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "config",
-        abstract: "Read and write persistent cua-driver settings.",
+        abstract: "Read and write persistent trope-cua settings.",
         discussion: """
             Persistent config lives at
             `~/Library/Application Support/<app-name>/config.json` and
             survives daemon restarts.
 
             Examples:
-              cua-driver config                                    # print full config
-              cua-driver config get agent_cursor.enabled
-              cua-driver config set agent_cursor.enabled false
-              cua-driver config set agent_cursor.motion.arc_size 0.4
-              cua-driver config reset                              # overwrite with defaults
+              trope-cua config                                    # print full config
+              trope-cua config get agent_cursor.enabled
+              trope-cua config set agent_cursor.enabled false
+              trope-cua config set agent_cursor.motion.arc_size 0.4
+              trope-cua config reset                              # overwrite with defaults
             """,
         subcommands: [
             ConfigShowCommand.self,
@@ -48,7 +48,7 @@ struct ConfigCommand: AsyncParsableCommand {
     )
 }
 
-/// `cua-driver config telemetry {status|enable|disable}` — dedicated
+/// `trope-cua config telemetry {status|enable|disable}` — dedicated
 /// wrapper around the `telemetry_enabled` config key for discoverability.
 /// Equivalent to `config set telemetry_enabled {true|false}` but with
 /// friendlier output and an explicit env-override callout on `status`.
@@ -73,16 +73,16 @@ struct ConfigTelemetryStatusCommand: ParsableCommand {
 
     func run() throws {
         let config = ConfigStore.loadSync()
-        let envOverride = ProcessInfo.processInfo.environment["CUA_DRIVER_TELEMETRY_ENABLED"]
+        let envOverride = ProcessInfo.processInfo.environment["TROPE_CUA_TELEMETRY_ENABLED"]
         print("Telemetry enabled: \(config.telemetryEnabled)")
         if let envValue = envOverride {
             let lower = envValue.lowercased()
             if ["0", "1", "true", "false", "yes", "no", "on", "off"].contains(lower) {
-                print("  (currently overridden by CUA_DRIVER_TELEMETRY_ENABLED=\(envValue))")
+                print("  (currently overridden by TROPE_CUA_TELEMETRY_ENABLED=\(envValue))")
             }
         }
         print("")
-        print("Telemetry collects anonymous usage data to help improve Cua Driver.")
+        print("Telemetry collects anonymous usage data to help improve Trope CUA.")
         print("No personal information, file paths, or command arguments are collected.")
     }
 }
@@ -96,7 +96,7 @@ struct ConfigTelemetryEnableCommand: ParsableCommand {
     func run() throws {
         try ConfigStore.setTelemetryEnabledSync(true)
         print("Telemetry enabled")
-        print("Thank you for helping improve Cua Driver!")
+        print("Thank you for helping improve Trope CUA!")
     }
 }
 
@@ -112,8 +112,8 @@ struct ConfigTelemetryDisableCommand: ParsableCommand {
     }
 }
 
-/// `cua-driver config show` — print the full current config as
-/// pretty-printed JSON. Also the default action when `cua-driver config`
+/// `trope-cua config show` — print the full current config as
+/// pretty-printed JSON. Also the default action when `trope-cua config`
 /// is invoked with no subcommand.
 struct ConfigShowCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -127,7 +127,7 @@ struct ConfigShowCommand: AsyncParsableCommand {
     }
 }
 
-/// `cua-driver config get <key>` — print a single value from the
+/// `trope-cua config get <key>` — print a single value from the
 /// current config. Exits 64 (usage) on unknown keys. Accepts dotted
 /// snake_case paths (`agent_cursor.motion.arc_size`), same keyset as
 /// `config set`.
@@ -166,7 +166,7 @@ struct ConfigGetCommand: AsyncParsableCommand {
     }
 }
 
-/// `cua-driver config set <key> <value>` — write a single value. When
+/// `trope-cua config set <key> <value>` — write a single value. When
 /// a daemon is running on the default socket, forwards to `set_config`
 /// so the live process observes the update immediately. Otherwise
 /// writes directly through the shared `ConfigStore`.
@@ -196,7 +196,7 @@ struct ConfigSetCommand: AsyncParsableCommand {
         // Route through the daemon when one's reachable so the live
         // process picks up the new value immediately — the `set_config`
         // tool both persists AND mutates `AgentCursor.shared`. Without
-        // a daemon we still write; any subsequent `cua-driver serve`
+        // a daemon we still write; any subsequent `trope-cua serve`
         // applies it on boot.
         let socketPath = socket ?? DaemonPaths.defaultSocketPath()
         if DaemonClient.isDaemonListening(socketPath: socketPath) {
@@ -265,7 +265,7 @@ struct ConfigSetCommand: AsyncParsableCommand {
             try printConfigJSON(updated)
         case .noDaemon:
             printErr(
-                "cua-driver daemon disappeared — start it with `cua-driver serve &`."
+                "trope-cua daemon disappeared — start it with `trope-cua serve &`."
             )
             throw ExitCode(1)
         case .error(let message):
@@ -275,7 +275,7 @@ struct ConfigSetCommand: AsyncParsableCommand {
     }
 }
 
-/// `cua-driver config reset` — overwrite the on-disk config with
+/// `trope-cua config reset` — overwrite the on-disk config with
 /// defaults. Intentional, explicit wipe; doesn't delete the file so
 /// `cat config.json` still shows the current baseline afterwards.
 struct ConfigResetCommand: AsyncParsableCommand {
@@ -313,7 +313,7 @@ private func printConfigJSON(_ config: CuaDriverConfig) throws {
 /// (so `--value 42` becomes `.int(42)`, `--value true` becomes
 /// `.bool(true)`, `--value '"foo"'` becomes `.string("foo")`). Falls
 /// back to treating the raw arg as a string when JSON decode fails —
-/// the common case is `cua-driver config set capture_mode window`, and
+/// the common case is `trope-cua config set capture_mode window`, and
 /// we don't want users to wrap unquoted strings in extra quotes.
 private func parseValueArgument(_ raw: String) throws -> Value {
     let data = Data(raw.utf8)
@@ -336,7 +336,7 @@ private func printErr(_ text: String) {
     FileHandle.standardError.write(Data((text + "\n").utf8))
 }
 
-/// `cua-driver config updates {status|enable|disable}` — dedicated
+/// `trope-cua config updates {status|enable|disable}` — dedicated
 /// wrapper around the `auto_update_enabled` config key for discoverability.
 /// Equivalent to `config set auto_update_enabled {true|false}` but with
 /// friendlier output and an explicit env-override callout on `status`.
@@ -361,16 +361,16 @@ struct ConfigUpdatesStatusCommand: ParsableCommand {
 
     func run() throws {
         let config = ConfigStore.loadSync()
-        let envOverride = ProcessInfo.processInfo.environment["CUA_DRIVER_AUTO_UPDATE_ENABLED"]
+        let envOverride = ProcessInfo.processInfo.environment["TROPE_CUA_AUTO_UPDATE_ENABLED"]
         print("Auto-update enabled: \(config.autoUpdateEnabled)")
         if let envValue = envOverride {
             let lower = envValue.lowercased()
             if ["0", "1", "true", "false", "yes", "no", "on", "off"].contains(lower) {
-                print("  (currently overridden by CUA_DRIVER_AUTO_UPDATE_ENABLED=\(envValue))")
+                print("  (currently overridden by TROPE_CUA_AUTO_UPDATE_ENABLED=\(envValue))")
             }
         }
         print("")
-        print("When enabled, cua-driver automatically checks for updates periodically")
+        print("When enabled, trope-cua automatically checks for updates periodically")
         print("and can download and install new versions without user interaction.")
     }
 }
@@ -400,7 +400,7 @@ struct ConfigUpdatesDisableCommand: ParsableCommand {
         print("The LaunchAgent will be removed from your system.")
         
         // Remove the LaunchAgent
-        let plistPath = "\(NSHomeDirectory())/Library/LaunchAgents/com.trycua.cua_driver_updater.plist"
+        let plistPath = "\(NSHomeDirectory())/Library/LaunchAgents/com.tropecua.updater.plist"
         let fileManager = FileManager.default
         if fileManager.fileExists(atPath: plistPath) {
             do {

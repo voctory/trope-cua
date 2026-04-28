@@ -12,7 +12,7 @@ import MCP
 /// is deliberately excluded from the action-tool set so it doesn't try
 /// to record itself, which would infinite-loop.
 ///
-/// The intended companion to `set_recording` / `cua-driver recording
+/// The intended companion to `set_recording` / `trope-cua recording
 /// start`. Use case: capture a session once, then replay against a
 /// future build and diff the two trajectories.
 public enum ReplayTrajectoryTool {
@@ -23,7 +23,7 @@ public enum ReplayTrajectoryTool {
                 Replay a recorded trajectory by re-invoking every turn's
                 tool call in lexical order. `dir` must point at a
                 directory previously written by `set_recording` (or the
-                `cua-driver recording start` CLI). Each `turn-NNNNN/`
+                `trope-cua recording start` CLI). Each `turn-NNNNN/`
                 is parsed for `action.json`, and the recorded tool is
                 called with its recorded `arguments` via the same
                 dispatch path an MCP / CLI call uses.

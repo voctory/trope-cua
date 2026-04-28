@@ -72,7 +72,7 @@ default recommendation — use it even when Chrome is already
 running.
 
 Caveat: the new window is **hidden-launched** (the whole point of
-cua-driver). If the user needs to see the page on screen, tell
+trope-cua). If the user needs to see the page on screen, tell
 them to Cmd-Tab / click the Dock icon; the driver never unhides.
 AX reads + element-indexed actions against the hidden window
 work normally, so for agents that just need to extract / click
@@ -115,7 +115,7 @@ Minor caveats for the rare case a `⌘L` flow is still needed
 
 Browsers (Chrome, Dia, Arc, Brave, Edge, Safari) structure their
 surface area as {windows → tabs → page content}. Picking the
-right level for cua-driver is critical:
+right level for trope-cua is critical:
 
 - **Tabs** share a window. Only the focused tab's `AXWebArea` is
   populated; switching tabs to drive a different one is visibly

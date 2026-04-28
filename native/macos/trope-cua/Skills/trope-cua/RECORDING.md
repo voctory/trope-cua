@@ -15,25 +15,25 @@ setters, and `set_recording` itself) are not recorded.
 ## Enable / disable
 
 Two equivalent surfaces: the `set_recording` MCP tool, or the
-friendlier `cua-driver recording` subcommand group (wraps
+friendlier `trope-cua recording` subcommand group (wraps
 `set_recording` + `get_recording_state` with human-readable output).
 
 ```
-cua-driver recording start ~/cua-trajectories/run-1
+trope-cua recording start ~/cua-trajectories/run-1
 # … run the workflow …
-cua-driver recording status    # -> enabled / disabled, next_turn, output_dir
-cua-driver recording stop      # -> "Recording disabled (N turns captured in …)"
+trope-cua recording status    # -> enabled / disabled, next_turn, output_dir
+trope-cua recording stop      # -> "Recording disabled (N turns captured in …)"
 ```
 
 Raw-tool equivalent:
 
 ```
-cua-driver set_recording '{"enabled":true,"output_dir":"~/cua-trajectories/run-1"}'
-cua-driver get_recording_state
-cua-driver set_recording '{"enabled":false}'
+trope-cua set_recording '{"enabled":true,"output_dir":"~/cua-trajectories/run-1"}'
+trope-cua get_recording_state
+trope-cua set_recording '{"enabled":false}'
 ```
 
-The `recording` subcommands require a running daemon (`cua-driver
+The `recording` subcommands require a running daemon (`trope-cua
 serve &`) because recording state is per-process. `output_dir` expands
 `~` and is created (with intermediates) if missing. Turn numbering
 starts at `1` every time recording is (re-)enabled, regardless of any
@@ -87,11 +87,11 @@ tool with its recorded `arguments`. Optional knobs: `delay_ms`
 first failure, default true).
 
 ```
-cua-driver recording start ~/cua-trajectories/demo1
+trope-cua recording start ~/cua-trajectories/demo1
 # … run the workflow …
-cua-driver recording stop
+trope-cua recording stop
 # Later: replay against a new build.
-cua-driver replay_trajectory '{"dir":"~/cua-trajectories/demo1","delay_ms":500}'
+trope-cua replay_trajectory '{"dir":"~/cua-trajectories/demo1","delay_ms":500}'
 ```
 
 Important caveat: **element_index doesn't survive across sessions**.

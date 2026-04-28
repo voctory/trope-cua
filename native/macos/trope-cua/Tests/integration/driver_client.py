@@ -1,8 +1,8 @@
-"""Minimal MCP stdio client used by cua-driver integration tests.
+"""Minimal MCP stdio client used by trope-cua integration tests.
 
 Speaks JSON-RPC 2.0 line-framed over stdin/stdout. Keeps request IDs monotonic
 and strips notifications from the response stream. Deliberately tiny — we want
-the test failures to point at cua-driver, not at a heavy client dependency.
+the test failures to point at trope-cua, not at a heavy client dependency.
 """
 
 from __future__ import annotations
@@ -68,7 +68,7 @@ class DriverClient:
             {
                 "protocolVersion": "2025-06-18",
                 "capabilities": {},
-                "clientInfo": {"name": "cua-driver-integration", "version": "0.0.1"},
+                "clientInfo": {"name": "trope-cua-integration", "version": "0.0.1"},
             },
         )
         self._notify("notifications/initialized")
@@ -128,14 +128,14 @@ class MCPCallError(RuntimeError):
 
 def default_binary_path() -> str:
     return os.environ.get(
-        "CUA_DRIVER_BINARY",
+        "TROPE_CUA_BINARY",
         os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "..",
             "..",
             ".build",
             "debug",
-            "cua-driver",
+            "trope-cua",
         ),
     )
 

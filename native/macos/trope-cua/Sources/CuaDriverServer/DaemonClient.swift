@@ -3,7 +3,7 @@ import Foundation
 import MCP
 
 /// Blocking client that sends a single request to a running daemon and
-/// returns the response. Used by `cua-driver call` / `list-tools` /
+/// returns the response. Used by `trope-cua call` / `list-tools` /
 /// `describe` / `status` / `stop`.
 ///
 /// Intentionally not an actor — it's one-shot per CLI invocation. One
@@ -154,7 +154,7 @@ public enum DaemonCallResult {
 }
 
 /// Read the pid from the daemon's pid file, if present and parseable.
-/// Returns nil otherwise — `cua-driver status` treats that as "unknown pid".
+/// Returns nil otherwise — `trope-cua status` treats that as "unknown pid".
 public func readDaemonPid(from pidFilePath: String) -> Int32? {
     guard let contents = try? String(contentsOfFile: pidFilePath, encoding: .utf8) else {
         return nil

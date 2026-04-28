@@ -1,5 +1,5 @@
 // Zoom-on-click renderer. Reads a recording directory produced by
-// `cua-driver recording start … --video-experimental`, runs each video
+// `trope-cua recording start … --video-experimental`, runs each video
 // frame through `FrameTransform.transformedFrame` with the scale/focus
 // curve from `ZoomRegionGenerator.sampleCurve`, and writes a new MP4.
 //
@@ -95,7 +95,7 @@ public enum RecordingRenderer {
     }
 
     private static let log = Logger(
-        subsystem: "com.trycua.driver",
+        subsystem: "com.tropecua.driver",
         category: "RecordingRenderer"
     )
 
@@ -289,7 +289,7 @@ public enum RecordingRenderer {
         // Hand-off queue the writer expects its input to be fed from.
         // Realtime flag is off (we're batching), so we rely on
         // `requestMediaDataWhenReady` to back-pressure.
-        let writerQueue = DispatchQueue(label: "com.trycua.driver.recording.render")
+        let writerQueue = DispatchQueue(label: "com.tropecua.driver.recording.render")
 
         let renderState = RenderLoopState(
             reader: reader,
@@ -344,7 +344,7 @@ private final class RenderLoopState: @unchecked Sendable {
     private var lastProgressEmittedMs: Double = -Double.infinity
 
     private let log = Logger(
-        subsystem: "com.trycua.driver",
+        subsystem: "com.tropecua.driver",
         category: "RecordingRenderer"
     )
 
