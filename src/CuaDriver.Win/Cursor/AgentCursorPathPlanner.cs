@@ -176,17 +176,17 @@ internal readonly record struct PlannedCursorPath(
         }
 
         foreach (var sign in new[] { preferredSign, -preferredSign })
-        foreach (var controlScale in new[] { 0.55, 0.8, 1.05 })
-        foreach (var arcScale in new[] { 0.65, 1.0, 1.35 })
-        {
-            var control = Math.Min(baseControl * controlScale, distance * 0.47);
-            var midControl = Math.Min(baseControl * 0.65, distance * 0.38);
-            var arc = baseArc * arcScale * sign;
-            var mid = new PointF(
-                (float)(start.X + delta.X * 0.5 + normal.X * arc),
-                (float)(start.Y + delta.Y * 0.5 + normal.Y * arc));
-            var segments = new[]
-            {
+            foreach (var controlScale in new[] { 0.55, 0.8, 1.05 })
+                foreach (var arcScale in new[] { 0.65, 1.0, 1.35 })
+                {
+                    var control = Math.Min(baseControl * controlScale, distance * 0.47);
+                    var midControl = Math.Min(baseControl * 0.65, distance * 0.38);
+                    var arc = baseArc * arcScale * sign;
+                    var mid = new PointF(
+                        (float)(start.X + delta.X * 0.5 + normal.X * arc),
+                        (float)(start.Y + delta.Y * 0.5 + normal.Y * arc));
+                    var segments = new[]
+                    {
                 CursorMotionSegment.Create(
                     start,
                     new PointF((float)(start.X + startUnit.X * control), (float)(start.Y + startUnit.Y * control)),
@@ -198,9 +198,9 @@ internal readonly record struct PlannedCursorPath(
                     new PointF((float)(end.X - endUnit.X * control), (float)(end.Y - endUnit.Y * control)),
                     end)
             };
-            var measurement = Measure(segments, bounds, 72);
-            candidates.Add((segments, measurement, Score(measurement)));
-        }
+                    var measurement = Measure(segments, bounds, 72);
+                    candidates.Add((segments, measurement, Score(measurement)));
+                }
 
         var sorted = candidates
             .OrderByDescending(candidate => candidate.Measurement.StaysInBounds)
