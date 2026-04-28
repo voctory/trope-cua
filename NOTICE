@@ -1,12 +1,15 @@
-cua-driver-win acknowledgements
+Trope CUA acknowledgements
 
 Copyright (c) 2026 Victor Vannara
 
-This project is a Windows computer-use driver informed by the Cua Driver Mac
-implementation in:
+This project includes code from the Cua Driver Mac implementation in:
 
   https://github.com/trycua/cua
 
-No upstream source code from that repository is included in this repository.
-If substantial upstream source is copied into this repository later, preserve
-the applicable upstream copyright and license notices.
+The imported macOS native driver code is located under:
+
+  native/macos/cua-driver
+
+The upstream project is released under the MIT License:
+
+Copyright (c) 2025 Cua AI, Inc.
