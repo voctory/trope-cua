@@ -33,11 +33,15 @@ internal sealed class AgentCursorOverlay
     private ManualResetEventSlim? _threadReady;
     private bool _enabled = true;
     private AgentCursorMotion _motion = AgentCursorMotion.Default;
+    private readonly string _instanceId;
     private readonly string _overlayWindowTitle;
+    private readonly AgentCursorPalette _palette;
 
     public AgentCursorOverlay(string? instanceId = null)
     {
-        _overlayWindowTitle = AgentCursorWindowing.OverlayWindowTitleFor(instanceId);
+        _instanceId = DriverInstance.Resolve(instanceId);
+        _overlayWindowTitle = AgentCursorWindowing.OverlayWindowTitleFor(_instanceId);
+        _palette = AgentCursorPalette.ForInstance(_instanceId);
     }
 
     public bool Enabled
@@ -185,6 +189,8 @@ internal sealed class AgentCursorOverlay
         {
             ["enabled"] = enabled,
             ["route"] = "winforms.click_through_overlay",
+            ["instance_id"] = _instanceId,
+            ["palette"] = _palette.ToJsonObject(),
             ["ready"] = formReady,
             ["visible"] = visible,
             ["screen_x"] = screenX,
@@ -224,7 +230,7 @@ internal sealed class AgentCursorOverlay
                 {
                     Application.EnableVisualStyles();
                     Application.SetCompatibleTextRenderingDefault(false);
-                    var form = new OverlayForm(_overlayWindowTitle);
+                    var form = new OverlayForm(_overlayWindowTitle, _palette);
                     form.SetMotion(Motion);
                     _ = form.Handle;
                     lock (_gate)
@@ -289,6 +295,7 @@ internal sealed class AgentCursorOverlay
         private readonly System.Threading.Timer _timer;
         private readonly Rectangle _virtualBounds;
         private readonly string _overlayWindowTitle;
+        private readonly AgentCursorPalette _palette;
         private AgentCursorMotion _motion = AgentCursorMotion.Default;
         private PointF _current;
         private long _lastFrameTimestamp = Stopwatch.GetTimestamp();
@@ -319,9 +326,10 @@ internal sealed class AgentCursorOverlay
         private int _animationQueued;
         private LayeredBackBuffer? _backBuffer;
 
-        public OverlayForm(string overlayWindowTitle)
+        public OverlayForm(string overlayWindowTitle, AgentCursorPalette palette)
         {
             _overlayWindowTitle = overlayWindowTitle;
+            _palette = palette;
             _virtualBounds = new Rectangle(
                 NativeMethods.GetSystemMetrics(NativeMethods.SM_XVIRTUALSCREEN),
                 NativeMethods.GetSystemMetrics(NativeMethods.SM_YVIRTUALSCREEN),
@@ -767,8 +775,8 @@ internal sealed class AgentCursorOverlay
                 {
                     g.Clear(Color.Transparent);
                     AgentCursorRenderer.ConfigureHighQuality(g);
-                    AgentCursorRenderer.DrawBloom(g, localCenter, scale, BloomBreath());
-                    AgentCursorRenderer.DrawCursor(g, localCenter, renderPose.Heading, scale);
+                    AgentCursorRenderer.DrawBloom(g, localCenter, scale, BloomBreath(), _palette);
+                    AgentCursorRenderer.DrawCursor(g, localCenter, renderPose.Heading, scale, _palette);
                 }
 
                 var dst = new POINT(left, top);

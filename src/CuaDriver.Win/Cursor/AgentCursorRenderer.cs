@@ -24,7 +24,7 @@ internal static class AgentCursorRenderer
         g.SmoothingMode = SmoothingMode.AntiAlias;
     }
 
-    public static void DrawBloom(Graphics g, PointF p, float scale, double breath)
+    public static void DrawBloom(Graphics g, PointF p, float scale, double breath, AgentCursorPalette palette)
     {
         DrawCachedGaussianGlow(
             g,
@@ -36,7 +36,7 @@ internal static class AgentCursorRenderer
             radiusBreath: 3,
             baseSigma: 19.5f,
             sigmaBreath: 1,
-            color: Color.FromArgb(188, 232, 252),
+            color: palette.BloomOuter,
             baseAlpha: 70,
             alphaBreath: 16);
 
@@ -50,12 +50,12 @@ internal static class AgentCursorRenderer
             radiusBreath: 1,
             baseSigma: 8.5f,
             sigmaBreath: 0.5f,
-            color: Color.FromArgb(238, 248, 255),
+            color: palette.BloomInner,
             baseAlpha: 42,
             alphaBreath: 10);
     }
 
-    public static void DrawCursor(Graphics g, PointF p, double heading, float scale)
+    public static void DrawCursor(Graphics g, PointF p, double heading, float scale, AgentCursorPalette palette)
     {
         using var path = new GraphicsPath();
         path.AddPolygon(new[]
@@ -81,9 +81,9 @@ internal static class AgentCursorRenderer
             {
                 Colors =
                 [
-                    Color.FromArgb(219, 238, 255),
-                    Color.FromArgb(94, 192, 232),
-                    Color.FromArgb(84, 205, 160)
+                    palette.CursorStart,
+                    palette.CursorMid,
+                    palette.CursorEnd
                 ],
                 Positions = [0.0f, 0.53f, 1.0f]
             }
@@ -107,7 +107,7 @@ internal static class AgentCursorRenderer
         int baseAlpha,
         int alphaBreath)
     {
-        var key = GlowCacheKey.From(layer, scale, breath);
+        var key = GlowCacheKey.From(layer, scale, breath, color);
         var sprite = GetOrCreateGlowSprite(
             key,
             baseRadius,
@@ -206,13 +206,13 @@ internal static class AgentCursorRenderer
         return new GlowSprite(bitmap, radius);
     }
 
-    private readonly record struct GlowCacheKey(int Layer, int Scale, int Breath)
+    private readonly record struct GlowCacheKey(int Layer, int Scale, int Breath, int ColorArgb)
     {
-        public static GlowCacheKey From(int layer, float scale, double breath)
+        public static GlowCacheKey From(int layer, float scale, double breath, Color color)
         {
             var scaleKey = Math.Clamp((int)Math.Round(scale * ScaleSteps), 1, 400);
             var breathKey = Math.Clamp((int)Math.Round(Math.Clamp(breath, 0, 1) * BreathSteps), 0, BreathSteps);
-            return new GlowCacheKey(layer, scaleKey, breathKey);
+            return new GlowCacheKey(layer, scaleKey, breathKey, color.ToArgb());
         }
     }
 

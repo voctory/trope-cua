@@ -108,11 +108,14 @@ def test_parallel_daemon_cursors_remain_isolated():
         assert first_move["isError"] is False
         first_state = call_instance(first, "get_agent_cursor_state")
         assert first_state["structuredContent"]["visible"] is True
+        assert first_state["structuredContent"]["instance_id"] == first
 
         second_move = call_instance(second, "move_cursor", {"x": second_x, "y": second_y})
         assert second_move["isError"] is False
         second_state = call_instance(second, "get_agent_cursor_state")
         assert second_state["structuredContent"]["visible"] is True
+        assert second_state["structuredContent"]["instance_id"] == second
+        assert first_state["structuredContent"]["palette"]["name"] != second_state["structuredContent"]["palette"]["name"]
 
         first_after_second_move = call_instance(first, "get_agent_cursor_state")
         assert first_after_second_move["structuredContent"]["visible"] is True

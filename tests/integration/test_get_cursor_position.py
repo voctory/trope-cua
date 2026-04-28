@@ -54,6 +54,7 @@ def test_get_agent_cursor_state_returns_structured_content():
     assert "render_fps" in structured
     assert "render_ms" in structured
     assert "render_frame_count" in structured
+    assert structured["palette"]["name"] == "default_blue"
 
 
 def test_set_agent_cursor_enabled_requires_boolean():
