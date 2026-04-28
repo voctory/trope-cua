@@ -46,11 +46,11 @@ public enum SetAgentCursorMotionTool {
                   Re-armed by every click, so a burst of consecutive
                   actions keeps the cursor visible throughout. Higher
                   = more tolerant of follow-up actions without the
-                  overlay popping in and out. Typical: 3000.
+                  overlay popping in and out. Typical: 20000.
 
                 Defaults: start_handle=0.3, end_handle=0.3, arc_size=0.25,
                 arc_flow=0.0, spring=0.72, glide_duration_ms=750,
-                dwell_after_click_ms=400, idle_hide_ms=3000.
+                dwell_after_click_ms=400, idle_hide_ms=20000.
                 """,
             inputSchema: [
                 "type": "object",
@@ -92,7 +92,7 @@ public enum SetAgentCursorMotionTool {
                     "idle_hide_ms": [
                         "type": "number",
                         "description":
-                            "How long the overlay lingers after the last click before auto-hiding, in ms. Default 3000.",
+                            "How long the overlay lingers after the last click before auto-hiding, in ms. Default 20000.",
                         "minimum": 100,
                         "maximum": 60000,
                     ],

@@ -180,11 +180,11 @@ public final class AgentCursor {
     /// before it auto-hides. Each `animateAndWait` / `finishClick`
     /// resets this timer, so a burst of back-to-back clicks keeps the
     /// cursor visible throughout; then it slides off after the driver
-    /// has been idle this long. 3s leaves comfortable headroom for a
+    /// has been idle this long. 20s matches the Windows overlay default,
+    /// leaving comfortable headroom for a
     /// follow-up action to arrive without the overlay popping in and
-    /// out, while still being short enough that the cursor is gone
-    /// before the user starts wondering if the agent is still running.
-    public var idleHideDelay: TimeInterval = 8.0
+    /// out during normal agent pacing.
+    public var idleHideDelay: TimeInterval = 20.0
 
     private var overlay: AgentCursorOverlayWindow?
     private var idleHideTask: Task<Void, Never>?
