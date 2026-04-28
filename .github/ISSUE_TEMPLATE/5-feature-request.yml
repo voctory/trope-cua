@@ -1,0 +1,60 @@
+name: Feature Request
+description: Propose a new Trope CUA feature or behavior change
+labels:
+  - enhancement
+  - needs triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before submitting a new feature request, please search existing issues first. If one already covers the same idea, add a thumbs-up reaction instead of opening a duplicate.
+
+        Not every feature will fit the project's background-safe automation contract. Please include the safety and platform context that would help maintainers evaluate the proposal.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Windows driver
+        - macOS driver
+        - MCP tools
+        - Browser automation
+        - Capture or screenshots
+        - Visual agent cursor
+        - Recording or replay
+        - Configuration
+        - Documentation
+        - Packaging or install
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: feature
+    attributes:
+      label: What feature would you like to see?
+      description: Describe the user-facing behavior or capability.
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: What problem would this solve?
+      description: Explain the workflow, target application, or automation scenario.
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety and route considerations
+      description: Note whether this can preserve background safety, avoid cursor movement, avoid foreground changes, and report route/lane receipts.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe workarounds, existing tools, or related approaches.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional information
+      description: Add links, sketches, logs, or examples that clarify the request.
