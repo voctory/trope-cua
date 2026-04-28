@@ -133,7 +133,7 @@ internal static class JsonArgs
     public static JsonObject SchemaWithAnyOf(string[] required, string[][] anyOf, params (string Key, JsonNode Value)[] properties)
     {
         var schema = RequiredSchema(required, properties);
-        // Codex/OpenAI tool schemas must be a plain object at the top level.
+        // MCP/OpenAI tool schemas must be a plain object at the top level.
         // Keep alternative argument validation in each tool parser instead.
         _ = anyOf;
         return schema;

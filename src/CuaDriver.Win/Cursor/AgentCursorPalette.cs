@@ -98,7 +98,28 @@ internal sealed record AgentCursorPalette(
             Color.FromArgb(221, 113, 236),
             Color.FromArgb(255, 139, 196),
             Color.FromArgb(237, 181, 246),
-            Color.FromArgb(255, 239, 252))
+            Color.FromArgb(255, 239, 252)),
+        new(
+            "crimson",
+            Color.FromArgb(255, 226, 226),
+            Color.FromArgb(232, 82, 98),
+            Color.FromArgb(150, 94, 255),
+            Color.FromArgb(255, 168, 178),
+            Color.FromArgb(255, 240, 241)),
+        new(
+            "chartreuse",
+            Color.FromArgb(247, 255, 218),
+            Color.FromArgb(184, 220, 54),
+            Color.FromArgb(72, 190, 119),
+            Color.FromArgb(224, 247, 128),
+            Color.FromArgb(249, 255, 232)),
+        new(
+            "cobalt",
+            Color.FromArgb(226, 235, 255),
+            Color.FromArgb(80, 126, 236),
+            Color.FromArgb(91, 219, 222),
+            Color.FromArgb(170, 195, 255),
+            Color.FromArgb(239, 246, 255))
     ];
 
     private static int StableIndex(string value, int count)

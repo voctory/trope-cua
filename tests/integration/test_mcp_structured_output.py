@@ -55,7 +55,7 @@ def test_parallel_mcp_cursors_allocate_distinct_palettes(tmp_path):
 
     try:
         states = []
-        for index in range(4):
+        for index in range(10):
             processes.append(subprocess.Popen(
                 [EXE, "mcp"],
                 stdin=subprocess.PIPE,
@@ -71,9 +71,15 @@ def test_parallel_mcp_cursors_allocate_distinct_palettes(tmp_path):
             "soft_purple",
             "rose_gold",
             "mint_lime",
+            "amber",
+            "aqua",
+            "orchid",
+            "crimson",
+            "chartreuse",
+            "cobalt",
         ]
         assert all(state["instance_id"].startswith("mcp-") for state in states)
-        assert len({state["instance_id"] for state in states}) == 4
+        assert len({state["instance_id"] for state in states}) == 10
     finally:
         for proc in processes:
             if proc.stdin:

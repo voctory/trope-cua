@@ -79,10 +79,10 @@ Install a self-contained user-level build:
 .\scripts\install.ps1
 ```
 
-Then register it with Codex:
+Then register it with your MCP client:
 
 ```powershell
-codex mcp add cua-driver-win -- "$env:LOCALAPPDATA\Programs\CuaDriverWin\cua-driver-win.exe" mcp
+cua-driver-win mcp
 ```
 
 ```json
@@ -96,7 +96,7 @@ codex mcp add cua-driver-win -- "$env:LOCALAPPDATA\Programs\CuaDriverWin\cua-dri
 }
 ```
 
-Plain MCP sessions without `--instance` automatically claim a runtime cursor identity and palette, so parallel Codex agents show different colored visual cursors. The first live cursor uses the default blue palette; later live sessions rotate through alternate palettes. Set `CUA_DRIVER_INSTANCE` or pass `--instance` only when you need a stable named cursor identity.
+Plain MCP sessions without `--instance` automatically claim a runtime cursor identity and palette, so parallel agent sessions show different colored visual cursors. The first live cursor uses the default blue palette; later live sessions rotate through 9 alternate palettes. Set `CUA_DRIVER_INSTANCE` or pass `--instance` only when you need a stable named cursor identity.
 
 ## Safety contract
 
