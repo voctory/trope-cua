@@ -13,9 +13,13 @@ internal sealed class AgentCursorOverlay
 {
     private const double RestingHeadingRadians = AgentCursorGeometry.RestingHeadingRadians;
     private const float SurfaceHalfSize = 76f;
-    private const double TurnRadius = 80;
-    private const double SpringStiffness = 400;
-    private const double SpringOvershoot = 0.8;
+    private const double NominalGlideDurationMs = 160;
+    private const double MinMoveDurationSeconds = 0.08;
+    private const double MaxMoveDurationSeconds = 0.34;
+    private const double DurationBaseSeconds = 0.055;
+    private const double DurationDistanceDivisor = 1900;
+    private const double BezierProgressExponent = 3.157;
+    private const double BezierProgressDamping = 0.9;
     private const double IdleBreathPeriodSeconds = 1.8;
     private const double IdleRotationPeriodSeconds = 2.4;
     private const double IdleRotationAmplitudeRadians = 0.10;
@@ -291,10 +295,8 @@ internal sealed class AgentCursorOverlay
         private double _heading = RestingHeadingRadians;
         private double _displayHeading = RestingHeadingRadians;
         private PlannedCursorPath? _path;
-        private CursorTrip? _trip;
-        private SpringState? _spring;
-        private SpringTarget? _springTarget;
-        private double _distanceSoFar;
+        private long _glideStartedTimestamp;
+        private double _glideDurationSeconds;
         private bool _hasPosition;
         private bool _isGliding;
         private bool _visibleCursor;
@@ -397,9 +399,8 @@ internal sealed class AgentCursorOverlay
             _visibleCursor = false;
             _isGliding = false;
             _path = null;
-            _trip = null;
-            _spring = null;
-            _springTarget = null;
+            _glideStartedTimestamp = 0;
+            _glideDurationSeconds = 0;
             _pinnedTargetHwnd = IntPtr.Zero;
             _layering = "hidden";
             _arrival?.TrySetResult();
@@ -456,11 +457,9 @@ internal sealed class AgentCursorOverlay
                     _current = target;
                     _heading = RestingHeadingRadians;
                     _path = null;
-                    _trip = null;
-                    _spring = null;
-                    _springTarget = null;
+                    _glideStartedTimestamp = 0;
+                    _glideDurationSeconds = 0;
                     _isGliding = false;
-                    _distanceSoFar = 0;
                     MarkActivity();
                     _lastFrameTimestamp = Stopwatch.GetTimestamp();
                     _visibleCursor = true;
@@ -481,13 +480,12 @@ internal sealed class AgentCursorOverlay
                 target.X,
                 target.Y,
                 RestingHeadingRadians + Math.PI,
-                Math.Max(1, TurnRadius * scale),
+                0,
                 RestingHeadingRadians,
-                target);
-            _trip = AgentCursorKinematics.TripFor(_motion.GlideDurationMs, scale);
-            _spring = null;
-            _springTarget = null;
-            _distanceSoFar = 0;
+                target,
+                MovementBounds());
+            _glideStartedTimestamp = Stopwatch.GetTimestamp();
+            _glideDurationSeconds = ResolveGlideDurationSeconds(_path.Value, _motion);
             _lastFrameTimestamp = Stopwatch.GetTimestamp();
             MarkActivity();
             _visibleCursor = true;
@@ -499,7 +497,8 @@ internal sealed class AgentCursorOverlay
                 _heading = RestingHeadingRadians;
                 _isGliding = false;
                 _path = null;
-                _trip = null;
+                _glideStartedTimestamp = 0;
+                _glideDurationSeconds = 0;
                 _arrival?.TrySetResult();
                 _arrival = null;
             }
@@ -567,26 +566,22 @@ internal sealed class AgentCursorOverlay
             _lastFrameTimestamp = nowTimestamp;
             var nowMs = Environment.TickCount64;
 
-            if (_path is { } path && _trip is { } trip)
+            if (_path is { } path)
             {
-                var u = Math.Min(1.0, _distanceSoFar / Math.Max(path.Length, 1));
-                var currentSpeed = AgentCursorKinematics.CurrentSpeed(trip, u);
-                _distanceSoFar += currentSpeed * dt;
+                var elapsed = _glideStartedTimestamp > 0
+                    ? (nowTimestamp - _glideStartedTimestamp) / (double)Stopwatch.Frequency
+                    : _glideDurationSeconds;
+                var progress = _glideDurationSeconds <= 0 ? 1 : Math.Clamp(elapsed / _glideDurationSeconds, 0, 1);
+                var easedProgress = EaseMotion(progress);
 
-                if (_distanceSoFar >= path.Length)
+                if (progress >= 1)
                 {
                     var endState = path.Sample(path.Length);
-                    _spring = new SpringState(
-                        0,
-                        0,
-                        Math.Cos(endState.Heading) * currentSpeed * SpringOvershoot,
-                        Math.Sin(endState.Heading) * currentSpeed * SpringOvershoot);
-                    _springTarget = new SpringTarget(path.TargetPoint, path.EndVisualHeading);
                     _current = path.TargetPoint;
                     _heading = path.EndVisualHeading;
                     _path = null;
-                    _trip = null;
-                    _distanceSoFar = 0;
+                    _glideStartedTimestamp = 0;
+                    _glideDurationSeconds = 0;
                     _isGliding = false;
                     MarkActivity(nowMs);
                     _arrival?.TrySetResult();
@@ -594,39 +589,9 @@ internal sealed class AgentCursorOverlay
                 }
                 else
                 {
-                    var state = path.Sample(_distanceSoFar);
+                    var state = path.Sample(easedProgress * path.Length);
                     _current = new PointF((float)state.X, (float)state.Y);
-                    _heading = AgentCursorKinematics.RotateToward(_heading, state.Heading + Math.PI, 14 * dt);
-                }
-
-                changed = true;
-            }
-            else if (_spring is { } spring && _springTarget is { } springTarget)
-            {
-                var damping = Math.Max(0.3, _motion.Spring) * 24;
-                var substeps = 4;
-                var sdt = dt / substeps;
-                for (var i = 0; i < substeps; i++)
-                {
-                    spring.Vx += (-SpringStiffness * spring.Ox - damping * spring.Vx) * sdt;
-                    spring.Vy += (-SpringStiffness * spring.Oy - damping * spring.Vy) * sdt;
-                    spring.Ox += spring.Vx * sdt;
-                    spring.Oy += spring.Vy * sdt;
-                }
-
-                _current = new PointF(
-                    (float)(springTarget.Point.X + spring.Ox),
-                    (float)(springTarget.Point.Y + spring.Oy));
-                _heading = springTarget.Heading;
-                if (Hypot(spring.Ox, spring.Oy) < 0.3 && Hypot(spring.Vx, spring.Vy) < 2)
-                {
-                    _current = springTarget.Point;
-                    _spring = null;
-                    _springTarget = null;
-                }
-                else
-                {
-                    _spring = spring;
+                    _heading = AgentCursorKinematics.RotateToward(_heading, state.Heading + Math.PI, 18 * dt);
                 }
 
                 changed = true;
@@ -928,7 +893,7 @@ internal sealed class AgentCursorOverlay
 
         private double BloomBreath()
         {
-            if (_path is not null || _spring is not null || _pulseStartedMs > 0)
+            if (_path is not null || _pulseStartedMs > 0)
                 return 1;
 
             var seconds = IdleSeconds();
@@ -949,7 +914,6 @@ internal sealed class AgentCursorOverlay
                    && _hasPosition
                    && !_isGliding
                    && _path is null
-                   && _spring is null
                    && _pulseStartedMs <= 0;
         }
 
@@ -1042,15 +1006,33 @@ internal sealed class AgentCursorOverlay
             return Math.Clamp(DeviceDpi / 96f, 1f, 2.5f);
         }
 
-        private struct SpringState(double ox, double oy, double vx, double vy)
+        private RectangleF MovementBounds()
         {
-            public double Ox = ox;
-            public double Oy = oy;
-            public double Vx = vx;
-            public double Vy = vy;
+            var inset = 8f * CurrentDpiScale();
+            var width = Math.Max(1, _virtualBounds.Width - inset * 2);
+            var height = Math.Max(1, _virtualBounds.Height - inset * 2);
+            return new RectangleF(inset, inset, width, height);
         }
 
-        private readonly record struct SpringTarget(PointF Point, double Heading);
+        private static double ResolveGlideDurationSeconds(PlannedCursorPath path, AgentCursorMotion motion)
+        {
+            var adaptive = Math.Clamp(
+                DurationBaseSeconds + path.StraightLineDistance / DurationDistanceDivisor,
+                MinMoveDurationSeconds,
+                MaxMoveDurationSeconds);
+            var userScale = Math.Clamp(motion.GlideDurationMs / NominalGlideDurationMs, 0.35, 3.0);
+            return Math.Clamp(adaptive * userScale, 0.03, 1.2);
+        }
+
+        private static double EaseMotion(double progress)
+        {
+            var clamped = Math.Clamp(progress, 0, 1);
+            var response = 1 - Math.Pow(1 - clamped, BezierProgressExponent);
+            return Math.Clamp(
+                response * BezierProgressDamping + clamped * (1 - BezierProgressDamping),
+                0,
+                1);
+        }
 
         private void CloseSiblingOverlayWindows()
         {

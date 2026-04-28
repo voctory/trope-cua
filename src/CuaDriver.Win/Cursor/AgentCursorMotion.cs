@@ -21,16 +21,16 @@ internal sealed record AgentCursorMotion
     public double Spring { get; init; } = 0.72;
 
     [JsonPropertyName("glide_duration_ms")]
-    public double GlideDurationMs { get; init; } = 750;
+    public double GlideDurationMs { get; init; } = 160;
 
     [JsonPropertyName("dwell_after_click_ms")]
-    public double DwellAfterClickMs { get; init; } = 400;
+    public double DwellAfterClickMs { get; init; } = 80;
 
     [JsonPropertyName("idle_hide_ms")]
     public double IdleHideMs { get; init; } = 20000;
 
     [JsonPropertyName("press_duration_ms")]
-    public double PressDurationMs { get; init; } = 650;
+    public double PressDurationMs { get; init; } = 120;
 
     public static AgentCursorMotion Default { get; } = new();
 

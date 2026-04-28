@@ -46,10 +46,10 @@ internal sealed class SetAgentCursorMotionTool : IDriverTool
             ("arc_size", JsonArgs.Prop("number", "Perpendicular arc deflection as a fraction of path length. Default 0.25.")),
             ("arc_flow", JsonArgs.Prop("number", "Arc asymmetry in [-1, 1]. Default 0.")),
             ("spring", JsonArgs.Prop("number", "Reserved settle damping knob in [0.3, 1]. Default 0.72.")),
-            ("glide_duration_ms", JsonArgs.Prop("number", "Cursor flight duration in milliseconds. Default 750.")),
-            ("dwell_after_click_ms", JsonArgs.Prop("number", "Post-click rest time in milliseconds. Default 400.")),
+            ("glide_duration_ms", JsonArgs.Prop("number", "Nominal cursor flight duration in milliseconds; adaptive movement scales from this value. Default 160.")),
+            ("dwell_after_click_ms", JsonArgs.Prop("number", "Post-click rest time in milliseconds. Default 80.")),
             ("idle_hide_ms", JsonArgs.Prop("number", "Idle time before the overlay hides. 0 disables auto-hide. Default 20000.")),
-            ("press_duration_ms", JsonArgs.Prop("number", "Click pulse duration in milliseconds. Default 650."))),
+            ("press_duration_ms", JsonArgs.Prop("number", "Click press duration in milliseconds. Default 120."))),
         Destructive: true,
         Idempotent: true);
 
