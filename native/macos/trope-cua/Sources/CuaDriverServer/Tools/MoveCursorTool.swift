@@ -8,8 +8,10 @@ public enum MoveCursorTool {
         tool: Tool(
             name: "move_cursor",
             description: """
-                Instantly move the mouse cursor to (x, y) in screen points.
-                Uses CGWarpMouseCursorPosition — no drag, no click, no CGEvent.
+                Move the visual agent cursor overlay to (x, y) in screen
+                points. This is for displaying agent intent only and should
+                not be used as an input route. It never moves the user's
+                real cursor.
                 """,
             inputSchema: [
                 "type": "object",
@@ -44,12 +46,16 @@ public enum MoveCursorTool {
                 )
             }
 
-            CursorControl.move(to: CGPoint(x: x, y: y))
-            let point = CursorPoint(x: x, y: y)
+            let point = CGPoint(x: x, y: y)
+            await AgentCursor.shared.animateAndWait(to: point)
+            await MainActor.run {
+                AgentCursor.shared.finishMove()
+            }
+
             return CallTool.Result(
                 content: [
                     .text(
-                        text: "✅ Moved cursor to (\(x), \(y)).",
+                        text: "✅ Moved visual agent cursor to (\(x), \(y)) via agent_cursor.visual_move.",
                         annotations: nil,
                         _meta: nil
                     )

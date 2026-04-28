@@ -556,6 +556,14 @@ public final class AgentCursor {
         scheduleIdleHide()
     }
 
+    /// Mark a visual-only cursor move as complete. Unlike a click,
+    /// this does not add dwell time; it just arms the idle-hide timer
+    /// after `move_cursor` has glided to the requested point.
+    public func finishMove() {
+        guard isEnabled else { return }
+        scheduleIdleHide()
+    }
+
     /// Show a glowing highlight rectangle around the given screen rect.
     /// Used by ClickTool to draw a focus indicator on the targeted AX
     /// element. Pass nil to clear the rect. No-op when disabled.
