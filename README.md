@@ -1,6 +1,6 @@
-# cua-driver-win
+# Trope CUA
 
-Windows background computer-use driver that gives agents an AX/UIA tree, a target-window image, and cursor-safe actions without stealing the user's foreground work.
+Windows background computer-use driver that gives agents a UI Automation tree, a target-window image, and cursor-safe actions without stealing the user's foreground work.
 
 This source drop is organized around three computer-use modalities:
 
@@ -119,6 +119,16 @@ The default build refuses to use parent-session `SendInput`. If a target require
 Agent routing guidance is maintained in `docs/agent-routing.md`. The MCP server also returns the same core rules in its initialize instructions so clients can steer tool selection toward background-safe routes.
 
 Refactoring guidance is maintained in `docs/refactoring-rubric.md`. It captures the staged build, analyzer, packaging, testing, and module-boundary policy for reshaping this driver without weakening the background-safety contract.
+
+## Documentation
+
+Trope CUA documentation starts at [docs/README.md](docs/README.md):
+
+- [What is Trope CUA?](docs/introduction.md)
+- [Installation](docs/installation.md)
+- [Quickstart](docs/quickstart.md)
+- [Tools and command modes](docs/reference-tools.md)
+- [Known limits](docs/limits.md)
 
 ## Important limitations in this source drop
 
