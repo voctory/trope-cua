@@ -23,7 +23,7 @@ Use the compatibility installer directly or the platform wrapper:
 The macOS driver lives under:
 
 ```text
-native/macos/cua-driver
+native/macos/trope-cua
 ```
 
 Use the platform wrapper from the repository root:

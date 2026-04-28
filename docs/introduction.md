@@ -1,20 +1,20 @@
 # What is Trope CUA?
 
-Trope CUA is a Windows computer-use driver for agent harnesses. It lets an agent inspect and operate a real Windows desktop application while protecting the user's active session from accidental cursor movement, focus steals, and blind keyboard delivery.
+Trope CUA is a native computer-use driver for agent harnesses. It lets an agent inspect and operate real desktop applications while protecting the user's active session from accidental cursor movement, focus steals, and blind keyboard delivery.
 
-Trope CUA currently ships as a single Windows executable named `cua-driver-win.exe`. The project name is Trope CUA; the binary name remains stable for existing installs and MCP client configs.
+On Windows, Trope CUA installs as `trope-cua.exe`. On macOS, it installs as `trope-cua`.
 
 ```powershell
-cua-driver-win list_windows
-cua-driver-win get_window_state '{"pid":1234,"window_id":456789}'
-cua-driver-win click '{"pid":1234,"window_id":456789,"element_index":14}'
+trope-cua list_windows
+trope-cua get_window_state '{"pid":1234,"window_id":456789}'
+trope-cua click '{"pid":1234,"window_id":456789,"element_index":14}'
 ```
 
 You can run it three ways:
 
-- `cua-driver-win mcp` as an MCP stdio server.
-- `cua-driver-win serve` as a long-running named-pipe daemon with persistent element caches.
-- `cua-driver-win <tool> '{...}'` as a direct CLI tool call.
+- `trope-cua mcp` as an MCP stdio server.
+- `trope-cua serve` as a long-running named-pipe daemon with persistent element caches.
+- `trope-cua <tool> '{...}'` as a direct CLI tool call.
 
 ## Background-safety contract
 
@@ -50,7 +50,7 @@ If a target requires a route that cannot satisfy those rules, the tool returns a
 Set the mode persistently:
 
 ```powershell
-cua-driver-win set_config '{"key":"capture_mode","value":"som"}'
+trope-cua set_config '{"key":"capture_mode","value":"som"}'
 ```
 
 ## How it works

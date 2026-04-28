@@ -22,7 +22,7 @@ From the repository root:
 The published executable is written to:
 
 ```text
-artifacts\publish\cua-driver-win.exe
+artifacts\publish\trope-cua.exe
 ```
 
 Use `-SelfContained` when the published build should carry its own runtime:
@@ -42,7 +42,7 @@ Install a self-contained user-level build:
 The installer publishes the binary and copies it to:
 
 ```text
-%LOCALAPPDATA%\Programs\CuaDriverWin\cua-driver-win.exe
+%LOCALAPPDATA%\Programs\TropeCUA\trope-cua.exe
 ```
 
 The Windows installer also copies the `trope-cua` skill into detected harness skill directories when they already exist.
@@ -50,8 +50,8 @@ The Windows installer also copies the `trope-cua` skill into detected harness sk
 Verify the installed binary:
 
 ```powershell
-& "$env:LOCALAPPDATA\Programs\CuaDriverWin\cua-driver-win.exe" --help
-& "$env:LOCALAPPDATA\Programs\CuaDriverWin\cua-driver-win.exe" list_windows
+& "$env:LOCALAPPDATA\Programs\TropeCUA\trope-cua.exe" --help
+& "$env:LOCALAPPDATA\Programs\TropeCUA\trope-cua.exe" list_windows
 ```
 
 ## Register with an MCP client
@@ -62,18 +62,18 @@ Trope CUA speaks MCP over stdio. Register the installed executable with any MCP-
 {
   "mcpServers": {
     "trope-cua": {
-      "command": "C:\\Users\\YOU\\AppData\\Local\\Programs\\CuaDriverWin\\cua-driver-win.exe",
+      "command": "C:\\Users\\YOU\\AppData\\Local\\Programs\\TropeCUA\\trope-cua.exe",
       "args": ["mcp"]
     }
   }
 }
 ```
 
-Plain MCP sessions without `--instance` automatically claim a runtime cursor identity and palette. The first live cursor uses `default_blue`; later live sessions rotate through 9 alternate palettes. Set `CUA_DRIVER_INSTANCE` or pass `--instance` only when you need a stable named cursor identity.
+Plain MCP sessions without `--instance` automatically claim a runtime cursor identity and palette. The first live cursor uses `default_blue`; later live sessions rotate through 9 alternate palettes. Set `TROPE_CUA_INSTANCE` or pass `--instance` only when you need a stable named cursor identity.
 
 ## macOS Install
 
-The macOS native driver lives under `native/macos/cua-driver` and keeps its own Swift package and scripts.
+The macOS native driver lives under `native/macos/trope-cua` and keeps its own Swift package and scripts.
 
 ```bash
 ./scripts/install-macos.sh
@@ -85,7 +85,7 @@ Use `./scripts/install-macos-release.sh` only when you want the published macOS 
 You can also run the platform script directly:
 
 ```bash
-cd native/macos/cua-driver
+cd native/macos/trope-cua
 ./scripts/install-local.sh
 ```
 
@@ -96,33 +96,33 @@ macOS builds and permission checks must be run on macOS.
 Use the daemon when shell calls need to share the same element cache:
 
 ```powershell
-cua-driver-win serve
+trope-cua serve
 ```
 
 In another terminal:
 
 ```powershell
-cua-driver-win call get_window_state '{"pid":1234,"window_id":456789}'
-cua-driver-win call click '{"pid":1234,"window_id":456789,"element_index":14}'
+trope-cua call get_window_state '{"pid":1234,"window_id":456789}'
+trope-cua call click '{"pid":1234,"window_id":456789,"element_index":14}'
 ```
 
 For parallel daemon-based agents, give each daemon an instance id:
 
 ```powershell
-cua-driver-win serve --instance agent-a
-cua-driver-win serve --instance agent-b
+trope-cua serve --instance agent-a
+trope-cua serve --instance agent-b
 
-cua-driver-win call --instance agent-a list_windows '{}'
-cua-driver-win call --instance agent-b list_windows '{}'
+trope-cua call --instance agent-a list_windows '{}'
+trope-cua call --instance agent-b list_windows '{}'
 ```
 
 Inspect and stop daemons:
 
 ```powershell
-cua-driver-win daemon-list
-cua-driver-win daemon-status --instance agent-a
-cua-driver-win daemon-stop --instance agent-a
-cua-driver-win daemon-stop --all
+trope-cua daemon-list
+trope-cua status --instance agent-a
+trope-cua stop --instance agent-a
+trope-cua stop --all
 ```
 
 ## Config directory
@@ -130,13 +130,13 @@ cua-driver-win daemon-stop --all
 By default, config and daemon registry data live under:
 
 ```text
-%LOCALAPPDATA%\cua-driver-win
+%LOCALAPPDATA%\trope-cua
 ```
 
-Set `CUA_DRIVER_CONFIG_DIR` to isolate test runs, sandboxes, or multiple harnesses:
+Set `TROPE_CUA_CONFIG_DIR` to isolate test runs, sandboxes, or multiple harnesses:
 
 ```powershell
-$env:CUA_DRIVER_CONFIG_DIR = "$env:TEMP\trope-cua-dev"
+$env:TROPE_CUA_CONFIG_DIR = "$env:TEMP\trope-cua-dev"
 ```
 
 ## Permissions and Windows behavior
@@ -146,7 +146,7 @@ Trope CUA uses ordinary same-session Windows APIs by default. There is no macOS-
 Run:
 
 ```powershell
-cua-driver-win check_permissions
+trope-cua check_permissions
 ```
 
 Use the result as a diagnostic, not as a blanket guarantee that every target app is automatable. Elevated apps, protected surfaces, and hardware-input-only apps may need a different lane.
@@ -160,5 +160,5 @@ Use the result as a diagnostic, not as a blanket guarantee that every target app
 You can also remove the installed directory manually:
 
 ```powershell
-Remove-Item "$env:LOCALAPPDATA\Programs\CuaDriverWin" -Recurse -Force
+Remove-Item "$env:LOCALAPPDATA\Programs\TropeCUA" -Recurse -Force
 ```

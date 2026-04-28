@@ -1,6 +1,6 @@
 # Tool output format
 
-CLI text output is human-readable by default. Set `CUA_DRIVER_JSON=1` to print the raw `ToolResult` JSON.
+CLI text output is human-readable by default. Set `TROPE_CUA_JSON=1` to print the raw `ToolResult` JSON.
 
 MCP responses follow the normal `tools/call` shape:
 

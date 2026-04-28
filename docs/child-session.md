@@ -8,7 +8,7 @@ Shape:
 parent session broker
   -> enable Windows child sessions
   -> host RDP ActiveX with ConnectToChildSession=true
-  -> start cua-driver-win-child.exe inside the child session
+  -> start the Trope CUA child-session host inside the child session
   -> communicate over named pipe / websocket / virtual channel
 
 child session agent

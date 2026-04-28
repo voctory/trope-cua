@@ -5,13 +5,13 @@ Trope CUA exposes the same tool registry through direct CLI calls, MCP stdio, an
 ## Command modes
 
 ```powershell
-cua-driver-win <tool> [json]
-cua-driver-win mcp
-cua-driver-win serve [--instance <id>]
-cua-driver-win call [--instance <id>] <tool> [json]
-cua-driver-win daemon-status [--instance <id>]
-cua-driver-win daemon-list
-cua-driver-win daemon-stop [--instance <id>|--all]
+trope-cua <tool> [json]
+trope-cua mcp
+trope-cua serve [--instance <id>]
+trope-cua call [--instance <id>] <tool> [json]
+trope-cua status [--instance <id>]
+trope-cua daemon-list
+trope-cua stop [--instance <id>|--all]
 ```
 
 Use direct CLI calls for stateless read-only checks and simple actions. Use MCP or the daemon when you need element indexes from `get_window_state` to remain valid across subsequent actions.
@@ -108,7 +108,7 @@ Important fields:
 Set with `set_config`:
 
 ```powershell
-cua-driver-win set_config '{"key":"capture_mode","value":"ax"}'
+trope-cua set_config '{"key":"capture_mode","value":"ax"}'
 ```
 
 Values:

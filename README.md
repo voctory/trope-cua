@@ -5,7 +5,7 @@ Trope CUA is a native computer-use driver for agent harnesses. It exposes app/wi
 ## Platforms
 
 - Windows: current production implementation at the repository root.
-- macOS: native Swift implementation under `native/macos/cua-driver`.
+- macOS: native Swift implementation under `native/macos/trope-cua`.
 
 Each platform installs independently.
 
@@ -19,7 +19,7 @@ Each platform installs independently.
 
 `install-macos.sh` builds and installs this checkout. Use
 `scripts/install-macos-release.sh` only when you want the published macOS
-release installer. The Windows binary is still named `cua-driver-win.exe` for compatibility.
+release installer.
 
 ## Documentation
 

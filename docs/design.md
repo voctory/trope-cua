@@ -1,6 +1,6 @@
 # Windows design
 
-`cua-driver-win` is built as a route stack rather than a single API substitution.
+Trope CUA is built as a route stack rather than a single API substitution.
 
 ## Lane A: same-session background-safe lane
 
