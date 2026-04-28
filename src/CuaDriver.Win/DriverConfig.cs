@@ -21,7 +21,7 @@ internal sealed record DriverConfig
     internal const int MaxTcpPort = 65535;
 
     [JsonPropertyName("schema_version")]
-    public int SchemaVersion { get; init; } = 1;
+    public int SchemaVersion { get; init; } = 2;
 
     [JsonPropertyName("capture_mode")]
     public CaptureMode CaptureMode { get; init; } = CaptureMode.Som;
@@ -74,12 +74,17 @@ internal sealed record DriverConfig
 
     public JsonObject ToJsonObject() => JsonUtil.ToJsonObject(this);
 
-    public DriverConfig Normalize() => this with
+    public DriverConfig Normalize()
     {
-        MaxImageDimension = Math.Clamp(MaxImageDimension, MinImageDimension, MaxImageDimensionLimit),
-        ChromiumDebuggingPort = NormalizeTcpPortOrNull(ChromiumDebuggingPort),
-        AgentCursor = AgentCursor.Normalize()
-    };
+        var maxImageDimension = SchemaVersion < 2 && MaxImageDimension == 1568 ? 1024 : MaxImageDimension;
+        return this with
+        {
+            SchemaVersion = 2,
+            MaxImageDimension = Math.Clamp(maxImageDimension, MinImageDimension, MaxImageDimensionLimit),
+            ChromiumDebuggingPort = NormalizeTcpPortOrNull(ChromiumDebuggingPort),
+            AgentCursor = AgentCursor.Normalize()
+        };
+    }
 
     public static CaptureMode ParseCaptureMode(string value)
     {
