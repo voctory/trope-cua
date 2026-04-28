@@ -21,13 +21,13 @@ internal sealed record DriverConfig
     internal const int MaxTcpPort = 65535;
 
     [JsonPropertyName("schema_version")]
-    public int SchemaVersion { get; init; } = 3;
+    public int SchemaVersion { get; init; } = 4;
 
     [JsonPropertyName("capture_mode")]
     public CaptureMode CaptureMode { get; init; } = CaptureMode.Som;
 
     [JsonPropertyName("max_image_dimension")]
-    public int MaxImageDimension { get; init; } = 0;
+    public int MaxImageDimension { get; init; } = 1568;
 
     [JsonPropertyName("chromium_debugging_port")]
     public int? ChromiumDebuggingPort { get; init; }
@@ -76,10 +76,10 @@ internal sealed record DriverConfig
 
     public DriverConfig Normalize()
     {
-        var maxImageDimension = SchemaVersion < 3 && MaxImageDimension is 1024 or 1568 ? 0 : MaxImageDimension;
+        var maxImageDimension = SchemaVersion < 4 && MaxImageDimension is 0 or 1024 ? 1568 : MaxImageDimension;
         return this with
         {
-            SchemaVersion = 3,
+            SchemaVersion = 4,
             MaxImageDimension = Math.Clamp(maxImageDimension, MinImageDimension, MaxImageDimensionLimit),
             ChromiumDebuggingPort = NormalizeTcpPortOrNull(ChromiumDebuggingPort),
             AgentCursor = AgentCursor.Normalize()
