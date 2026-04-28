@@ -57,6 +57,10 @@ internal sealed class PressKeyTool : IDriverTool
             if (cdpReceipt is not null)
                 return ActionToolResult.FromReceipt(cdpReceipt);
 
+            using var browserLease = BrowserAutomationLease.TryAcquireChromiumFallback(window, cdpPort, out var contention);
+            if (contention is not null)
+                return ActionToolResult.FromReceipt(contention);
+
             if (element is null)
                 context.State.LastUiaTextTarget.TryGetValue((pid, window.WindowId), out element);
 

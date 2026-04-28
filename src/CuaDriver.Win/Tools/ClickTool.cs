@@ -61,6 +61,11 @@ internal sealed class ClickTool : IDriverTool
             await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
             if (BrowserWindowClassifier.IsLikelyBrowser(window))
             {
+                var browserCdpPort = BrowserToolArgs.CdpPort(args, context);
+                using var browserLease = BrowserAutomationLease.TryAcquireChromiumFallback(window, browserCdpPort, out var contention);
+                if (contention is not null)
+                    return ActionToolResult.FromReceipt(contention);
+
                 var elementPoint = ToolCoordinates.ElementCenter(element, window);
                 if (elementPoint is not null)
                 {
@@ -98,11 +103,10 @@ internal sealed class ClickTool : IDriverTool
                         }
                     }
 
-                    var cdpPort = BrowserToolArgs.CdpPort(args, context);
-                    if (cdpPort is not null)
+                    if (browserCdpPort is not null)
                     {
-                        receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, elementPoint.LocalX, elementPoint.LocalY, count, rightButton: false, cdpPort, cancellationToken).ConfigureAwait(false)
-                                  ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse", cdpPort.Value);
+                        receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, elementPoint.LocalX, elementPoint.LocalY, count, rightButton: false, browserCdpPort, cancellationToken).ConfigureAwait(false)
+                                  ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse", browserCdpPort.Value);
                         if (receipt.Ok)
                             await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
                         return ActionToolResult.FromReceipt(receipt);
@@ -205,6 +209,11 @@ internal sealed class ClickTool : IDriverTool
         var clickY = point.LocalY;
         var resolved = point.Resolved;
         var hit = point.Hit;
+        var browserCdpPort = BrowserToolArgs.CdpPort(args, context);
+        using var browserLease = BrowserAutomationLease.TryAcquireChromiumFallback(window, browserCdpPort, out var contention);
+        if (contention is not null)
+            return ActionToolResult.FromReceipt(contention);
+
         if (hit is { IsClickAction: true } && modifiers.Length == 0)
         {
             await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
@@ -225,11 +234,10 @@ internal sealed class ClickTool : IDriverTool
                     return ActionToolResult.FromReceipt(msaaReceipt);
                 }
 
-                var hitCdpPort = BrowserToolArgs.CdpPort(args, context);
-                if (hitCdpPort is not null)
+                if (browserCdpPort is not null)
                 {
-                    receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, hitCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
-                              ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse", hitCdpPort.Value);
+                    receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, browserCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
+                              ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse", browserCdpPort.Value);
                     if (receipt.Ok)
                         await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                     return ActionToolResult.FromReceipt(receipt);
@@ -297,11 +305,10 @@ internal sealed class ClickTool : IDriverTool
         {
             await context.State.AgentCursor.MoveToAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
             context.State.LastUiaTextTarget[(pid, window.WindowId)] = hit.Element;
-            var textCdpPort = BrowserToolArgs.CdpPort(args, context);
-            if (textCdpPort is not null)
+            if (browserCdpPort is not null)
             {
-                receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, textCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
-                          ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse", textCdpPort.Value);
+                receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, browserCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
+                          ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse", browserCdpPort.Value);
                 if (receipt.Ok)
                     await context.State.AgentCursor.ClickPulseAsync(resolved.ScreenPoint, window.Hwnd, cancellationToken).ConfigureAwait(false);
                 return ActionToolResult.FromReceipt(receipt);
@@ -332,8 +339,7 @@ internal sealed class ClickTool : IDriverTool
             }
         }
 
-        var cdpPort = BrowserToolArgs.CdpPort(args, context);
-        receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, cdpPort, cancellationToken, modifiers).ConfigureAwait(false)
+        receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, clickX, clickY, count, rightButton: false, browserCdpPort, cancellationToken, modifiers).ConfigureAwait(false)
                   ?? (BrowserWindowClassifier.IsLikelyBrowser(window)
                       ? ActionReceipt.Failure("requires_cdp_or_uia_hit_test", "Browser web content did not expose an actionable UIA target and no CDP port was configured; refusing to report a blind PostMessage click as delivered.")
                       : (await WindowMessageInput.ClickAsync(window.Hwnd, clickX, clickY, count, rightButton: false, cancellationToken, modifiers).ConfigureAwait(false)).Receipt);

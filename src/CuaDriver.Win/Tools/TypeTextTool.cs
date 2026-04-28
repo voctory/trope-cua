@@ -156,6 +156,10 @@ internal sealed class TypeTextTool : IDriverTool
         bool streamCharacters,
         CancellationToken cancellationToken)
     {
+        using var lease = BrowserAutomationLease.TryAcquireChromiumFallback(window, cdpPort: null, out var contention);
+        if (contention is not null)
+            return contention;
+
         var focusReceipt = await FocusBrowserElementAsync(window, element, cancellationToken).ConfigureAwait(false);
         if (!focusReceipt.Ok)
             return focusReceipt with { Route = "browser.hwnd.focus_click." + focusReceipt.Route };
