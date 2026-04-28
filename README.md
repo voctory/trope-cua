@@ -17,7 +17,9 @@ Each platform installs independently.
 ./scripts/install-macos.sh
 ```
 
-The Windows binary is still named `cua-driver-win.exe` for compatibility.
+`install-macos.sh` builds and installs this checkout. Use
+`scripts/install-macos-release.sh` only when you want the published macOS
+release installer. The Windows binary is still named `cua-driver-win.exe` for compatibility.
 
 ## Documentation
 

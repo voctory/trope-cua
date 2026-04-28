@@ -77,11 +77,14 @@ The macOS native driver lives under `native/macos/cua-driver` and keeps its own 
 ./scripts/install-macos.sh
 ```
 
+This builds and installs the local checkout, which is the right path for testing branch changes.
+Use `./scripts/install-macos-release.sh` only when you want the published macOS release installer.
+
 You can also run the platform script directly:
 
 ```bash
 cd native/macos/cua-driver
-./scripts/install.sh
+./scripts/install-local.sh
 ```
 
 macOS builds and permission checks must be run on macOS.
