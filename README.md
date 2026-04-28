@@ -37,11 +37,26 @@ Register with MCP using `trope-cua mcp-config`, or point your MCP client at `tro
 
 ## Development
 
+Windows:
+
 ```powershell
+dotnet build trope-cua.sln
 .\scripts\build.ps1
 dotnet format --verify-no-changes --no-restore --verbosity minimal
 .\scripts\run-tests.ps1
 ```
+
+macOS:
+
+```bash
+cd native/macos/trope-cua
+swift build
+./scripts/test.sh
+./scripts/install-local.sh
+```
+
+macOS development and permission checks must run on macOS. Windows integration
+tests must run on Windows.
 
 ## License
 
