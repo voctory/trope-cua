@@ -118,7 +118,7 @@ trope-cua set_config '{"key":"capture_mode","value":"ax"}'
 
 Values:
 
-- `som`: screenshot plus UIA tree.
+- `som`: screenshot plus UIA tree. This is the default.
 - `ax`: UIA tree only.
 - `vision`: screenshot only.
 
@@ -137,7 +137,7 @@ Supported keys:
 
 Use `get_config` to inspect the current values.
 
-`max_image_dimension` defaults to `1024` for lower per-turn image payloads. Raise it when the screenshot needs more detail, then use `zoom` for localized inspection.
+`max_image_dimension` defaults to `0`, which preserves native screenshot resolution. Set a positive cap when a workflow needs smaller image payloads, then use `zoom` for localized inspection.
 
 ## Parallel cursor palettes
 
