@@ -37,17 +37,10 @@ internal sealed class ListAppsTool : IDriverTool
         sb.AppendLine(CultureInfo.InvariantCulture, $". Start Menu shortcuts detected: {shortcuts.Count}.");
         foreach (var app in shown)
         {
-            sb.Append("- ").Append(app.Name)
-              .Append(app.Running ? " running" : " installed")
-              .Append(" pid=").Append(app.Pid)
-              .Append(" windows=").Append(app.WindowCount);
-            if (app.MainWindowId is { } hwnd)
-                sb.Append(" main_window_id=").Append(hwnd);
-            if (includeLaunchFields && !string.IsNullOrWhiteSpace(app.Path))
-                sb.Append(" path=\"").Append(app.Path).Append('"');
-            if (includeLaunchFields && !string.IsNullOrWhiteSpace(app.AppId))
-                sb.Append(" app_id=\"").Append(app.AppId).Append('"');
-            sb.AppendLine();
+            if (verbose || includeLaunchFields)
+                AppendAppLine(sb, app, includeLaunchFields);
+            else
+                AppendCompactAppLine(sb, app);
         }
         if (!verbose && shown.Count < apps.Count)
             sb.AppendLine("-> Pass verbose=true for every matched app.");
@@ -80,6 +73,31 @@ internal sealed class ListAppsTool : IDriverTool
         app.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
         || (app.Path?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false)
         || (app.AppId?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false);
+
+    private static void AppendCompactAppLine(StringBuilder sb, AppInfo app)
+    {
+        sb.Append("- ").Append(app.Name)
+          .Append(" pid=").Append(app.Pid)
+          .Append(" windows=").Append(app.WindowCount);
+        if (app.MainWindowId is { } hwnd)
+            sb.Append(" main_window_id=").Append(hwnd);
+        sb.AppendLine();
+    }
+
+    private static void AppendAppLine(StringBuilder sb, AppInfo app, bool includeLaunchFields)
+    {
+        sb.Append("- ").Append(app.Name)
+          .Append(app.Running ? " running" : " installed")
+          .Append(" pid=").Append(app.Pid)
+          .Append(" windows=").Append(app.WindowCount);
+        if (app.MainWindowId is { } hwnd)
+            sb.Append(" main_window_id=").Append(hwnd);
+        if (includeLaunchFields && !string.IsNullOrWhiteSpace(app.Path))
+            sb.Append(" path=\"").Append(app.Path).Append('"');
+        if (includeLaunchFields && !string.IsNullOrWhiteSpace(app.AppId))
+            sb.Append(" app_id=\"").Append(app.AppId).Append('"');
+        sb.AppendLine();
+    }
 
     private static JsonObject CompactApp(AppInfo app, bool includeLaunchFields)
     {

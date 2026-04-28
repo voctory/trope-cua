@@ -33,7 +33,10 @@ internal sealed class ListWindowsTool : IDriverTool
 
         foreach (var w in shown)
         {
-            AppendWindowLine(sb, w, verbose);
+            if (verbose)
+                AppendWindowLine(sb, w);
+            else
+                AppendCompactWindowLine(sb, w);
         }
 
         if (!verbose && shown.Count < windows.Count)
@@ -63,7 +66,17 @@ internal sealed class ListWindowsTool : IDriverTool
         return likelyTargets.Length > 0 ? likelyTargets : windows.Take(12).ToArray();
     }
 
-    private static void AppendWindowLine(StringBuilder sb, WindowInfo w, bool verbose)
+    private static void AppendCompactWindowLine(StringBuilder sb, WindowInfo w)
+    {
+        sb.Append("- ")
+          .Append(w.AppName)
+          .Append(" pid=").Append(w.Pid)
+          .Append(" window_id=").Append(w.WindowId)
+          .Append(" title=\"").Append(w.Title.Replace("\"", "\\\"")).Append('"')
+          .AppendLine();
+    }
+
+    private static void AppendWindowLine(StringBuilder sb, WindowInfo w)
     {
         sb.Append("- ")
           .Append(w.AppName)
@@ -72,15 +85,10 @@ internal sealed class ListWindowsTool : IDriverTool
           .Append(w.IsVisible ? " visible" : " hidden")
           .Append(w.IsMinimized ? " minimized" : "")
           .Append(" bounds=(").Append(w.Bounds.X).Append(',').Append(w.Bounds.Y).Append(',').Append(w.Bounds.Width).Append(',').Append(w.Bounds.Height).Append(')')
-          .Append(" title=\"").Append(w.Title.Replace("\"", "\\\"")).Append('"');
-
-        if (verbose)
-        {
-            sb.Append(" z_index=").Append(w.ZIndex)
-              .Append(" dpi=").Append(w.Dpi)
-              .Append(" class=").Append(w.ClassName);
-        }
-
-        sb.AppendLine();
+          .Append(" title=\"").Append(w.Title.Replace("\"", "\\\"")).Append('"')
+          .Append(" z_index=").Append(w.ZIndex)
+          .Append(" dpi=").Append(w.Dpi)
+          .Append(" class=").Append(w.ClassName)
+          .AppendLine();
     }
 }
