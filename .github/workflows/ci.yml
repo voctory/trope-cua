@@ -7,8 +7,8 @@ on:
       - main
 
 jobs:
-  validate:
-    name: Validate
+  windows:
+    name: Windows
     runs-on: windows-latest
 
     steps:
@@ -31,7 +31,7 @@ jobs:
 
       - name: Restore
         shell: pwsh
-        run: dotnet restore cua-driver-win.sln --locked-mode
+        run: dotnet restore trope-cua.sln --locked-mode
 
       - name: Check formatting
         shell: pwsh
@@ -39,12 +39,30 @@ jobs:
 
       - name: Build
         shell: pwsh
-        run: dotnet build cua-driver-win.sln --no-restore
+        run: dotnet build trope-cua.sln --no-restore
 
       - name: Audit packages
         shell: pwsh
-        run: dotnet list cua-driver-win.sln package --vulnerable --include-transitive
+        run: dotnet list trope-cua.sln package --vulnerable --include-transitive
 
       - name: Test
         shell: pwsh
         run: scripts\run-tests.ps1
+
+  macos:
+    name: macOS
+    runs-on: macos-15
+
+    defaults:
+      run:
+        working-directory: native/macos/trope-cua
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: swift build
+
+      - name: Unit tests
+        run: swift test
