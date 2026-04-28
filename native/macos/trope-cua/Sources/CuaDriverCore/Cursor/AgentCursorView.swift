@@ -11,9 +11,14 @@ import SwiftUI
 /// the tip at upper-left, scaled for legibility at any display density.
 public struct AgentCursorView: View {
     @Bindable var renderer: AgentCursorRenderer
+    private let screenBounds: CGRect
 
-    public init(renderer: AgentCursorRenderer = .shared) {
+    public init(
+        renderer: AgentCursorRenderer = .shared,
+        screenBounds: CGRect
+    ) {
         self.renderer = renderer
+        self.screenBounds = screenBounds
     }
 
     public var body: some View {
@@ -37,8 +42,14 @@ public struct AgentCursorView: View {
     /// `heading + π` (so the visible tip trails opposite the motion
     /// vector — matching macOS cursor convention).
     private func drawCursor(in ctx: GraphicsContext) {
-        let p = renderer.position
-        guard p.x > -100 else { return }   // skip until first moveTo
+        guard renderer.hasPosition else { return }
+        let global = renderer.position
+        let padded = screenBounds.insetBy(dx: -80, dy: -80)
+        guard padded.contains(global) else { return }
+        let p = CGPoint(
+            x: global.x - screenBounds.minX,
+            y: global.y - screenBounds.minY
+        )
 
         // Arrow path — tip at (14, 0), tail extends to the left.
         var shape = Path()

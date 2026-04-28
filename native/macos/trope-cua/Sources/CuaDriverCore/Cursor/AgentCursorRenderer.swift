@@ -20,6 +20,7 @@ public final class AgentCursorRenderer {
 
     public var palette: AgentCursorPalette = .defaultBlue
     public private(set) var position = CGPoint(x: -200, y: -200)
+    public private(set) var hasPosition = false
     public private(set) var heading = restingHeading
     public private(set) var opacity = 1.0
 
@@ -59,10 +60,11 @@ public final class AgentCursorRenderer {
         previous?.resume()
         cancelFadeOut()
 
-        if position.x < -100 {
+        if !hasPosition {
             position = CGPoint(x: targetPoint.x - 160, y: targetPoint.y + 120)
             heading = Self.restingHeading
             lastGlideHeading = heading
+            hasPosition = true
         }
 
         let target = CGPoint(
@@ -92,6 +94,7 @@ public final class AgentCursorRenderer {
 
     public func setInitialPosition(_ point: CGPoint, heading h: Double? = nil) {
         position = point
+        hasPosition = true
         heading = h ?? self.heading
         path = nil
         lastFrameTime = nil

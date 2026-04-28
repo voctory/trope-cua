@@ -186,7 +186,8 @@ public final class AgentCursor {
     /// out during normal agent pacing.
     public var idleHideDelay: TimeInterval = 20.0
 
-    private var overlay: AgentCursorOverlayWindow?
+    private var overlays: [AgentCursorOverlayWindow] = []
+    private var overlayScreenSignature: [String] = []
     private var idleHideTask: Task<Void, Never>?
 
     /// CGWindowID of the target window the overlay is currently
@@ -238,7 +239,7 @@ public final class AgentCursor {
     ///
     /// Disable fully tears down the window + view stored properties
     /// (via `close()`, then nils them) so the next `show()` rebuilds
-    /// a fresh overlay via `ensureWindow()`. An earlier version only
+    /// fresh overlays via `ensureOverlayWindows()`. An earlier version only
     /// called `orderOut` and kept the stored references; on a subsequent
     /// enable the retained NSWindow would no longer reliably re-register
     /// with the window server via `orderFront(nil)` — `list_windows`
@@ -256,8 +257,7 @@ public final class AgentCursor {
             pinnedPid = nil
             // Drop the NSWindow so a later enable + show() rebuilds from
             // scratch. See docstring above.
-            overlay?.close()
-            overlay = nil
+            closeOverlayWindows()
         }
     }
 
@@ -305,9 +305,10 @@ public final class AgentCursor {
         guard isEnabled else { return }
         claimPalette(context: "process:\(ProcessInfo.processInfo.processIdentifier)")
         AgentCursorRenderer.shared.cancelFadeOut()
-        let win = ensureWindow()
-        if !win.isVisible {
-            win.orderFrontRegardless()
+        for win in ensureOverlayWindows() {
+            if !win.isVisible {
+                win.orderFrontRegardless()
+            }
         }
     }
 
@@ -358,7 +359,7 @@ public final class AgentCursor {
     /// `pinAbove` and by the workspace activation observer.
     private func reapplyPinAbove() {
         guard isEnabled, let pid = pinnedPid else { return }
-        let win = ensureWindow()
+        let wins = ensureOverlayWindows()
 
         // Find target's frontmost on-screen "normal-layer" window
         // (layer == 0). Dock, menu bar, and shields show up at higher
@@ -383,7 +384,9 @@ public final class AgentCursor {
             // once it's back on screen and reset the counter.
             missedPinCount += 1
             if missedPinCount >= 2 {
-                if win.isVisible { win.orderOut(nil) }
+                for win in wins where win.isVisible {
+                    win.orderOut(nil)
+                }
                 pinnedWindowId = nil
             }
             return
@@ -403,7 +406,9 @@ public final class AgentCursor {
         // automation. Now at `.normal`, apps above the target remain
         // above the overlay — background interaction stays visually
         // sandwiched where it belongs.
-        win.order(.above, relativeTo: targetWindow.id)
+        for win in wins {
+            win.order(.above, relativeTo: targetWindow.id)
+        }
         pinnedWindowId = targetWindow.id
     }
 
@@ -452,7 +457,9 @@ public final class AgentCursor {
     /// the z-stack — visibly resurrecting the cursor the idle-hide
     /// timer just removed.
     public func hide() {
-        overlay?.orderOut(nil)
+        for win in overlays where win.isVisible {
+            win.orderOut(nil)
+        }
         pinnedWindowId = nil
         pinnedPid = nil
         missedPinCount = 0
@@ -501,7 +508,7 @@ public final class AgentCursor {
         options: CursorMotionPath.Options? = nil
     ) {
         guard isEnabled else { return }
-        _ = ensureWindow()
+        _ = ensureOverlayWindows()
         // Always arrive pointing upper-left (45°), approaching from the
         // lower-right — matches the macOS system-cursor convention and
         // gives every click a consistent visual signature regardless of
@@ -568,8 +575,7 @@ public final class AgentCursor {
     /// tool-surface contract.
     public func resetForTesting() {
         cancelIdleHide()
-        overlay?.orderOut(nil)
-        overlay = nil
+        closeOverlayWindows()
     }
 
     // MARK: - Private
@@ -603,12 +609,31 @@ public final class AgentCursor {
         idleHideTask = nil
     }
 
-    private func ensureWindow() -> AgentCursorOverlayWindow {
-        if let overlay { return overlay }
-        let win = AgentCursorOverlayWindow()
-        let hostView = NSHostingView(rootView: AgentCursorView())
-        win.contentView = hostView
-        self.overlay = win
-        return win
+    private func ensureOverlayWindows() -> [AgentCursorOverlayWindow] {
+        let signature = AgentCursorOverlayWindow.screenSignature()
+        if !overlays.isEmpty && signature == overlayScreenSignature {
+            return overlays
+        }
+
+        closeOverlayWindows()
+        let screens = NSScreen.screens
+        overlays = screens.map { screen in
+            let win = AgentCursorOverlayWindow(screen: screen)
+            let hostView = NSHostingView(
+                rootView: AgentCursorView(screenBounds: win.screenBounds))
+            win.contentView = hostView
+            return win
+        }
+        overlayScreenSignature = signature
+        return overlays
+    }
+
+    private func closeOverlayWindows() {
+        for win in overlays {
+            win.orderOut(nil)
+            win.close()
+        }
+        overlays.removeAll()
+        overlayScreenSignature.removeAll()
     }
 }

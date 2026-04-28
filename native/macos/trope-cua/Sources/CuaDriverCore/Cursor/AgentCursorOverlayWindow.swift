@@ -1,4 +1,5 @@
 import AppKit
+import CoreGraphics
 
 /// Transparent, click-through, borderless window used to host the agent
 /// cursor overlay. Shares the classic "floating HUD" recipe: no window
@@ -10,23 +11,21 @@ import AppKit
 /// window never becomes the focus target — critical to preserve the
 /// driver's "never steal focus" contract.
 ///
-/// Sized to cover the main display only. Multi-display support is
-/// intentionally degraded here: on setups with a second monitor
-/// arranged above/beside the main, an `NSScreen.screens` union frame
-/// lands the `NSWindow` entirely off the visible area (observed
-/// `CGWindowBounds` at `y=-2062` with `onscreen=false`), so the cyan
-/// cursor never renders to the user or to `SCStream` capture. The
-/// correct fix is one overlay per `NSScreen`; tracked as a follow-up.
-/// Until then, the agent cursor is visible only while it is over the
-/// main display — acceptable because users watch the main display
-/// during recording.
+/// One instance is created per connected screen. The window frame uses
+/// AppKit's `NSScreen.frame`, while `screenBounds` stores the matching
+/// CoreGraphics display bounds. Cursor target points arrive in the
+/// CG/AX top-left coordinate space, so `AgentCursorView` subtracts
+/// `screenBounds.origin` before drawing into this window.
 public final class AgentCursorOverlayWindow: NSWindow {
+    public let screenBounds: CGRect
+
     public override var canBecomeKey: Bool { false }
     public override var canBecomeMain: Bool { false }
 
-    public convenience init() {
-        let frame = AgentCursorOverlayWindow.mainScreenFrame()
-        self.init(
+    public init(screen: NSScreen) {
+        let frame = screen.frame
+        self.screenBounds = AgentCursorOverlayWindow.coreGraphicsBounds(for: screen)
+        super.init(
             contentRect: frame,
             styleMask: .borderless,
             backing: .buffered,
@@ -54,19 +53,28 @@ public final class AgentCursorOverlayWindow: NSWindow {
         hidesOnDeactivate = false
     }
 
-    /// The main display's frame in AppKit global coordinates. Used as
-    /// the overlay window's frame. A previous implementation used the
-    /// union of `NSScreen.screens` to get a continuous coordinate
-    /// space across every connected display, but on multi-display
-    /// setups (especially when a secondary monitor is arranged above
-    /// the main) the resulting `NSWindow` landed entirely off-screen
-    /// — `CGWindowIsOnscreen=false`, bounds above `y=0` in CGWindow
-    /// coords — so the overlay never rendered. Anchoring to the main
-    /// screen always produces an on-screen window; the tradeoff is
-    /// that the cursor is clipped when it glides to a non-main
-    /// display. Proper multi-display support (one overlay per screen)
-    /// is tracked as a follow-up.
-    private static func mainScreenFrame() -> NSRect {
-        return NSScreen.main?.frame ?? NSScreen.screens.first?.frame ?? .zero
+    public static func screenSignature() -> [String] {
+        NSScreen.screens.map { screen in
+            let frame = screen.frame
+            let bounds = coreGraphicsBounds(for: screen)
+            return "\(frame.origin.x),\(frame.origin.y),\(frame.width),\(frame.height):"
+                + "\(bounds.origin.x),\(bounds.origin.y),\(bounds.width),\(bounds.height):"
+                + "\(screen.backingScaleFactor)"
+        }
+    }
+
+    private static func coreGraphicsBounds(for screen: NSScreen) -> CGRect {
+        let key = NSDeviceDescriptionKey("NSScreenNumber")
+        if let number = screen.deviceDescription[key] as? NSNumber {
+            let displayId = CGDirectDisplayID(number.uint32Value)
+            let bounds = CGDisplayBounds(displayId)
+            if !bounds.isNull && !bounds.isEmpty { return bounds }
+        }
+        return CGRect(
+            x: screen.frame.origin.x,
+            y: screen.frame.origin.y,
+            width: screen.frame.width,
+            height: screen.frame.height
+        )
     }
 }
