@@ -21,7 +21,7 @@ internal static class ToolDescriptions
 
         Use list_windows to choose window_id. The driver never picks a different window implicitly. Call this before element-indexed actions; the cache is scoped to this exact pid/window_id and replaced by the next snapshot for that pair.
 
-        capture_mode: som=screenshot+tree, vision=screenshot only, ax=tree only. Use query to trim Markdown to matches plus ancestors; indices still resolve against the full cached tree. tree_markdown is text-only by default; pass include_structured_tree=true only if JSON duplication is needed.
+        capture_mode override: som=screenshot+tree, vision=screenshot only, ax=tree only. Use ax for cheap UIA refreshes and som when pixels are needed. Use query to trim Markdown to matches plus ancestors; indices still resolve against the full cached tree. tree_markdown is text-only by default; pass include_structured_tree=true only if JSON duplication is needed.
         """;
 
     public const string Click = """

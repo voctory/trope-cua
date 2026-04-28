@@ -21,6 +21,7 @@ internal sealed class GetWindowStateTool : IDriverTool
         JsonArgs.RequiredSchema(["pid", "window_id"],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND as returned by list_windows.")),
+            ("capture_mode", JsonArgs.Prop("string", "One-call override: som, ax, or vision.")),
             ("query", JsonArgs.Prop("string", "Optional case-insensitive tree filter.")),
             ("include_structured_tree", JsonArgs.Prop("boolean", "Duplicate tree_markdown into structuredContent. Default false saves tokens."))),
         ReadOnly: true,
@@ -30,13 +31,16 @@ internal sealed class GetWindowStateTool : IDriverTool
     {
         var pid = JsonArgs.RequiredInt(args, "pid");
         var windowId = JsonArgs.RequiredLong(args, "window_id");
+        var modeArg = JsonArgs.OptionalString(args, "capture_mode");
         var query = JsonArgs.OptionalString(args, "query");
         var includeStructuredTree = JsonArgs.OptionalBool(args, "include_structured_tree");
 
         if (!ToolWindows.TryFindForPid(pid, windowId, out var window, out var error))
             return Task.FromResult(error!);
 
-        var mode = _modeOverride ?? context.State.Config.CaptureMode;
+        var mode = _modeOverride ?? (string.IsNullOrWhiteSpace(modeArg)
+            ? context.State.Config.CaptureMode
+            : DriverConfig.ParseCaptureMode(modeArg!));
         var content = new List<ContentBlock>();
         var sb = new StringBuilder();
         var structured = new JsonObject

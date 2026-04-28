@@ -24,6 +24,30 @@ def test_get_accessibility_tree_forces_ax_mode_without_persisting_config(tmp_pat
     assert loaded["structuredContent"]["capture_mode"] == "vision"
 
 
+def test_get_window_state_capture_mode_override_does_not_persist(tmp_path):
+    env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path)}
+    configured = call("set_config", {"key": "capture_mode", "value": "vision"}, extra_env=env)
+    assert configured["structuredContent"]["capture_mode"] == "vision"
+
+    windows = call("list_windows", extra_env=env)["structuredContent"]["windows"]
+    assert windows
+    target = windows[0]
+
+    result = call(
+        "get_window_state",
+        {"pid": target["pid"], "window_id": target["window_id"], "capture_mode": "ax"},
+        extra_env=env,
+    )
+
+    assert result["isError"] is False
+    assert result["structuredContent"]["capture_mode"] == "ax"
+    assert "capture" not in result["structuredContent"]
+    assert "uia" in result["structuredContent"]
+
+    loaded = call("get_config", extra_env=env)
+    assert loaded["structuredContent"]["capture_mode"] == "vision"
+
+
 def test_get_accessibility_tree_query_filters_markdown_only(tmp_path):
     env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path)}
     windows = call("list_windows", extra_env=env)["structuredContent"]["windows"]
