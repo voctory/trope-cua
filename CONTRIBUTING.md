@@ -7,17 +7,39 @@ License in this repository.
 
 ## Development
 
-- Build with `dotnet build trope-cua.sln`.
-- Run formatting checks with `dotnet format --verify-no-changes --no-restore --verbosity minimal`.
-- Run integration tests with `scripts\run-tests.ps1`.
+Trope CUA carries separate native implementations for Windows and macOS.
+Develop and validate on the platform you are changing.
+
+Windows:
+
+```powershell
+dotnet build trope-cua.sln
+.\scripts\build.ps1
+dotnet format --verify-no-changes --no-restore --verbosity minimal
+.\scripts\run-tests.ps1
+```
+
+macOS:
+
+```bash
+cd native/macos/trope-cua
+swift build
+./scripts/test.sh
+./scripts/install-local.sh
+```
+
+- macOS builds, installs, and permission checks must run on macOS.
+- Windows integration tests must run on Windows.
+- Docs-only changes can use `git diff --check`.
 - Keep changes small and focused. Avoid mixing behavior changes with broad
   refactors or formatting-only churn.
 
 ## Safety contract
 
-This driver exists to automate target windows without stealing foreground focus
-or moving the user's hardware cursor. Mutating routes must report their actual
-route and lane, and must preserve the no-regression fields in action receipts.
+These drivers exist to automate target windows without stealing foreground
+focus or moving the user's hardware cursor. Mutating routes must report their
+actual route and lane, and must preserve the no-regression fields in action
+receipts.
 
 Prefer background-safe routes first: UIA patterns, IA2/MSAA where safe, targeted
 `HWND` messages for classic controls, and CDP for Chromium when configured.

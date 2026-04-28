@@ -1,12 +1,12 @@
 # Refactoring Rubric
 
-This repository is a Windows automation driver. Refactoring should make background-safe behavior easier to preserve, unsafe behavior harder to introduce, and failures easier to diagnose.
+This repository carries native automation drivers for Windows and macOS. Refactoring should make background-safe behavior easier to preserve, unsafe behavior harder to introduce, and failures easier to diagnose.
 
 Use this document as a working rubric. It is not a style checklist for its own sake; it is the order of operations for changing the code without losing the driver contract.
 
 ## Current Baseline
 
-Observed starting point:
+Observed Windows starting point:
 
 - One Windows production project: `src/CuaDriver.Win/CuaDriver.Win.csproj`.
 - One macOS Swift package: `native/macos/trope-cua`.

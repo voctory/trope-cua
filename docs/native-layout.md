@@ -36,4 +36,4 @@ The wrapper delegates to the macOS driver's own install script. This keeps the m
 
 ## Current Layout
 
-This branch is a hard cutover to the Trope CUA name. The Windows implementation still lives at the repository root because the existing .NET solution, CI, and tests are rooted there. The macOS implementation is nested under `native/macos/trope-cua` because it remains a self-contained Swift package with its own scripts.
+The repository uses the Trope CUA package name only. The Windows implementation still lives at the repository root because the existing .NET solution, CI, and tests are rooted there. The macOS implementation is nested under `native/macos/trope-cua` because it remains a self-contained Swift package with its own scripts.

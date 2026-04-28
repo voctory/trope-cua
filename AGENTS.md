@@ -27,12 +27,14 @@ This repo is Trope CUA: native MCP/server drivers for background-safe UI automat
 
 ## Quick Commands
 
-- Build: `dotnet build trope-cua.sln`
-- Publish: `scripts\build.ps1`
-- Publish self-contained: `scripts\build.ps1 -SelfContained`
-- Run tests: `scripts\run-tests.ps1`
-- Install user-level MCP binary: `scripts\install.ps1 -SelfContained`
-- Start daemon: `%LOCALAPPDATA%\Programs\TropeCUA\trope-cua.exe serve`
+- Windows build: `dotnet build trope-cua.sln`
+- Windows publish: `scripts\build.ps1`
+- Windows test: `scripts\run-tests.ps1`
+- Windows install: `scripts\install.ps1 -SelfContained`
+- Windows daemon: `%LOCALAPPDATA%\Programs\TropeCUA\trope-cua.exe serve`
+- macOS build: `cd native/macos/trope-cua && swift build`
+- macOS test: `cd native/macos/trope-cua && ./scripts/test.sh`
+- macOS install: `scripts/install-macos.sh`
 
 ## Engineering Guidelines
 
@@ -42,14 +44,15 @@ This repo is Trope CUA: native MCP/server drivers for background-safe UI automat
 - Keep MCP-facing prompts, tool descriptions, and docs aligned with `docs/agent-routing.md`: agents should reuse windows, snapshot a specific `(pid, window_id)`, prefer `element_index`, and treat foreground/parent-cursor flags as explicit user opt-ins.
 - Use `docs/refactoring-rubric.md` as the working rubric for staged refactors: safety net first, characterization tests before risky movement, small ownership-preserving commits.
 - Keep browser-specific guardrails strict. Browser UIA providers can foreground targets unexpectedly, so only allow routes that are known background-safe or explicitly configured.
-- Keep cursor work visually aligned with the official CUA feel while respecting Windows DPI, layered-window, and z-order constraints.
+- Keep cursor work visually aligned with Trope CUA's style while respecting platform DPI, layered-window, and z-order constraints.
 - Do not introduce broad refactors while fixing one route or one visual behavior; split mechanical cleanup from behavior changes.
 
 ## Testing Guidelines
 
 - For Windows driver/tool changes, run `dotnet build trope-cua.sln` while iterating.
-- Before committing runtime changes, run `scripts\run-tests.ps1`.
-- For install/runtime behavior changes, reinstall with `scripts\install.ps1 -SelfContained` and restart the installed daemon before reporting the result.
+- For macOS driver/tool changes, run `swift build` from `native/macos/trope-cua`.
+- Before committing runtime changes, run the relevant platform test command: `scripts\run-tests.ps1` on Windows or `native/macos/trope-cua/scripts/test.sh` on macOS.
+- For install/runtime behavior changes, reinstall the relevant platform package and restart the installed daemon before reporting the result.
 - Pair bug fixes with targeted regression coverage when the repo has a practical seam for it.
 - If validation cannot be run, state that clearly in the final response and explain why.
 

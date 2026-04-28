@@ -107,7 +107,7 @@ The macOS native driver lives under `native/macos/trope-cua` and keeps its own S
 ./scripts/install-macos.sh
 ```
 
-This builds and installs the local checkout, which is the right path for testing branch changes.
+This builds and installs the local checkout, which is the right path for testing local changes.
 Use `./scripts/install-macos-release.sh` only when you want the published macOS release installer.
 
 The local installer builds `TropeCUA.app`, installs it to:
