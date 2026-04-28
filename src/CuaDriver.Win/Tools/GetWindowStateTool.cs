@@ -21,7 +21,8 @@ internal sealed class GetWindowStateTool : IDriverTool
         JsonArgs.RequiredSchema(["pid", "window_id"],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND as returned by list_windows.")),
-            ("query", JsonArgs.Prop("string", "Optional case-insensitive tree filter."))),
+            ("query", JsonArgs.Prop("string", "Optional case-insensitive tree filter.")),
+            ("include_structured_tree", JsonArgs.Prop("boolean", "When true, duplicate tree_markdown into structuredContent. Default false keeps the tree in text content only to reduce tokens."))),
         ReadOnly: true,
         Idempotent: false);
 
@@ -30,6 +31,7 @@ internal sealed class GetWindowStateTool : IDriverTool
         var pid = JsonArgs.RequiredInt(args, "pid");
         var windowId = JsonArgs.RequiredLong(args, "window_id");
         var query = JsonArgs.OptionalString(args, "query");
+        var includeStructuredTree = JsonArgs.OptionalBool(args, "include_structured_tree");
 
         if (!ToolWindows.TryFindForPid(pid, windowId, out var window, out var error))
             return Task.FromResult(error!);
@@ -70,13 +72,17 @@ internal sealed class GetWindowStateTool : IDriverTool
             try
             {
                 var snapshot = context.State.UiaTree.Snapshot(pid, windowId, query);
-                structured["uia"] = new JsonObject
+                var uia = new JsonObject
                 {
                     ["turn_id"] = snapshot.TurnId,
                     ["element_count"] = snapshot.ElementCount,
-                    ["tree_markdown"] = snapshot.TreeMarkdown,
+                    ["tree_markdown_chars"] = snapshot.TreeMarkdown.Length,
+                    ["tree_markdown_in_structured"] = includeStructuredTree,
                     ["metrics"] = ToolJson.UiSnapshotMetrics(snapshot.Metrics)
                 };
+                if (includeStructuredTree)
+                    uia["tree_markdown"] = snapshot.TreeMarkdown;
+                structured["uia"] = uia;
                 sb.AppendLine(CultureInfo.InvariantCulture, $"{ToolText.OkPrefix}{window.AppName} — {snapshot.ElementCount} elements, turn {snapshot.TurnId} [uia/{mode.ToString().ToLowerInvariant()} mode]");
                 if (snapshot.ElementCount <= 15)
                     sb.AppendLine(ToolText.WarningPrefix + "Small UIA tree — target may be custom-rendered. Use CDP, HWND-message pixel route, or child-session lane for raw surfaces.");

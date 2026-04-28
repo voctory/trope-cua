@@ -31,7 +31,7 @@ internal static class ToolDescriptions
         - vision: screenshot only. No UIA cache is updated, so element-indexed actions will fail until a non-vision snapshot runs.
         - ax: UIA tree only. No screen capture.
 
-        Set query to a case-insensitive substring to trim the rendered Markdown to matching lines plus ancestors. Indices still resolve against the full cached tree.
+        Set query to a case-insensitive substring to trim the rendered Markdown to matching lines plus ancestors. Indices still resolve against the full cached tree. To reduce token duplication, tree_markdown is returned in text content by default and omitted from structuredContent unless include_structured_tree=true.
         """;
 
     public const string Click = """

@@ -33,6 +33,7 @@ def test_mcp_tool_schemas_are_openai_compatible_plain_objects():
 
     get_window_state = tools["get_window_state"]["inputSchema"]
     assert get_window_state["required"] == ["pid", "window_id"]
+    assert "include_structured_tree" in get_window_state["properties"]
 
     click = tools["click"]["inputSchema"]
     assert click["required"] == ["pid"]
