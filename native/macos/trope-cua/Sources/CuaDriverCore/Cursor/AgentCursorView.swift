@@ -1,4 +1,5 @@
 import AppKit
+import QuartzCore
 import SwiftUI
 
 /// SwiftUI overlay view that drives `AgentCursorRenderer.shared` every
@@ -16,9 +17,12 @@ public struct AgentCursorView: View {
     }
 
     public var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 120.0)) { ctx in
+        TimelineView(.animation(minimumInterval: 1.0 / 120.0)) { _ in
             Canvas { gctx, _ in
-                renderer.tick(now: ctx.date.timeIntervalSinceReferenceDate)
+                // Keep the renderer on Core Animation's monotonic clock;
+                // animation starts, fade timing, and progress sampling all
+                // use CACurrentMediaTime().
+                renderer.tick(now: CACurrentMediaTime())
                 drawCursor(in: gctx)
             }
             .opacity(renderer.opacity)
