@@ -58,7 +58,7 @@ internal sealed class ClickTool : IDriverTool
                 return error!;
 
             var element = context.State.UiaTree.GetCachedElement(target.Pid, window.WindowId, target.ElementIndex!.Value);
-            AgentCursorTooling.BeginMoveToElement(context, element, window.Hwnd);
+            await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
             if (BrowserWindowClassifier.IsLikelyBrowser(window))
             {
                 var browserCdpPort = BrowserToolArgs.CdpPort(args, context);
@@ -80,7 +80,7 @@ internal sealed class ClickTool : IDriverTool
                             msaaReceipt,
                             cancellationToken).ConfigureAwait(false);
                         if (msaaReceipt.Ok)
-                            AgentCursorTooling.BeginPulseAtElement(context, element, window.Hwnd);
+                            await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
                         return ActionToolResult.FromReceipt(msaaReceipt);
                     }
 
@@ -98,7 +98,7 @@ internal sealed class ClickTool : IDriverTool
                                 msaaReceipt,
                                 cancellationToken).ConfigureAwait(false);
                             if (msaaReceipt.Ok)
-                                AgentCursorTooling.BeginPulseAtElement(context, element, window.Hwnd);
+                                await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
                             return ActionToolResult.FromReceipt(msaaReceipt with { Route = "uia.center_hit_test." + msaaReceipt.Route });
                         }
                     }
@@ -108,7 +108,7 @@ internal sealed class ClickTool : IDriverTool
                         receipt = await CdpBrowserBridge.TryClickAsync(window.Hwnd, window.WindowId, elementPoint.LocalX, elementPoint.LocalY, count, rightButton: false, browserCdpPort, cancellationToken).ConfigureAwait(false)
                                   ?? BrowserToolArgs.NoPageReceipt("cdp.input.dispatch_mouse", browserCdpPort.Value);
                         if (receipt.Ok)
-                            AgentCursorTooling.BeginPulseAtElement(context, element, window.Hwnd);
+                            await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
                         return ActionToolResult.FromReceipt(receipt);
                     }
 
@@ -124,7 +124,7 @@ internal sealed class ClickTool : IDriverTool
                             cancellationToken).ConfigureAwait(false);
                         if (receipt.Ok)
                         {
-                            AgentCursorTooling.BeginPulseAtElement(context, element, window.Hwnd);
+                            await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
                             return ActionToolResult.FromReceipt(receipt);
                         }
                     }
@@ -144,13 +144,13 @@ internal sealed class ClickTool : IDriverTool
 
                 receipt = await UiAutomationActions.InvokeElementAsync(element, action, cancellationToken, allowTransientForeground: true).ConfigureAwait(false);
                 if (receipt.Ok)
-                    AgentCursorTooling.BeginPulseAtElement(context, element, window.Hwnd);
+                    await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
                 return ActionToolResult.FromReceipt(receipt);
             }
 
             receipt = await InvokeNativeElementActionAsync(window, element, action, cancellationToken, allowTransientForeground: allowTransientForeground).ConfigureAwait(false);
             context.State.LastUiaTextTarget[(target.Pid, target.WindowId.Value)] = element;
-            AgentCursorTooling.BeginPulseAtElement(context, element, window.Hwnd);
+            await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
         }
         else
         {

@@ -39,13 +39,6 @@ internal static class AgentCursorTooling
             await context.State.AgentCursor.MoveToAsync(point, TargetForElement(element, targetHwnd), ct).ConfigureAwait(false);
     }
 
-    public static void BeginMoveToElement(ToolContext context, AutomationElement element, IntPtr targetHwnd)
-    {
-        var center = ElementCenter(element);
-        if (center is { } point)
-            _ = IgnoreCursorErrorsAsync(context.State.AgentCursor.MoveToAsync(point, TargetForElement(element, targetHwnd), CancellationToken.None));
-    }
-
     public static Task PulseAtElementAsync(ToolContext context, AutomationElement element, CancellationToken ct)
         => PulseAtElementAsync(context, element, IntPtr.Zero, ct);
 
@@ -54,13 +47,6 @@ internal static class AgentCursorTooling
         var center = ElementCenter(element);
         if (center is { } point)
             await context.State.AgentCursor.ClickPulseAsync(point, TargetForElement(element, targetHwnd), ct).ConfigureAwait(false);
-    }
-
-    public static void BeginPulseAtElement(ToolContext context, AutomationElement element, IntPtr targetHwnd)
-    {
-        var center = ElementCenter(element);
-        if (center is { } point)
-            _ = IgnoreCursorErrorsAsync(context.State.AgentCursor.ClickPulseAsync(point, TargetForElement(element, targetHwnd), CancellationToken.None));
     }
 
     public static IntPtr TargetRoot(IntPtr hwnd)
@@ -136,17 +122,5 @@ internal static class AgentCursorTooling
         }
 
         return false;
-    }
-
-    private static async Task IgnoreCursorErrorsAsync(Task task)
-    {
-        try
-        {
-            await task.ConfigureAwait(false);
-        }
-        catch
-        {
-            // Cursor animation is visual-only; action receipts report input delivery.
-        }
     }
 }
