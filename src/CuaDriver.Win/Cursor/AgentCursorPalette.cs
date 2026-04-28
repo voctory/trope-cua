@@ -20,6 +20,23 @@ internal sealed record AgentCursorPalette(
         return Alternates[index];
     }
 
+    public static AgentCursorPalette ForNameOrInstance(string? name, string instanceId)
+    {
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            if (string.Equals(name, Default.Name, StringComparison.Ordinal))
+                return Default;
+
+            var match = Alternates.FirstOrDefault(palette => string.Equals(palette.Name, name, StringComparison.Ordinal));
+            if (match is not null)
+                return match;
+        }
+
+        return ForInstance(instanceId);
+    }
+
+    public static IReadOnlyList<string> AlternateNames => Alternates.Select(palette => palette.Name).ToArray();
+
     public JsonObject ToJsonObject() => new()
     {
         ["name"] = Name,

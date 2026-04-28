@@ -88,42 +88,46 @@ def test_daemon_instances_are_isolated():
                 process.wait(timeout=5)
 
 
-def test_parallel_daemon_cursors_remain_isolated():
+def test_parallel_daemon_cursors_remain_isolated(tmp_path):
     first = f"pytest-cursor-{uuid.uuid4().hex}-a"
     second = f"pytest-cursor-{uuid.uuid4().hex}-b"
+    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
     processes = []
 
     try:
-        processes.append(start_daemon(first))
-        processes.append(start_daemon(second))
-        wait_for_status(first)
-        wait_for_status(second)
-        screen = call_instance(first, "get_screen_size")["structuredContent"]
+        processes.append(start_daemon(first, env))
+        first_status = wait_for_status(first, env)
+        processes.append(start_daemon(second, env))
+        second_status = wait_for_status(second, env)
+        assert first_status["cursor_palette"] == "soft_purple"
+        assert second_status["cursor_palette"] == "rose_gold"
+        screen = call_instance(first, "get_screen_size", extra_env=env)["structuredContent"]
         first_x = screen["x"] + min(80, max(0, screen["width"] - 1))
         first_y = screen["y"] + min(90, max(0, screen["height"] - 1))
         second_x = screen["x"] + min(160, max(0, screen["width"] - 1))
         second_y = screen["y"] + min(120, max(0, screen["height"] - 1))
 
-        first_move = call_instance(first, "move_cursor", {"x": first_x, "y": first_y})
+        first_move = call_instance(first, "move_cursor", {"x": first_x, "y": first_y}, extra_env=env)
         assert first_move["isError"] is False
-        first_state = call_instance(first, "get_agent_cursor_state")
+        first_state = call_instance(first, "get_agent_cursor_state", extra_env=env)
         assert first_state["structuredContent"]["visible"] is True
         assert first_state["structuredContent"]["instance_id"] == first
+        assert first_state["structuredContent"]["palette"]["name"] == "soft_purple"
 
-        second_move = call_instance(second, "move_cursor", {"x": second_x, "y": second_y})
+        second_move = call_instance(second, "move_cursor", {"x": second_x, "y": second_y}, extra_env=env)
         assert second_move["isError"] is False
-        second_state = call_instance(second, "get_agent_cursor_state")
+        second_state = call_instance(second, "get_agent_cursor_state", extra_env=env)
         assert second_state["structuredContent"]["visible"] is True
         assert second_state["structuredContent"]["instance_id"] == second
-        assert first_state["structuredContent"]["palette"]["name"] != second_state["structuredContent"]["palette"]["name"]
+        assert second_state["structuredContent"]["palette"]["name"] == "rose_gold"
 
-        first_after_second_move = call_instance(first, "get_agent_cursor_state")
+        first_after_second_move = call_instance(first, "get_agent_cursor_state", extra_env=env)
         assert first_after_second_move["structuredContent"]["visible"] is True
         assert first_after_second_move["structuredContent"]["screen_x"] == first_x
         assert first_after_second_move["structuredContent"]["screen_y"] == first_y
     finally:
-        stop_daemon(first)
-        stop_daemon(second)
+        stop_daemon(first, env)
+        stop_daemon(second, env)
         for process in processes:
             try:
                 process.wait(timeout=5)

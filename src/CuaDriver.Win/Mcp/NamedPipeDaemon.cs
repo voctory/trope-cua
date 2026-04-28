@@ -4,13 +4,14 @@ using System.IO.Pipes;
 using System.Security.Principal;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using CuaDriver.Win.Cursor;
 using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win.Mcp;
 
 internal sealed record DaemonRequest(string Method, string? Name, JsonObject? Args);
 internal sealed record DaemonResponse(bool Ok, ToolResult? Result, string? Error);
-internal sealed record DaemonInstanceRecord(string InstanceId, int Pid, string PipeName, string StartedAt, string ExePath);
+internal sealed record DaemonInstanceRecord(string InstanceId, int Pid, string PipeName, string StartedAt, string ExePath, string? CursorPalette = null);
 
 internal sealed class NamedPipeDaemon
 {
@@ -39,7 +40,8 @@ internal sealed class NamedPipeDaemon
         }
 
         using var shutdown = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        WriteInstanceRecord();
+        var paletteName = WriteInstanceRecord();
+        _context.State.AgentCursor.SetPalette(AgentCursorPalette.ForNameOrInstance(paletteName, _instanceId));
         Console.Error.WriteLine($"cua-driver-win daemon instance '{_instanceId}' listening on named pipe {InstancePipeName}");
         try
         {
@@ -115,6 +117,7 @@ internal sealed class NamedPipeDaemon
         ["pid"] = Environment.ProcessId,
         ["pipe_name"] = InstancePipeName,
         ["started_at"] = _startedAt.ToString("O"),
+        ["cursor_palette"] = _context.State.AgentCursor.Palette.Name,
         ["uptime_ms"] = (long)Stopwatch.GetElapsedTime(_startedTimestamp).TotalMilliseconds
     };
 
@@ -135,9 +138,10 @@ internal sealed class NamedPipeDaemon
                 ["pipe_name"] = record.PipeName,
                 ["started_at"] = record.StartedAt,
                 ["exe_path"] = record.ExePath,
+                ["cursor_palette"] = record.CursorPalette,
                 ["running"] = running
             });
-            lines.Add($"- instance={record.InstanceId} pid={record.Pid} running={running} pipe={record.PipeName}");
+            lines.Add($"- instance={record.InstanceId} pid={record.Pid} running={running} palette={record.CursorPalette ?? "auto"} pipe={record.PipeName}");
         }
 
         return ToolResult.Text(string.Join(Environment.NewLine, lines), new JsonObject
@@ -158,7 +162,7 @@ internal sealed class NamedPipeDaemon
 
     private static string DaemonMutexNameFor(string instanceId) => $@"Local\cua-driver-win-{UserKey()}-{DriverInstance.Normalize(instanceId)}";
 
-    private void WriteInstanceRecord()
+    private string WriteInstanceRecord()
     {
         var record = new DaemonInstanceRecord(
             _instanceId,
@@ -166,7 +170,7 @@ internal sealed class NamedPipeDaemon
             InstancePipeName,
             _startedAt.ToString("O"),
             Environment.ProcessPath ?? "");
-        DaemonRegistry.Write(record);
+        return DaemonRegistry.WriteWithAllocatedCursorPalette(record);
     }
 
     public static bool IsInstanceRunning(DaemonInstanceRecord record) => DaemonRegistry.IsInstanceRunning(record);

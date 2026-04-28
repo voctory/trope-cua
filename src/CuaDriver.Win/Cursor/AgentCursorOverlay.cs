@@ -35,7 +35,7 @@ internal sealed class AgentCursorOverlay
     private AgentCursorMotion _motion = AgentCursorMotion.Default;
     private readonly string _instanceId;
     private readonly string _overlayWindowTitle;
-    private readonly AgentCursorPalette _palette;
+    private AgentCursorPalette _palette;
 
     public AgentCursorOverlay(string? instanceId = null)
     {
@@ -58,6 +58,24 @@ internal sealed class AgentCursorOverlay
         {
             lock (_gate) return _motion;
         }
+    }
+
+    public AgentCursorPalette Palette
+    {
+        get
+        {
+            lock (_gate) return _palette;
+        }
+    }
+
+    public void SetPalette(AgentCursorPalette palette)
+    {
+        lock (_gate)
+        {
+            _palette = palette;
+        }
+
+        Post(form => form.SetPalette(palette));
     }
 
     public void SetEnabled(bool enabled)
@@ -161,10 +179,12 @@ internal sealed class AgentCursorOverlay
         long idleAnimationMs = 0;
         double? displayHeadingRadians = null;
         AgentCursorMotion motion;
+        AgentCursorPalette palette;
         lock (_gate)
         {
             enabled = _enabled;
             motion = _motion;
+            palette = _palette;
             formReady = _form is not null && !_form.IsDisposed;
             if (formReady)
             {
@@ -190,7 +210,7 @@ internal sealed class AgentCursorOverlay
             ["enabled"] = enabled,
             ["route"] = "winforms.click_through_overlay",
             ["instance_id"] = _instanceId,
-            ["palette"] = _palette.ToJsonObject(),
+            ["palette"] = palette.ToJsonObject(),
             ["ready"] = formReady,
             ["visible"] = visible,
             ["screen_x"] = screenX,
@@ -230,7 +250,7 @@ internal sealed class AgentCursorOverlay
                 {
                     Application.EnableVisualStyles();
                     Application.SetCompatibleTextRenderingDefault(false);
-                    var form = new OverlayForm(_overlayWindowTitle, _palette);
+                    var form = new OverlayForm(_overlayWindowTitle, Palette);
                     form.SetMotion(Motion);
                     _ = form.Handle;
                     lock (_gate)
@@ -295,7 +315,7 @@ internal sealed class AgentCursorOverlay
         private readonly System.Threading.Timer _timer;
         private readonly Rectangle _virtualBounds;
         private readonly string _overlayWindowTitle;
-        private readonly AgentCursorPalette _palette;
+        private AgentCursorPalette _palette;
         private AgentCursorMotion _motion = AgentCursorMotion.Default;
         private PointF _current;
         private long _lastFrameTimestamp = Stopwatch.GetTimestamp();
@@ -372,6 +392,12 @@ internal sealed class AgentCursorOverlay
         }
 
         public void SetMotion(AgentCursorMotion motion) => _motion = motion;
+
+        public void SetPalette(AgentCursorPalette palette)
+        {
+            _palette = palette;
+            RenderFrame();
+        }
 
         public void SetEnabled(bool enabled)
         {

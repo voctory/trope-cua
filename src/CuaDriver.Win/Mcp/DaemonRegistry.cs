@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.IO;
+using System.Security.Principal;
 using System.Text.Json;
+using CuaDriver.Win.Cursor;
 
 namespace CuaDriver.Win.Mcp;
 
@@ -9,6 +11,24 @@ internal static class DaemonRegistry
     public static void Write(DaemonInstanceRecord record)
     {
         AtomicFile.WriteAllText(InstanceRecordPath(record.InstanceId), JsonSerializer.Serialize(record, JsonUtil.SerializerOptions));
+    }
+
+    public static string WriteWithAllocatedCursorPalette(DaemonInstanceRecord record)
+    {
+        using var mutex = new Mutex(initiallyOwned: false, PaletteMutexName());
+        var ownsMutex = false;
+        try
+        {
+            ownsMutex = mutex.WaitOne(TimeSpan.FromSeconds(5));
+            var palette = AllocateCursorPalette(record.InstanceId);
+            Write(record with { CursorPalette = palette });
+            return palette;
+        }
+        finally
+        {
+            if (ownsMutex)
+                mutex.ReleaseMutex();
+        }
     }
 
     public static bool Remove(string instanceId)
@@ -65,7 +85,40 @@ internal static class DaemonRegistry
         }
     }
 
+    private static string AllocateCursorPalette(string instanceId)
+    {
+        var normalized = DriverInstance.Normalize(instanceId);
+        if (string.Equals(normalized, DriverInstance.DefaultId, StringComparison.Ordinal))
+            return "default_blue";
+
+        var liveRecords = RegisteredInstances()
+            .Where(record => !string.Equals(record.InstanceId, normalized, StringComparison.Ordinal) && IsInstanceRunning(record))
+            .ToArray();
+        var used = liveRecords
+            .Select(record => record.CursorPalette)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var name in AgentCursorPalette.AlternateNames)
+        {
+            if (!used.Contains(name))
+                return name;
+        }
+
+        return AgentCursorPalette.ForInstance(normalized).Name;
+    }
+
     private static string RegistryDirectory => Path.Combine(DriverConfig.ConfigDirectory, "daemons");
 
     private static string InstanceRecordPath(string instanceId) => Path.Combine(RegistryDirectory, $"{DriverInstance.Normalize(instanceId)}.json");
+
+    private static string PaletteMutexName() => $@"Local\cua-driver-win-{UserKey()}-cursor-palette";
+
+    private static string UserKey()
+    {
+        var sid = WindowsIdentity.GetCurrent().User?.Value ?? Environment.UserName;
+        foreach (var ch in Path.GetInvalidFileNameChars())
+            sid = sid.Replace(ch, '_');
+        return sid;
+    }
 }
