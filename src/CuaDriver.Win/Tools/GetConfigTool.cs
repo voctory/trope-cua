@@ -9,6 +9,8 @@ internal sealed class GetConfigTool : IDriverTool
 
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
-        return Task.FromResult(ToolResult.JsonText(ToolText.OkPrefix, context.State.Config.ToJsonObject()));
+        var config = context.State.Config;
+        var text = $"{ToolText.OkPrefix}config capture_mode={config.CaptureMode.ToString().ToLowerInvariant()} max_image_dimension={config.MaxImageDimension} agent_cursor_enabled={config.AgentCursor.Enabled.ToString().ToLowerInvariant()}";
+        return Task.FromResult(ToolResult.Text(text, config.ToJsonObject()));
     }
 }

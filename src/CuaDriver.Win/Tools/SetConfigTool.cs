@@ -27,7 +27,7 @@ internal sealed class SetConfigTool : IDriverTool
             var next = WithValue(context.State.Config, key, value).Normalize();
             context.State.SaveConfig(next, key);
 
-            return Task.FromResult(ToolResult.JsonText(ToolText.OkPrefix, context.State.Config.ToJsonObject()));
+            return Task.FromResult(ToolResult.Text($"{ToolText.OkPrefix}config updated key={key}", context.State.Config.ToJsonObject()));
         }
         catch (Exception ex)
         {

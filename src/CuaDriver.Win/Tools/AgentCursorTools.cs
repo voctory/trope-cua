@@ -20,7 +20,7 @@ internal sealed class SetAgentCursorEnabledTool : IDriverTool
         };
         context.State.SaveConfig(next, "agent_cursor.enabled");
         var structured = context.State.AgentCursor.StateObject();
-        return Task.FromResult(ToolResult.JsonText(ToolText.OkPrefix, structured));
+        return Task.FromResult(ToolResult.Text(AgentCursorToolText.State(structured), structured));
     }
 }
 
@@ -31,7 +31,7 @@ internal sealed class GetAgentCursorStateTool : IDriverTool
     public Task<ToolResult> InvokeAsync(JsonObject args, ToolContext context, CancellationToken cancellationToken)
     {
         var structured = context.State.AgentCursor.StateObject();
-        return Task.FromResult(ToolResult.JsonText(ToolText.OkPrefix, structured));
+        return Task.FromResult(ToolResult.Text(AgentCursorToolText.State(structured), structured));
     }
 }
 
@@ -65,7 +65,7 @@ internal sealed class SetAgentCursorMotionTool : IDriverTool
         };
         context.State.SaveConfig(next, "agent_cursor.motion");
 
-        return Task.FromResult(ToolResult.JsonText(ToolText.OkPrefix, context.State.AgentCursor.Motion.ToJsonObject()));
+        return Task.FromResult(ToolResult.Text($"{ToolText.OkPrefix}agent_cursor motion updated", context.State.AgentCursor.Motion.ToJsonObject()));
     }
 
     private static AgentCursorMotionConfig UpdatedMotion(AgentCursorMotionConfig current, JsonObject args) =>
@@ -79,4 +79,16 @@ internal sealed class SetAgentCursorMotionTool : IDriverTool
             JsonArgs.OptionalDouble(args, "dwell_after_click_ms"),
             JsonArgs.OptionalDouble(args, "idle_hide_ms"),
             JsonArgs.OptionalDouble(args, "press_duration_ms"));
+
+}
+
+internal static class AgentCursorToolText
+{
+    public static string State(JsonObject structured)
+    {
+        var visible = structured["visible"]?.GetValue<bool>() ?? false;
+        var enabled = structured["enabled"]?.GetValue<bool>() ?? false;
+        var palette = structured["palette"]?.AsObject()["name"]?.GetValue<string>() ?? "";
+        return $"{ToolText.OkPrefix}agent_cursor enabled={enabled.ToString().ToLowerInvariant()} visible={visible.ToString().ToLowerInvariant()} palette={palette}";
+    }
 }
