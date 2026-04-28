@@ -12,12 +12,14 @@ This documentation is organized for two readers:
 - [What is Trope CUA?](introduction.md)
 - [Installation](installation.md)
 - [Quickstart](quickstart.md)
+- [macOS operations](macos.md)
 
 ## Reference
 
 - [Tools and command modes](reference-tools.md)
 - [Known limits](limits.md)
 - [Native platform layout](native-layout.md)
+- [Platform API map](api-map.md)
 
 ## Engineering notes
 

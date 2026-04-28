@@ -1,6 +1,6 @@
 # Tools and command modes
 
-Trope CUA exposes the same tool registry through direct CLI calls, MCP stdio, and the named-pipe daemon.
+Trope CUA exposes tool registries through direct CLI calls, MCP stdio, and a long-running daemon. Windows uses a named-pipe daemon; macOS uses a Unix domain socket daemon.
 
 ## Command modes
 
@@ -12,6 +12,9 @@ trope-cua call [--instance <id>] <tool> [json]
 trope-cua status [--instance <id>]
 trope-cua daemon-list
 trope-cua stop [--instance <id>|--all]
+trope-cua mcp-config [--client <name>]
+trope-cua config [show|get|set|reset]
+trope-cua recording [start|stop|status]
 ```
 
 Use direct CLI calls for stateless read-only checks and simple actions. Use MCP or the daemon when you need element indexes from `get_window_state` to remain valid across subsequent actions.
@@ -45,7 +48,7 @@ Important fields:
 - `route`: the actual dispatch route used.
 - `lane`: same-session, child-session, AppBroadcast, or another explicit lane.
 - `background_safe`: whether the route itself is considered safe for background automation.
-- `cursor_moved`: whether the real Windows cursor moved.
+- `cursor_moved`: whether the user's real hardware cursor moved.
 - `foreground_changed`: whether foreground focus changed.
 - `reason`: present on refusals and failures.
 
@@ -82,11 +85,13 @@ Important fields:
 
 | Tool | Purpose |
 | --- | --- |
-| `browser_eval` | Chromium CDP `Runtime.evaluate` with `userGesture=true`. |
-| `child_session_start` | Start the no-activate child-session host probe. |
-| `child_session_status` | Report child-session support and host state. |
-| `child_session_stop` | Stop the child-session host. |
-| `appbroadcast_input_probe` | Probe restricted AppBroadcast/InputInjector behavior. |
+| `browser_eval` | Windows Chromium CDP `Runtime.evaluate` with `userGesture=true`. |
+| `page` | macOS browser page/script helper for supported browser surfaces. |
+| `drag` | macOS drag action for controls and canvas-like targets. |
+| `child_session_start` | Windows-only no-activate child-session host probe. |
+| `child_session_status` | Windows-only child-session support and host state. |
+| `child_session_stop` | Windows-only child-session host stop. |
+| `appbroadcast_input_probe` | Windows-only restricted AppBroadcast/InputInjector probe. |
 
 ### Cursor, recording, and config
 
@@ -127,6 +132,8 @@ Supported keys:
 - `allow_parent_sendinput`
 - `agent_cursor.enabled`
 - `agent_cursor.motion.*`
+
+`chromium_debugging_port` and `allow_parent_sendinput` are Windows-specific. macOS also has telemetry and update toggles exposed through `trope-cua config telemetry ...` and `trope-cua config updates ...`.
 
 Use `get_config` to inspect the current values.
 

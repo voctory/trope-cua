@@ -1,6 +1,6 @@
 # Known limits
 
-Trope CUA refuses or marks unsafe routes when Windows or a target app cannot satisfy the background-safety contract. This page names the common cases and the intended workarounds.
+Trope CUA refuses or marks unsafe routes when the OS or a target app cannot satisfy the background-safety contract. This page names the common cases and the intended workarounds.
 
 ## Parent-session launches can foreground the target
 
@@ -13,6 +13,31 @@ Workarounds:
 1. Reuse an existing window from `list_windows`.
 2. Use a child-session or AppBroadcast lane for isolated launch-and-drive workflows.
 3. If a human explicitly accepts a visible foreground launch, pass `unsafe_allow_foreground=true`. The receipt remains unsafe and reports any foreground change.
+
+## macOS permissions are required before automation
+
+Symptom: `check_permissions` reports missing Accessibility or Screen Recording, screenshots are unavailable, or accessibility actions appear to no-op.
+
+Cause: macOS TCC gates accessibility inspection, synthetic accessibility actions, and screen/window capture. Grants are attached to `TropeCUA.app`, not an arbitrary shell process.
+
+Workarounds:
+
+1. Start the app through LaunchServices: `open -n -g -a TropeCUA --args serve`.
+2. Grant `TropeCUA.app` in System Settings > Privacy & Security > Accessibility and Screen Recording.
+3. Rerun `trope-cua check_permissions` until both are granted.
+4. If you rebuild locally and macOS prompts again, re-grant permissions; ad-hoc signing can change the code signature hash.
+
+## macOS shell launch commands can steal focus
+
+Symptom: A macOS app or browser becomes frontmost after the agent launches or navigates it.
+
+Cause: macOS `open`, AppleScript `activate`, Dock clicks, and focus shortcuts such as Command-L intentionally activate apps. They bypass Trope CUA's background-safe launch/action paths.
+
+Workarounds:
+
+1. Use `launch_app` with `bundle_id` and `urls` for browser navigation.
+2. Use `list_windows` and `get_window_state` to target an existing window.
+3. Treat any shell or AppleScript activation as a human-approved foreground operation, not a background-safe route.
 
 ## UIA providers can foreground native apps
 
@@ -38,6 +63,19 @@ Workarounds:
 1. Retry the same action up to 3 times after the active browser action completes.
 2. Use a `cdp_port` or configured `chromium_debugging_port` for the exact browser window when CDP is intentionally available.
 3. For true parallel browser work, launch separate browser profiles with separate CDP ports and target different browser processes.
+
+## macOS browser web content has browser-specific behavior
+
+Symptom: Chrome/Safari navigation or text entry looks correct in the accessibility tree but Return does not commit, especially for minimized Chrome omnibox flows.
+
+Cause: Browser chrome, web content, and JavaScript execution are mediated by each browser's accessibility and security model. Some commits require trusted browser semantics rather than a generic background key event.
+
+Workarounds:
+
+1. Prefer `launch_app({bundle_id, urls})` for URL navigation.
+2. Prefer current `element_index` actions from a fresh `get_window_state`.
+3. Use browser-specific helpers only when the target browser and required permissions/settings are known.
+4. Avoid shared browser profiles for parallel agents; colored cursors do not isolate browser process state.
 
 ## Browser web content may not expose a safe click target
 

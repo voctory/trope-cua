@@ -97,6 +97,12 @@ For Chromium or Electron targets:
 - Use `cdp_port` or `chromium_debugging_port` when the exact target browser was launched with remote debugging and CDP is the intended lane.
 - If Chromium fallback routes report contention, retry the same action up to 3 times. Persistent contention means multiple agents are driving the same browser process; use separate browser profiles with separate CDP ports for true parallel browser work.
 
+On macOS, prefer `launch_app` for URL navigation instead of Command-L or shell `open`:
+
+```bash
+trope-cua launch_app '{"bundle_id":"com.google.Chrome","urls":["https://example.com"]}'
+```
+
 Set a persistent CDP port:
 
 ```powershell
@@ -132,6 +138,12 @@ Turn on recording:
 
 ```powershell
 trope-cua set_recording '{"enabled":true,"output_dir":"C:\\temp\\trope-cua-run"}'
+```
+
+On macOS with the daemon running:
+
+```bash
+trope-cua recording start ~/trope-cua-runs/demo
 ```
 
 Subsequent mutating actions write turn folders with `action.json`, `app_state.json`, screenshots, and click markers when applicable.

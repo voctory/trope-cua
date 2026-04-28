@@ -1,12 +1,12 @@
 # Agent routing guide
 
-The driver should present itself to agents as a background-safe Windows automation surface.
+The driver should present itself to agents as a background-safe native automation surface.
 
 Default loop:
 
 1. Call `list_windows` and choose an explicit `pid` and `window_id`.
 2. Call `get_window_state` for that exact window before element-indexed actions.
-3. Prefer `element_index` actions. Use pixels only for canvas, custom, or non-UIA surfaces.
+3. Prefer `element_index` actions. Use pixels only for canvas, custom, or non-accessibility surfaces.
 4. Read the action receipt. Treat the action as background-safe only when `background_safe=true`, `cursor_moved=false`, and `foreground_changed=false`.
 5. If a tool returns a route such as `requires_cdp_or_child_session`, `requires_child_session_or_appbroadcast`, or `requires_background_launch_lane`, switch lanes or report the blocker. Do not replace it with parent-session mouse or keyboard input.
 
@@ -22,9 +22,15 @@ Browser rules:
 - Use `cdp_port` or configured `chromium_debugging_port` for Chromium/Electron surfaces when UIA/MSAA cannot safely act.
 - Refusals are intentional. They prevent the agent from stealing focus or typing into the user's foreground app.
 
+macOS browser rules:
+
+- Use `launch_app` with `bundle_id` and `urls` to navigate Chrome-style browsers without an omnibox focus steal.
+- Do not use shell `open`, AppleScript `activate`, or browser focus shortcuts such as Command-L unless the user explicitly asked for frontmost behavior.
+- For Safari and JavaScript-from-Apple-Events workflows, expect a separate browser setting and possible confirmation dialogs. Prefer normal accessibility actions unless the user explicitly asks for script execution.
+
 Cursor rules:
 
 - The visual agent cursor is an overlay that communicates intent.
-- It must not be treated as the Windows hardware cursor.
-- Each daemon instance owns its own overlay, so parallel agents should use separate `--instance` values.
+- It must not be treated as the user's hardware cursor.
+- Each daemon or MCP session owns its own overlay, so parallel agents should use separate `--instance` values for daemon workflows and separate MCP sessions for harness workflows.
 - `move_cursor` is for display only unless a human explicitly authorizes `allow_parent_cursor`.
