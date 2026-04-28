@@ -7,7 +7,7 @@ internal static class UiTreeMarkdown
     public static void AppendElement(StringBuilder sb, UiElementInfo info, int depth, bool actionable)
     {
         var indent = new string(' ', depth * 2);
-        var indexText = actionable ? $"[element_index {info.ElementIndex}] " : "";
+        var indexText = actionable ? $"[e{info.ElementIndex}] " : "";
         var name = string.IsNullOrWhiteSpace(info.Name) ? "" : $" \"{Escape(info.Name)}\"";
         var id = string.IsNullOrWhiteSpace(info.AutomationId) ? "" : $" id={Escape(info.AutomationId)}";
         var disabled = actionable && !info.IsEnabled ? " disabled" : "";

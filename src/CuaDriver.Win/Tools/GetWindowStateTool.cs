@@ -83,7 +83,7 @@ internal sealed class GetWindowStateTool : IDriverTool
                 if (includeStructuredTree)
                     uia["tree_markdown"] = snapshot.TreeMarkdown;
                 structured["uia"] = uia;
-                sb.AppendLine(CultureInfo.InvariantCulture, $"{ToolText.OkPrefix}{window.AppName} — {snapshot.ElementCount} elements, turn {snapshot.TurnId} [uia/{mode.ToString().ToLowerInvariant()} mode]");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"{ToolText.OkPrefix}{window.AppName} — {snapshot.ElementCount} elements, turn {snapshot.TurnId} [uia/{mode.ToString().ToLowerInvariant()} mode; [eN] = element_index N]");
                 if (snapshot.ElementCount <= 15)
                     sb.AppendLine(ToolText.WarningPrefix + "Small UIA tree — target may be custom-rendered. Use CDP, HWND-message pixel route, or child-session lane for raw surfaces.");
                 if (!string.IsNullOrWhiteSpace(snapshot.TreeMarkdown))

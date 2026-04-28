@@ -17,7 +17,7 @@ internal static class ToolDescriptions
         """;
 
     public const string GetWindowState = """
-        Snapshot one explicit (pid, window_id): screenshot plus compact UIA Markdown with actionable [element_index N] entries.
+        Snapshot one explicit (pid, window_id): screenshot plus compact UIA Markdown with actionable [eN] entries; pass N as element_index.
 
         Use list_windows to choose window_id. The driver never picks a different window implicitly. Call this before element-indexed actions; the cache is scoped to this exact pid/window_id and replaced by the next snapshot for that pair.
 
