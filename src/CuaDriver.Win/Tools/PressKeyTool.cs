@@ -17,9 +17,9 @@ internal sealed class PressKeyTool : IDriverTool
             ("key", JsonArgs.Prop("string", "Key name, e.g. enter, escape, tab, a, f5.")),
             ("modifiers", JsonArgs.Prop("array", "Optional modifier names held while the key is pressed: ctrl, shift, alt/option, win/cmd.")),
             ("modifier", JsonArgs.Prop("array", "Alias for modifiers.")),
-            ("element_index", JsonArgs.Prop("integer", "Optional element index from get_window_state. When present, the key targets that element's native HWND when available.")),
+            ("element_index", JsonArgs.Prop("integer", "Optional get_window_state element_index; targets native HWND when available.")),
             ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium debugging port for browser key events.")),
-            ("allow_transient_foreground", JsonArgs.Prop("boolean", "Allow a brief foreground/focus blip for browser/native surfaces that ignore posted background key messages, then attempt to restore foreground. Defaults true for existing-window actions; receipts still report background_safe=false when this happens."))),
+            ("allow_transient_foreground", JsonArgs.Prop("boolean", "Allow brief key fallback focus/foreground blip. Defaults true; receipt still reports background_safe=false."))),
         Destructive: true,
         Idempotent: false,
         OpenWorld: true);

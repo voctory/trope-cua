@@ -14,7 +14,7 @@ internal sealed class MoveCursorTool : IDriverTool
             ("x", JsonArgs.Prop("integer", "Screen X.")),
             ("y", JsonArgs.Prop("integer", "Screen Y.")),
             ("window_id", JsonArgs.Prop("integer", "Optional target HWND used to layer the visual cursor just above that window.")),
-            ("allow_parent_cursor", JsonArgs.Prop("boolean", "Explicit unsafe override for moving the real parent-session cursor. Do not set for background automation."))),
+            ("allow_parent_cursor", JsonArgs.Prop("boolean", "Unsafe override to move the real parent-session cursor."))),
         Destructive: true,
         Idempotent: false);
 

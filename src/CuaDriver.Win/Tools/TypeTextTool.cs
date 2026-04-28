@@ -17,9 +17,9 @@ internal sealed class TypeTextTool : IDriverTool
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
             ("element_index", JsonArgs.Prop("integer", "Optional element index for UIA ValuePattern.")),
             ("text", JsonArgs.Prop("string", "Text to type or set.")),
-            ("delay_ms", JsonArgs.Prop("integer", "Milliseconds between streamed text chunks for type_text_chars, 0-200. Ignored by atomic type_text.")),
+            ("delay_ms", JsonArgs.Prop("integer", "type_text_chars delay, 0-200 ms. Ignored by atomic type_text.")),
             ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium debugging port.")),
-            ("allow_transient_foreground", JsonArgs.Prop("boolean", "Allow a brief native/browser UIA foreground/focus blip when no verified background text route exists, then attempt to restore the previous foreground. Defaults true for existing-window actions; receipts still report background_safe=false when this happens."))),
+            ("allow_transient_foreground", JsonArgs.Prop("boolean", "Allow brief text fallback focus/foreground blip. Defaults true; receipt still reports background_safe=false."))),
         Destructive: true,
         Idempotent: false,
         OpenWorld: true);

@@ -22,7 +22,7 @@ internal sealed class GetWindowStateTool : IDriverTool
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND as returned by list_windows.")),
             ("query", JsonArgs.Prop("string", "Optional case-insensitive tree filter.")),
-            ("include_structured_tree", JsonArgs.Prop("boolean", "When true, duplicate tree_markdown into structuredContent. Default false keeps the tree in text content only to reduce tokens."))),
+            ("include_structured_tree", JsonArgs.Prop("boolean", "Duplicate tree_markdown into structuredContent. Default false saves tokens."))),
         ReadOnly: true,
         Idempotent: false);
 

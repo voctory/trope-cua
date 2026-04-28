@@ -24,10 +24,10 @@ internal sealed class ClickTool : IDriverTool
             ("modifiers", JsonArgs.Prop("array", "Alias for modifier.")),
             ("count", JsonArgs.Prop("integer", "Click count. Pixel path only.")),
             ("from_zoom", JsonArgs.Prop("boolean", "When true, x/y are pixel coordinates in the last zoom image for this pid.")),
-            ("debug_image_out", JsonArgs.Prop("string", "Optional path. For pixel clicks, capture the target window, draw a red crosshair at the received x/y in resized screenshot coordinates, and write a PNG before dispatch. Requires window_id; incompatible with from_zoom.")),
+            ("debug_image_out", JsonArgs.Prop("string", "Optional PNG path for pixel-click crosshair debug image. Requires window_id; incompatible with from_zoom.")),
             ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium remote debugging port for browser pixel route.")),
-            ("allow_transient_foreground", JsonArgs.Prop("boolean", "Allow a brief native/browser UIA foreground/focus blip when no verified background route exists, then attempt to restore the previous foreground. Defaults true for existing-window actions; receipts still report background_safe=false when this happens.")),
-            ("allow_parent_sendinput", JsonArgs.Prop("boolean", "Explicit unsafe override for local experiments only. Do not set for background automation; default false and currently reported, not used."))),
+            ("allow_transient_foreground", JsonArgs.Prop("boolean", "Allow brief fallback focus/foreground blip. Defaults true; receipt still reports background_safe=false.")),
+            ("allow_parent_sendinput", JsonArgs.Prop("boolean", "Unsafe local experiment flag. Do not set for background automation."))),
         Destructive: true,
         Idempotent: false,
         OpenWorld: true);

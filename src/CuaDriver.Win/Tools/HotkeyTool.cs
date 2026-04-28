@@ -14,7 +14,7 @@ internal sealed class HotkeyTool : IDriverTool
         JsonArgs.SchemaWithAnyOf(["pid"], [["keys"], ["key"]],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND. Required when element_index is used.")),
-            ("element_index", JsonArgs.Prop("integer", "Optional element index from get_window_state. When present, the hotkey targets that element's native HWND when available.")),
+            ("element_index", JsonArgs.Prop("integer", "Optional get_window_state element_index; targets native HWND when available.")),
             ("cdp_port", JsonArgs.Prop("integer", "Optional Chromium debugging port for browser key events.")),
             ("keys", JsonArgs.Prop("array", "Modifier(s) and one non-modifier key, e.g. [\"ctrl\", \"c\"]. Preferred shape.")),
             ("key", JsonArgs.Prop("string", "Main key. Windows-compatible alias used with modifiers.")),

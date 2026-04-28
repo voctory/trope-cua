@@ -16,11 +16,11 @@ internal sealed class ScrollTool : IDriverTool
             ("direction", JsonArgs.EnumProp("Logical scroll direction.", "up", "down", "left", "right")),
             ("amount", JsonArgs.Prop("integer", "Number of key or wheel repetitions. Default: 3 for direction mode.")),
             ("by", JsonArgs.EnumProp("Scroll granularity for direction mode. Default: line.", "line", "page")),
-            ("element_index", JsonArgs.Prop("integer", "Optional element index from get_window_state. With direction mode, targets that element's native HWND when available.")),
+            ("element_index", JsonArgs.Prop("integer", "Optional get_window_state element_index; targets native HWND for direction mode.")),
             ("window_id", JsonArgs.Prop("integer", "Target HWND. Required when element_index is used.")),
             ("x", JsonArgs.Prop("number", "Optional window-local screenshot X for Windows wheel mode.")),
             ("y", JsonArgs.Prop("number", "Optional window-local screenshot Y for Windows wheel mode.")),
-            ("delta", JsonArgs.Prop("integer", "Windows wheel delta; positive up, negative down. Default -120. Used when direction is omitted."))),
+            ("delta", JsonArgs.Prop("integer", "Wheel delta for wheel mode. Positive up, negative down. Default -120."))),
         Destructive: false,
         Idempotent: false,
         OpenWorld: true);

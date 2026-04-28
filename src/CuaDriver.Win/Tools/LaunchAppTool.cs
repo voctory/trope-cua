@@ -20,7 +20,7 @@ internal sealed class LaunchAppTool : IDriverTool
             ("name", JsonArgs.Prop("string", "Alias for exe.")),
             ("app_id", JsonArgs.Prop("string", "UWP/AppUserModelID launched through shell:AppsFolder.")),
             ("arguments", JsonArgs.Prop("string", "Optional command-line arguments.")),
-            ("unsafe_allow_foreground", JsonArgs.Prop("boolean", "Explicitly allow a parent-session launch that may foreground the target app. Do not use for routine background automation; the driver will still try to restore the previous foreground window and send launched windows behind the current stack."))),
+            ("unsafe_allow_foreground", JsonArgs.Prop("boolean", "Explicitly allow unsafe parent-session launch. Do not use for routine background automation; driver tries to restore foreground."))),
         Destructive: true,
         Idempotent: false,
         OpenWorld: true);

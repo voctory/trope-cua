@@ -16,7 +16,7 @@ internal sealed class SetValueTool : IDriverTool
             ("window_id", JsonArgs.Prop("integer", "Target HWND.")),
             ("element_index", JsonArgs.Prop("integer", "Element index from get_window_state.")),
             ("value", JsonArgs.Prop("string", "String value, or numeric text for range controls.")),
-            ("allow_transient_foreground", JsonArgs.Prop("boolean", "Allow a brief native UIA foreground/focus blip when no verified background value route exists, then attempt to restore the previous foreground. Defaults true for existing-window actions; receipts still report background_safe=false when this happens."))),
+            ("allow_transient_foreground", JsonArgs.Prop("boolean", "Allow brief value fallback focus/foreground blip. Defaults true; receipt still reports background_safe=false."))),
         Destructive: true,
         Idempotent: true);
 

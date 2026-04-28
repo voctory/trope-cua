@@ -15,7 +15,7 @@ internal sealed class ZoomTool : IDriverTool
         ToolDescriptions.Zoom,
         JsonArgs.RequiredSchema(["pid", "x1", "y1", "x2", "y2"],
             ("pid", JsonArgs.Prop("integer", "Target process id.")),
-            ("window_id", JsonArgs.Prop("integer", "Target HWND from the prior get_window_state screenshot. Recommended when pid has multiple windows.")),
+            ("window_id", JsonArgs.Prop("integer", "Target HWND from prior get_window_state; recommended for multi-window pids.")),
             ("x1", JsonArgs.Prop("number", "Left edge in resized screenshot pixels.")),
             ("y1", JsonArgs.Prop("number", "Top edge in resized screenshot pixels.")),
             ("x2", JsonArgs.Prop("number", "Right edge in resized screenshot pixels.")),
