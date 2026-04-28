@@ -262,7 +262,7 @@ internal sealed class AgentCursorOverlay
                 })
                 {
                     IsBackground = true,
-                    Name = "cua-driver-agent-cursor",
+                    Name = "trope-cua-agent-cursor",
                 };
                 _thread.SetApartmentState(ApartmentState.STA);
                 _thread.Start();

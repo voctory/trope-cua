@@ -2,7 +2,7 @@ from driver_client import call
 
 
 def test_set_config_uses_isolated_config_directory(tmp_path):
-    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path)}
 
     result = call("set_config", {"key": "capture_mode", "value": "ax"}, extra_env=env)
     assert result["isError"] is False
@@ -14,7 +14,7 @@ def test_set_config_uses_isolated_config_directory(tmp_path):
 
 
 def test_set_config_persists_normalized_cursor_motion(tmp_path):
-    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path)}
 
     result = call(
         "set_config",
@@ -30,7 +30,7 @@ def test_set_config_persists_normalized_cursor_motion(tmp_path):
 
 
 def test_set_config_persists_cursor_press_duration(tmp_path):
-    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path)}
 
     result = call(
         "set_config",
@@ -46,7 +46,7 @@ def test_set_config_persists_cursor_press_duration(tmp_path):
 
 
 def test_set_agent_cursor_motion_persists_press_duration(tmp_path):
-    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path)}
 
     result = call("set_agent_cursor_motion", {"press_duration_ms": 999999}, extra_env=env)
 
@@ -58,7 +58,7 @@ def test_set_agent_cursor_motion_persists_press_duration(tmp_path):
 
 
 def test_set_config_bounds_max_image_dimension(tmp_path):
-    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path)}
 
     result = call("set_config", {"key": "max_image_dimension", "value": 999999}, extra_env=env)
 
@@ -67,7 +67,7 @@ def test_set_config_bounds_max_image_dimension(tmp_path):
 
 
 def test_set_config_rejects_invalid_chromium_port(tmp_path):
-    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path)}
 
     result = call("set_config", {"key": "chromium_debugging_port", "value": 70000}, extra_env=env)
 
@@ -77,7 +77,7 @@ def test_set_config_rejects_invalid_chromium_port(tmp_path):
 
 
 def test_set_config_clears_nullable_chromium_port(tmp_path):
-    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path)}
 
     result = call("set_config", {"key": "chromium_debugging_port", "value": 9222}, extra_env=env)
     assert result["isError"] is False

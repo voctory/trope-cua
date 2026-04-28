@@ -40,7 +40,7 @@ internal sealed class BrowserAutomationLease : IDisposable
         mutex.Dispose();
         contention = ActionReceipt.Failure(
             "browser.chromium_fallback.contended",
-            $"Another cua-driver-win daemon is already driving Chromium accessibility for pid {window.Pid}. Retry this same action up to 3 times after the active action completes. If contention persists or true parallel browser work is required, use an isolated browser profile with its own CDP port or target a different browser process.");
+            $"Another trope-cua daemon is already driving Chromium accessibility for pid {window.Pid}. Retry this same action up to 3 times after the active action completes. If contention persists or true parallel browser work is required, use an isolated browser profile with its own CDP port or target a different browser process.");
         return null;
     }
 
@@ -60,7 +60,7 @@ internal sealed class BrowserAutomationLease : IDisposable
         }
     }
 
-    private static string MutexNameFor(int pid) => $@"Local\cua-driver-win-browser-uia-{UserKey()}-{pid}";
+    private static string MutexNameFor(int pid) => $@"Local\trope-cua-browser-uia-{UserKey()}-{pid}";
 
     private static string UserKey()
     {

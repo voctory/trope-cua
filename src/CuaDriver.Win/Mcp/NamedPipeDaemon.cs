@@ -35,14 +35,14 @@ internal sealed class NamedPipeDaemon
         using var mutex = new Mutex(initiallyOwned: false, DaemonMutexNameFor(_instanceId));
         if (!mutex.WaitOne(0))
         {
-            Console.Error.WriteLine($"cua-driver-win daemon instance '{_instanceId}' already running on named pipe {InstancePipeName}");
+            Console.Error.WriteLine($"trope-cua daemon instance '{_instanceId}' already running on named pipe {InstancePipeName}");
             return;
         }
 
         using var shutdown = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var paletteName = WriteInstanceRecord();
         _context.State.AgentCursor.SetPalette(AgentCursorPalette.ForNameOrInstance(paletteName, _instanceId));
-        Console.Error.WriteLine($"cua-driver-win daemon instance '{_instanceId}' listening on named pipe {InstancePipeName}");
+        Console.Error.WriteLine($"trope-cua daemon instance '{_instanceId}' listening on named pipe {InstancePipeName}");
         try
         {
             while (!shutdown.IsCancellationRequested)
@@ -121,7 +121,7 @@ internal sealed class NamedPipeDaemon
         ["uptime_ms"] = (long)Stopwatch.GetElapsedTime(_startedTimestamp).TotalMilliseconds
     };
 
-    public static string PipeNameFor(string? instanceId) => $"cua-driver-win-{UserKey()}-{DriverInstance.Normalize(instanceId)}";
+    public static string PipeNameFor(string? instanceId) => $"trope-cua-{UserKey()}-{DriverInstance.Normalize(instanceId)}";
 
     public static ToolResult ListInstances()
     {
@@ -160,7 +160,7 @@ internal sealed class NamedPipeDaemon
         return sid;
     }
 
-    private static string DaemonMutexNameFor(string instanceId) => $@"Local\cua-driver-win-{UserKey()}-{DriverInstance.Normalize(instanceId)}";
+    private static string DaemonMutexNameFor(string instanceId) => $@"Local\trope-cua-{UserKey()}-{DriverInstance.Normalize(instanceId)}";
 
     private string WriteInstanceRecord()
     {

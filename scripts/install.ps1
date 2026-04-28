@@ -1,5 +1,5 @@
 param(
-  [string]$InstallDir = "$env:LOCALAPPDATA\Programs\CuaDriverWin",
+  [string]$InstallDir = "$env:LOCALAPPDATA\Programs\TropeCUA",
   [string]$Configuration = "Release",
   [string]$Runtime,
   [switch]$SelfContained,
@@ -27,4 +27,5 @@ if (($userPath -split ';') -notcontains $InstallDir) {
   Write-Host "Added $InstallDir to user PATH. Restart your terminal."
 }
 
-Write-Host "Installed cua-driver-win to $InstallDir"
+Write-Host "Installed Trope CUA to $InstallDir"
+Write-Host "Primary command: trope-cua"

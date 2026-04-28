@@ -4,7 +4,7 @@ namespace CuaDriver.Win.Cursor;
 
 internal static class AgentCursorWindowing
 {
-    public const string OverlayWindowTitlePrefix = "CuaDriverWin.AgentCursorOverlay";
+    public const string OverlayWindowTitlePrefix = "TropeCUA.AgentCursorOverlay";
 
     public static string OverlayWindowTitleFor(string? instanceId) =>
         $"{OverlayWindowTitlePrefix}.{DriverInstance.Resolve(instanceId)}";

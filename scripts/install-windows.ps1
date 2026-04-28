@@ -1,5 +1,5 @@
 param(
-  [string]$InstallDir = "$env:LOCALAPPDATA\Programs\CuaDriverWin",
+  [string]$InstallDir = "$env:LOCALAPPDATA\Programs\TropeCUA",
   [string]$Configuration = "Release",
   [string]$Runtime,
   [switch]$SelfContained,

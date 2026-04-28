@@ -3,7 +3,7 @@ namespace CuaDriver.Win.Tools;
 internal static class ToolDescriptions
 {
     public const string AgentInstructions = """
-        You are controlling Windows through cua-driver-win. Treat this as a background-safe computer-use driver, not as a foreground mouse and keyboard driver.
+        You are controlling Windows through Trope CUA. Treat this as a background-safe computer-use driver, not as a foreground mouse and keyboard driver.
 
         Default workflow:
         1. Reuse an existing window when possible. Call list_windows, choose an explicit pid and window_id, then call get_window_state for that exact pair.

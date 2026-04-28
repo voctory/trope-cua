@@ -1,9 +1,9 @@
 function Get-CuaDriverConfigDirectory {
-  if ([string]::IsNullOrWhiteSpace($env:CUA_DRIVER_CONFIG_DIR)) {
-    return Join-Path $env:LOCALAPPDATA "cua-driver-win"
+  if ([string]::IsNullOrWhiteSpace($env:TROPE_CUA_CONFIG_DIR)) {
+    return Join-Path $env:LOCALAPPDATA "trope-cua"
   }
 
-  return [System.IO.Path]::GetFullPath($env:CUA_DRIVER_CONFIG_DIR)
+  return [System.IO.Path]::GetFullPath($env:TROPE_CUA_CONFIG_DIR)
 }
 
 function Get-CuaDriverDefaultRuntime {
@@ -103,7 +103,7 @@ function Stop-CuaDriverProcessesForInstallDir {
   )
 
   $InstallRoot = [System.IO.Path]::GetFullPath($InstallDir)
-  $InstalledExe = Join-Path $InstallRoot "cua-driver-win.exe"
+  $InstalledExe = Join-Path $InstallRoot "trope-cua.exe"
   $RegistryDir = Join-Path (Get-CuaDriverConfigDirectory) "daemons"
 
   if ((Test-Path $InstalledExe) -and (Test-Path $RegistryDir)) {
@@ -118,7 +118,7 @@ function Stop-CuaDriverProcessesForInstallDir {
     }
   }
 
-  Get-Process cua-driver-win -ErrorAction SilentlyContinue |
+  Get-Process trope-cua -ErrorAction SilentlyContinue |
     Where-Object { $_.Path -and (Test-CuaDriverPathUnderDirectory -Path $_.Path -Directory $InstallRoot) } |
     Stop-Process -Force
 }

@@ -30,7 +30,7 @@ def test_set_recording_requires_boolean_enabled():
 
 def test_recording_writes_action_turn_for_recorded_tool(tmp_path):
     instance = f"pytest-recording-{uuid.uuid4().hex}"
-    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path / "config")}
+    env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path / "config")}
     process = None
 
     try:

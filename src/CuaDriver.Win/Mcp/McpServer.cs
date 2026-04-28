@@ -68,7 +68,7 @@ internal sealed class McpServer
     {
         ["protocolVersion"] = "2024-11-05",
         ["capabilities"] = new JsonObject { ["tools"] = new JsonObject() },
-        ["serverInfo"] = new JsonObject { ["name"] = "cua-driver-win", ["version"] = "0.1.0" },
+        ["serverInfo"] = new JsonObject { ["name"] = "trope-cua", ["version"] = "0.1.0" },
         ["instructions"] = ToolDescriptions.AgentInstructions
     };
 

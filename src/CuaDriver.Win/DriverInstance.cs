@@ -7,7 +7,7 @@ internal static class DriverInstance
     public const string DefaultId = "default";
 
     public static string Resolve(string? instanceId) =>
-        Normalize(instanceId ?? Environment.GetEnvironmentVariable("CUA_DRIVER_INSTANCE") ?? DefaultId);
+        Normalize(instanceId ?? Environment.GetEnvironmentVariable("TROPE_CUA_INSTANCE") ?? DefaultId);
 
     public static string Normalize(string? instanceId)
     {

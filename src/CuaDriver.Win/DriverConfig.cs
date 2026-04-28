@@ -14,7 +14,7 @@ internal enum CaptureMode
 
 internal sealed record DriverConfig
 {
-    private const string ConfigDirectoryEnvironmentVariable = "CUA_DRIVER_CONFIG_DIR";
+    private const string ConfigDirectoryEnvironmentVariable = "TROPE_CUA_CONFIG_DIR";
     internal const int MinImageDimension = 0;
     internal const int MaxImageDimensionLimit = 8192;
     internal const int MinTcpPort = 1;
@@ -44,7 +44,7 @@ internal sealed record DriverConfig
         {
             var overrideDirectory = Environment.GetEnvironmentVariable(ConfigDirectoryEnvironmentVariable);
             return string.IsNullOrWhiteSpace(overrideDirectory)
-                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "cua-driver-win")
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "trope-cua")
                 : Path.GetFullPath(overrideDirectory);
         }
     }

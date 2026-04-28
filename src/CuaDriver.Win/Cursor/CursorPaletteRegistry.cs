@@ -130,7 +130,7 @@ internal static class CursorPaletteRegistry
 
     private static string RecordPath(string instanceId) => Path.Combine(RegistryDirectory, $"{DriverInstance.Normalize(instanceId)}.json");
 
-    private static string MutexName() => $@"Local\cua-driver-win-{UserKey()}-cursor-palette";
+    private static string MutexName() => $@"Local\trope-cua-{UserKey()}-cursor-palette";
 
     private static string UserKey()
     {

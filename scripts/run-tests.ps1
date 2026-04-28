@@ -23,7 +23,7 @@ if ($Runtime -eq "win-x64" -and (Test-Path $ProgramFilesX64Dotnet)) {
   $env:DOTNET_ROOT_X64 = $ProgramFilesX64Dotnet
 }
 
-$env:CUA_DRIVER_EXE = Join-Path $Root "artifacts\publish\cua-driver-win.exe"
+$env:TROPE_CUA_EXE = Join-Path $Root "artifacts\publish\trope-cua.exe"
 $TestsDir = Join-Path $Root "tests\integration"
 try {
   python -m pytest $TestsDir

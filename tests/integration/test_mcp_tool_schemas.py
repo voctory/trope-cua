@@ -3,7 +3,7 @@ import os
 import subprocess
 
 
-EXE = os.environ.get("CUA_DRIVER_EXE", "cua-driver-win.exe")
+EXE = os.environ.get("TROPE_CUA_EXE", "trope-cua.exe")
 
 
 def mcp_request(method, params=None):

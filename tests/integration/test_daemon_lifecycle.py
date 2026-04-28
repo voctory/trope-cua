@@ -5,12 +5,12 @@ import time
 import uuid
 
 
-EXE = os.environ.get("CUA_DRIVER_EXE", "cua-driver-win.exe")
+EXE = os.environ.get("TROPE_CUA_EXE", "trope-cua.exe")
 
 
 def test_daemon_list_returns_structured_instances():
     env = os.environ.copy()
-    env["CUA_DRIVER_JSON"] = "1"
+    env["TROPE_CUA_JSON"] = "1"
     proc = subprocess.run(
         [EXE, "daemon-list"],
         text=True,
@@ -28,7 +28,7 @@ def test_daemon_list_returns_structured_instances():
 def test_daemon_stop_missing_instance_reports_error():
     instance = f"pytest-missing-{uuid.uuid4().hex}"
     env = os.environ.copy()
-    env["CUA_DRIVER_JSON"] = "1"
+    env["TROPE_CUA_JSON"] = "1"
     proc = subprocess.run(
         [EXE, "daemon-stop", "--instance", instance],
         text=True,
@@ -46,7 +46,7 @@ def test_daemon_stop_missing_instance_reports_error():
 def test_call_with_missing_explicit_instance_does_not_fallback_direct():
     instance = f"pytest-missing-{uuid.uuid4().hex}"
     env = os.environ.copy()
-    env["CUA_DRIVER_JSON"] = "1"
+    env["TROPE_CUA_JSON"] = "1"
     proc = subprocess.run(
         [EXE, "call", "--instance", instance, "get_config", "{}"],
         text=True,
@@ -91,7 +91,7 @@ def test_daemon_instances_are_isolated():
 def test_parallel_daemon_cursors_remain_isolated(tmp_path):
     first = f"pytest-cursor-{uuid.uuid4().hex}-a"
     second = f"pytest-cursor-{uuid.uuid4().hex}-b"
-    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path)}
     processes = []
 
     try:
@@ -138,7 +138,7 @@ def test_parallel_daemon_cursors_remain_isolated(tmp_path):
 
 def test_agent_cursor_idle_hide_lifecycle(tmp_path):
     instance = f"pytest-cursor-idle-{uuid.uuid4().hex}"
-    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path)}
     process = None
 
     try:
@@ -172,7 +172,7 @@ def test_agent_cursor_idle_hide_lifecycle(tmp_path):
 
 def test_agent_cursor_disable_hides_live_overlay(tmp_path):
     instance = f"pytest-cursor-disable-{uuid.uuid4().hex}"
-    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path)}
     process = None
 
     try:
@@ -205,7 +205,7 @@ def test_agent_cursor_disable_hides_live_overlay(tmp_path):
 
 def test_agent_cursor_repeated_same_target_stays_stable(tmp_path):
     instance = f"pytest-cursor-same-target-{uuid.uuid4().hex}"
-    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path)}
     process = None
 
     try:
@@ -239,7 +239,7 @@ def test_agent_cursor_repeated_same_target_stays_stable(tmp_path):
 
 def test_agent_cursor_keepalive_preserves_thinking_rotation(tmp_path):
     instance = f"pytest-cursor-thinking-{uuid.uuid4().hex}"
-    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path)}
     process = None
 
     try:
@@ -290,7 +290,7 @@ def start_daemon(instance, extra_env=None):
 
 def call_instance(instance, tool, args=None, extra_env=None):
     env = os.environ.copy()
-    env["CUA_DRIVER_JSON"] = "1"
+    env["TROPE_CUA_JSON"] = "1"
     if extra_env:
         env.update(extra_env)
     proc = subprocess.run(
@@ -307,7 +307,7 @@ def call_instance(instance, tool, args=None, extra_env=None):
 
 def wait_for_status(instance, extra_env=None):
     env = os.environ.copy()
-    env["CUA_DRIVER_JSON"] = "1"
+    env["TROPE_CUA_JSON"] = "1"
     if extra_env:
         env.update(extra_env)
     last_stdout = ""
@@ -357,7 +357,7 @@ def distance_from(state, x, y):
 
 def stop_daemon(instance, extra_env=None):
     env = os.environ.copy()
-    env["CUA_DRIVER_JSON"] = "1"
+    env["TROPE_CUA_JSON"] = "1"
     if extra_env:
         env.update(extra_env)
     subprocess.run(
@@ -376,7 +376,7 @@ def test_daemon_stop_all_prunes_stale_records(tmp_path):
     stale_record = {
         "instanceId": stale_id,
         "pid": 999999,
-        "pipeName": f"cua-driver-win-test-{stale_id}",
+        "pipeName": f"trope-cua-test-{stale_id}",
         "startedAt": "2026-01-01T00:00:00.0000000Z",
         "exePath": str(tmp_path / "missing.exe"),
     }
@@ -384,8 +384,8 @@ def test_daemon_stop_all_prunes_stale_records(tmp_path):
     stale_path.write_text(json.dumps(stale_record), encoding="utf-8")
 
     env = os.environ.copy()
-    env["CUA_DRIVER_JSON"] = "1"
-    env["CUA_DRIVER_CONFIG_DIR"] = str(tmp_path)
+    env["TROPE_CUA_JSON"] = "1"
+    env["TROPE_CUA_CONFIG_DIR"] = str(tmp_path)
     proc = subprocess.run(
         [EXE, "daemon-stop", "--all"],
         text=True,

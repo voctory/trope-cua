@@ -1,5 +1,5 @@
 param(
-  [string]$InstallDir = "$env:LOCALAPPDATA\Programs\CuaDriverWin"
+  [string]$InstallDir = "$env:LOCALAPPDATA\Programs\TropeCUA"
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,4 +19,4 @@ $newPath = if ([string]::IsNullOrWhiteSpace($userPath)) {
 }
 [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
 
-Write-Host "Removed cua-driver-win."
+Write-Host "Removed Trope CUA."

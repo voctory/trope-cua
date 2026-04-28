@@ -131,7 +131,7 @@ internal sealed class LaunchAppTool : IDriverTool
     }
 
     private static bool IsDriverAuxWindow(WindowInfo window)
-        => window.AppName.Equals("cua-driver-win", StringComparison.OrdinalIgnoreCase)
+        => window.AppName.Equals("trope-cua", StringComparison.OrdinalIgnoreCase)
            || window.Title.Contains("GDI+", StringComparison.OrdinalIgnoreCase)
            || window.ClassName.Contains("WindowsForms", StringComparison.OrdinalIgnoreCase);
 

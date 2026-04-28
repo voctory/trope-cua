@@ -137,7 +137,7 @@ internal static class ChildSessionHost
             _thread = new Thread(ThreadMain)
             {
                 IsBackground = true,
-                Name = "cua-driver-win child session host"
+                Name = "trope-cua child session host"
             };
             _thread.SetApartmentState(ApartmentState.STA);
             _running = true;
@@ -220,7 +220,7 @@ internal static class ChildSessionHost
         {
             _options = options;
             _host = host;
-            Text = "cua-driver-win child session";
+            Text = "trope-cua child session";
             Width = Math.Max(640, options.Width);
             Height = Math.Max(480, options.Height);
             ShowInTaskbar = false;

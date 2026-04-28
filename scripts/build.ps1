@@ -28,4 +28,4 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Published to $Out"
-Write-Host "Run: $Out\cua-driver-win.exe list_windows"
+Write-Host "Run: $Out\trope-cua.exe list_windows"

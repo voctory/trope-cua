@@ -1,6 +1,6 @@
 ---
 name: trope-cua
-description: Drive native Windows apps with Trope CUA via the cua-driver-win CLI or MCP server. Use when the user asks to operate, inspect, automate, or test a real Windows GUI app while preserving the user's foreground app and real cursor whenever possible.
+description: Drive native Windows apps with Trope CUA via the trope-cua CLI or MCP server. Use when the user asks to operate, inspect, automate, or test a real Windows GUI app while preserving the user's foreground app and real cursor whenever possible.
 ---
 
 # Trope CUA
@@ -20,24 +20,24 @@ Use Trope CUA for Windows GUI automation. It snapshots a target window, exposes 
 The installed binary is normally:
 
 ```powershell
-$env:LOCALAPPDATA\Programs\CuaDriverWin\cua-driver-win.exe
+$env:LOCALAPPDATA\Programs\TropeCUA\trope-cua.exe
 ```
 
 Common commands:
 
 ```powershell
-cua-driver-win list_windows
-cua-driver-win get_window_state '{"pid":1234,"window_id":456789}'
-cua-driver-win click '{"pid":1234,"window_id":456789,"element_index":14}'
+trope-cua list_windows
+trope-cua get_window_state '{"pid":1234,"window_id":456789}'
+trope-cua click '{"pid":1234,"window_id":456789,"element_index":14}'
 ```
 
 Use the daemon when actions need to share the same element cache:
 
 ```powershell
-cua-driver-win serve --instance demo
-cua-driver-win call --instance demo get_window_state '{"pid":1234,"window_id":456789}'
-cua-driver-win call --instance demo click '{"pid":1234,"window_id":456789,"element_index":14}'
-cua-driver-win daemon-stop --instance demo
+trope-cua serve --instance demo
+trope-cua call --instance demo get_window_state '{"pid":1234,"window_id":456789}'
+trope-cua call --instance demo click '{"pid":1234,"window_id":456789,"element_index":14}'
+trope-cua stop --instance demo
 ```
 
 ## Canonical Loop
@@ -78,9 +78,9 @@ The visual cursor is a click-through overlay. It shows intent but does not deliv
 Useful controls:
 
 ```powershell
-cua-driver-win set_agent_cursor_enabled '{"enabled":true}'
-cua-driver-win get_agent_cursor_state
-cua-driver-win set_agent_cursor_motion '{"idle_hide_ms":3000}'
+trope-cua set_agent_cursor_enabled '{"enabled":true}'
+trope-cua get_agent_cursor_state
+trope-cua set_agent_cursor_motion '{"idle_hide_ms":3000}'
 ```
 
 ## Recording
@@ -88,24 +88,24 @@ cua-driver-win set_agent_cursor_motion '{"idle_hide_ms":3000}'
 Enable trajectory recording only when the user asks for it:
 
 ```powershell
-cua-driver-win set_recording '{"enabled":true,"output_dir":"C:\\temp\\trope-run"}'
-cua-driver-win get_recording_state
-cua-driver-win set_recording '{"enabled":false}'
+trope-cua recording start "C:\\temp\\trope-run"
+trope-cua recording status
+trope-cua recording stop
 ```
 
 Replay a captured run:
 
 ```powershell
-cua-driver-win replay_trajectory '{"dir":"C:\\temp\\trope-run"}'
+trope-cua replay_trajectory '{"dir":"C:\\temp\\trope-run"}'
 ```
 
 ## Diagnostics
 
 ```powershell
-cua-driver-win check_permissions
-cua-driver-win get_config
-cua-driver-win daemon-list
-cua-driver-win daemon-status --instance demo
+trope-cua check_permissions
+trope-cua config show
+trope-cua daemon-list
+trope-cua status --instance demo
 ```
 
 If a call fails because an `element_index` is invalid or uncached, re-run `get_window_state` for the same `pid` and `window_id` and use the fresh index.

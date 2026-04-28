@@ -2,7 +2,7 @@ from driver_client import call
 
 
 def test_get_accessibility_tree_forces_ax_mode_without_persisting_config(tmp_path):
-    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path)}
     configured = call("set_config", {"key": "capture_mode", "value": "vision"}, extra_env=env)
     assert configured["structuredContent"]["capture_mode"] == "vision"
 
@@ -25,7 +25,7 @@ def test_get_accessibility_tree_forces_ax_mode_without_persisting_config(tmp_pat
 
 
 def test_get_accessibility_tree_query_filters_markdown_only(tmp_path):
-    env = {"CUA_DRIVER_CONFIG_DIR": str(tmp_path)}
+    env = {"TROPE_CUA_CONFIG_DIR": str(tmp_path)}
     windows = call("list_windows", extra_env=env)["structuredContent"]["windows"]
     assert windows
     target = windows[0]

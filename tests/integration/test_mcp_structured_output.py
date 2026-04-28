@@ -3,7 +3,7 @@ import os
 import subprocess
 
 
-EXE = os.environ.get("CUA_DRIVER_EXE", "cua-driver-win.exe")
+EXE = os.environ.get("TROPE_CUA_EXE", "trope-cua.exe")
 
 
 def mcp_call(proc, request_id, tool_name, arguments=None):
@@ -49,8 +49,8 @@ def test_mcp_tools_call_includes_structured_content_for_receipts():
 
 def test_parallel_mcp_cursors_allocate_distinct_palettes(tmp_path):
     env = os.environ.copy()
-    env["CUA_DRIVER_CONFIG_DIR"] = str(tmp_path)
-    env.pop("CUA_DRIVER_INSTANCE", None)
+    env["TROPE_CUA_CONFIG_DIR"] = str(tmp_path)
+    env.pop("TROPE_CUA_INSTANCE", None)
     processes = []
 
     try:
