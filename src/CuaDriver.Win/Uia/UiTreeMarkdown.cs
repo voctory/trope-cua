@@ -9,7 +9,7 @@ internal static class UiTreeMarkdown
         var indent = new string(' ', depth * 2);
         var indexText = actionable ? $"[e{info.ElementIndex}] " : "";
         var name = string.IsNullOrWhiteSpace(info.Name) ? "" : $" \"{Escape(info.Name)}\"";
-        var id = string.IsNullOrWhiteSpace(info.AutomationId) ? "" : $" id={Escape(info.AutomationId)}";
+        var id = HasUsefulAutomationId(info.AutomationId) ? $" id={Escape(info.AutomationId)}" : "";
         var disabled = actionable && !info.IsEnabled ? " disabled" : "";
         var offscreen = info.IsOffscreen ? " offscreen" : "";
         sb.Append(indent)
@@ -29,7 +29,7 @@ internal static class UiTreeMarkdown
             return true;
 
         return !string.IsNullOrWhiteSpace(info.Name)
-               || !string.IsNullOrWhiteSpace(info.AutomationId);
+               || HasUsefulAutomationId(info.AutomationId);
     }
 
     public static string Filter(string markdown, string query)
@@ -64,4 +64,21 @@ internal static class UiTreeMarkdown
     }
 
     private static string Escape(string s) => s.Replace("\r", " ").Replace("\n", " ").Trim();
+
+    private static bool HasUsefulAutomationId(string automationId)
+    {
+        if (string.IsNullOrWhiteSpace(automationId))
+            return false;
+
+        if (!automationId.StartsWith("view_", StringComparison.Ordinal))
+            return true;
+
+        for (var i = "view_".Length; i < automationId.Length; i++)
+        {
+            if (!char.IsDigit(automationId[i]))
+                return true;
+        }
+
+        return false;
+    }
 }
