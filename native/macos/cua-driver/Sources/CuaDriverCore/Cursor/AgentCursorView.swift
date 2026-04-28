@@ -22,6 +22,7 @@ public struct AgentCursorView: View {
                 drawFocusRect(in: gctx, canvasSize: size)
                 drawCursor(in: gctx)
             }
+            .opacity(renderer.opacity)
             .ignoresSafeArea()
             .allowsHitTesting(false)
         }
@@ -51,7 +52,7 @@ public struct AgentCursorView: View {
         ctx.fill(
             rounded,
             with: .color(
-                Color(red: 0x5E/255, green: 0xC0/255, blue: 0xE8/255).opacity(0.08)
+                Color(nsColor: renderer.palette.bloomOuter).opacity(0.08)
             )
         )
 
@@ -59,7 +60,7 @@ public struct AgentCursorView: View {
         ctx.stroke(
             rounded,
             with: .color(
-                Color(red: 0x5E/255, green: 0xC0/255, blue: 0xE8/255).opacity(0.90)
+                Color(nsColor: renderer.palette.bloomOuter).opacity(0.90)
             ),
             lineWidth: 2
         )
@@ -68,7 +69,7 @@ public struct AgentCursorView: View {
         ctx.stroke(
             rounded,
             with: .color(
-                Color(red: 0x5E/255, green: 0xC0/255, blue: 0xE8/255).opacity(0.30)
+                Color(nsColor: renderer.palette.bloomOuter).opacity(0.30)
             ),
             lineWidth: 8
         )
@@ -105,9 +106,9 @@ public struct AgentCursorView: View {
             transformed,
             with: .linearGradient(
                 Gradient(colors: [
-                    Color(red: 0xDB/255, green: 0xEE/255, blue: 0xFF/255),
-                    Color(red: 0x5E/255, green: 0xC0/255, blue: 0xE8/255),
-                    Color(red: 0x54/255, green: 0xCD/255, blue: 0xA0/255),
+                    Color(nsColor: renderer.palette.cursorStart),
+                    Color(nsColor: renderer.palette.cursorMid),
+                    Color(nsColor: renderer.palette.cursorEnd),
                 ]),
                 startPoint: CGPoint(x: p.x + 14, y: p.y - 9),
                 endPoint: CGPoint(x: p.x - 8, y: p.y + 9)
@@ -124,9 +125,9 @@ public struct AgentCursorView: View {
             Path(ellipseIn: bloomRect),
             with: .radialGradient(
                 Gradient(colors: [
-                    Color(red: 0x5E/255, green: 0xC0/255, blue: 0xE8/255).opacity(0.45),
-                    Color(red: 0x5E/255, green: 0xC0/255, blue: 0xE8/255).opacity(0.10),
-                    Color(red: 0x5E/255, green: 0xC0/255, blue: 0xE8/255).opacity(0.0),
+                    Color(nsColor: renderer.palette.bloomInner).opacity(0.45),
+                    Color(nsColor: renderer.palette.bloomOuter).opacity(0.10),
+                    Color(nsColor: renderer.palette.bloomOuter).opacity(0.0),
                 ]),
                 center: p,
                 startRadius: 0,

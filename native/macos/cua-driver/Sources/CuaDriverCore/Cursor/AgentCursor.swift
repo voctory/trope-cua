@@ -160,6 +160,7 @@ public final class AgentCursor {
     /// the single-argument overload of `animate`. Tunable at runtime
     /// via the `set_agent_cursor_motion` MCP tool.
     public var defaultMotionOptions: CursorMotionPath.Options = .default
+    public private(set) var palette: AgentCursorPalette = .defaultBlue
 
     /// How long each cursor glide takes. Used as the default
     /// `duration` for `animateAndWait`/`animate` when the caller
@@ -228,6 +229,7 @@ public final class AgentCursor {
     /// window enumerations transiently return no match. `orderOut`
     /// only fires after ≥2 consecutive misses.
     private var missedPinCount: Int = 0
+    private var didClaimPalette = false
 
     private init() {}
 
@@ -275,6 +277,14 @@ public final class AgentCursor {
         )
     }
 
+    public func claimPalette(context: String) {
+        guard !didClaimPalette else { return }
+        let slot = AgentCursorPaletteRegistry.claimSlot(context: context)
+        palette = AgentCursorPalette.forSlot(slot)
+        AgentCursorRenderer.shared.palette = palette
+        didClaimPalette = true
+    }
+
     /// Show the overlay window. Idempotent — successive calls are
     /// cheap no-ops once the window is already visible. Creates the
     /// window + content view on first call. No-op when disabled.
@@ -293,6 +303,8 @@ public final class AgentCursor {
     /// overlay that is always visible but never key).
     public func show() {
         guard isEnabled else { return }
+        claimPalette(context: "process:\(ProcessInfo.processInfo.processIdentifier)")
+        AgentCursorRenderer.shared.cancelFadeOut()
         let win = ensureWindow()
         if !win.isVisible {
             win.orderFrontRegardless()
@@ -472,17 +484,16 @@ public final class AgentCursor {
         let duration = duration ?? glideDurationSeconds
         cancelIdleHide()  // incoming activity — defer auto-hide
         show()  // ensure the overlay is visible; no-op if already shown
-        animate(to: point)
+        animate(to: point, duration: duration, options: options)
         // Block until the cursor reaches the endpoint (spring begins).
         // The actual click fires immediately after this returns, so the
         // user sees the cursor land before the AX action dispatches.
         await AgentCursorRenderer.shared.waitForArrival()
     }
 
-    /// Animate the cursor to `point` along a Dubins arc path. The
-    /// renderer computes the minimum-turning-radius arc from the current
-    /// position to `point` and integrates it forward with a speed
-    /// profile and spring settle.
+    /// Animate the cursor to `point` along an adaptive Bezier path. The
+    /// renderer chooses a smooth candidate that preserves the current
+    /// heading and settles continuously into the resting cursor angle.
     ///
     /// No-op when disabled.
     public func animate(
@@ -496,7 +507,12 @@ public final class AgentCursor {
         // lower-right — matches the macOS system-cursor convention and
         // gives every click a consistent visual signature regardless of
         // where the cursor started.
-        AgentCursorRenderer.shared.moveTo(point: point, endAngleDegrees: 45.0)
+        AgentCursorRenderer.shared.moveTo(
+            point: point,
+            endAngleDegrees: 45.0,
+            duration: duration ?? glideDurationSeconds,
+            options: options ?? defaultMotionOptions
+        )
     }
 
     /// Post-click visual beat. Suspends the caller for `duration` so the
@@ -572,6 +588,12 @@ public final class AgentCursor {
         let delay = idleHideDelay
         idleHideTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let self else { return }
+                AgentCursorRenderer.shared.beginFadeOut(duration: 0.18)
+            }
+            try? await Task.sleep(nanoseconds: 180_000_000)
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 guard let self else { return }

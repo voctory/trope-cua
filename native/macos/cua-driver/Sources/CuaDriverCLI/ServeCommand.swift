@@ -153,6 +153,7 @@ struct ServeCommand: ParsableCommand {
             // keep mutating live state AND writing back through
             // ConfigStore, so this boot-time apply closes the loop.
             await MainActor.run {
+                AgentCursor.shared.claimPalette(context: "serve:\(socketPath)")
                 AgentCursor.shared.apply(config: config.agentCursor)
             }
 

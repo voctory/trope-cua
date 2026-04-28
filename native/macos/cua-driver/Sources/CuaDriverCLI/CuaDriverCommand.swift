@@ -337,6 +337,9 @@ struct MCPCommand: ParsableCommand {
             // singleton so stdio MCP sessions also honor the user's
             // last-written state.
             await MainActor.run {
+                AgentCursor.shared.claimPalette(
+                    context: "mcp:\(ProcessInfo.processInfo.processIdentifier)"
+                )
                 AgentCursor.shared.apply(config: config.agentCursor)
             }
 

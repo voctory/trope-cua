@@ -34,6 +34,7 @@ public enum GetAgentCursorStateTool {
                 let c = AgentCursor.shared
                 return CursorStateSnapshot(
                     enabled: c.isEnabled,
+                    paletteName: c.palette.name,
                     motion: c.defaultMotionOptions,
                     glideMs: c.glideDurationSeconds * 1000,
                     dwellMs: c.dwellAfterClickSeconds * 1000,
@@ -43,6 +44,7 @@ public enum GetAgentCursorStateTool {
 
             let summary =
                 "cursor: enabled=\(snapshot.enabled)"
+                + " palette=\(snapshot.paletteName)"
                 + " startHandle=\(snapshot.motion.startHandle)"
                 + " endHandle=\(snapshot.motion.endHandle)"
                 + " arcSize=\(snapshot.motion.arcSize)"
@@ -60,6 +62,7 @@ public enum GetAgentCursorStateTool {
 
     private struct CursorStateSnapshot {
         let enabled: Bool
+        let paletteName: String
         let motion: CursorMotionPath.Options
         let glideMs: Double
         let dwellMs: Double
