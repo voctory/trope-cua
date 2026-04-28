@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Windows.Forms;
+using CuaDriver.Win.Cursor;
 using CuaDriver.Win.Tooling;
 
 namespace CuaDriver.Win;
@@ -30,8 +31,9 @@ public static class Program
     {
         var parsed = CliArguments.Parse(args);
         args = parsed.Args;
-        var instanceId = parsed.InstanceId;
         var instanceSpecified = parsed.InstanceSpecified;
+        var command = args.Length == 0 ? "" : args[0].ToLowerInvariant();
+        var instanceId = ResolveRuntimeInstance(parsed.InstanceId, instanceSpecified, command);
         var state = new DriverState(instanceId);
         var registry = ToolRegistry.CreateDefault(state);
         var context = new ToolContext { State = state, Registry = registry };
@@ -42,11 +44,19 @@ public static class Program
             return 0;
         }
 
-        var command = args[0].ToLowerInvariant();
         if (command == "mcp")
         {
-            await new Mcp.McpServer(registry, context).RunAsync(CancellationToken.None).ConfigureAwait(false);
-            return 0;
+            var paletteName = CursorPaletteRegistry.Claim(instanceId, "mcp");
+            state.AgentCursor.SetPalette(AgentCursorPalette.ForNameOrInstance(paletteName, instanceId));
+            try
+            {
+                await new Mcp.McpServer(registry, context).RunAsync(CancellationToken.None).ConfigureAwait(false);
+                return 0;
+            }
+            finally
+            {
+                CursorPaletteRegistry.Release(instanceId);
+            }
         }
 
         if (command == "serve")
@@ -121,5 +131,16 @@ public static class Program
         var directResult = await registry.InvokeAsync(directToolName, directArgs, context, CancellationToken.None).ConfigureAwait(false);
         CliOutput.PrintResult(directResult);
         return directResult.IsError ? 1 : 0;
+    }
+
+    private static string ResolveRuntimeInstance(string? parsedInstanceId, bool instanceSpecified, string command)
+    {
+        if (!command.Equals("mcp", StringComparison.OrdinalIgnoreCase) || instanceSpecified)
+            return DriverInstance.Resolve(parsedInstanceId);
+
+        var envInstance = Environment.GetEnvironmentVariable("CUA_DRIVER_INSTANCE");
+        return string.IsNullOrWhiteSpace(envInstance)
+            ? DriverInstance.Normalize($"mcp-{Environment.ProcessId}")
+            : DriverInstance.Resolve(parsedInstanceId);
     }
 }

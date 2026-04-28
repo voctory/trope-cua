@@ -6,6 +6,21 @@ import subprocess
 EXE = os.environ.get("CUA_DRIVER_EXE", "cua-driver-win.exe")
 
 
+def mcp_call(proc, request_id, tool_name, arguments=None):
+    request = {
+        "jsonrpc": "2.0",
+        "id": request_id,
+        "method": "tools/call",
+        "params": {
+            "name": tool_name,
+            "arguments": arguments or {},
+        },
+    }
+    proc.stdin.write(json.dumps(request) + "\n")
+    proc.stdin.flush()
+    return json.loads(proc.stdout.readline())
+
+
 def test_mcp_tools_call_includes_structured_content_for_receipts():
     request = {
         "jsonrpc": "2.0",
@@ -30,6 +45,44 @@ def test_mcp_tools_call_includes_structured_content_for_receipts():
     assert result["isError"] is True
     assert result["structuredContent"]["route"] == "requires_background_launch_lane"
     assert result["structuredContent"]["ok"] is False
+
+
+def test_parallel_mcp_cursors_allocate_distinct_palettes(tmp_path):
+    env = os.environ.copy()
+    env["CUA_DRIVER_CONFIG_DIR"] = str(tmp_path)
+    env.pop("CUA_DRIVER_INSTANCE", None)
+    processes = []
+
+    try:
+        states = []
+        for index in range(4):
+            processes.append(subprocess.Popen(
+                [EXE, "mcp"],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env=env,
+            ))
+            states.append(mcp_call(processes[index], 1, "get_agent_cursor_state")["result"]["structuredContent"])
+
+        assert [state["palette"]["name"] for state in states] == [
+            "default_blue",
+            "soft_purple",
+            "rose_gold",
+            "mint_lime",
+        ]
+        assert all(state["instance_id"].startswith("mcp-") for state in states)
+        assert len({state["instance_id"] for state in states}) == 4
+    finally:
+        for proc in processes:
+            if proc.stdin:
+                proc.stdin.close()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=5)
 
 
 def test_child_session_status_includes_structured_content():

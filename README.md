@@ -96,6 +96,8 @@ codex mcp add cua-driver-win -- "$env:LOCALAPPDATA\Programs\CuaDriverWin\cua-dri
 }
 ```
 
+Plain MCP sessions without `--instance` automatically claim a runtime cursor identity and palette, so parallel Codex agents show different colored visual cursors. The first live cursor uses the default blue palette; later live sessions rotate through alternate palettes. Set `CUA_DRIVER_INSTANCE` or pass `--instance` only when you need a stable named cursor identity.
+
 ## Safety contract
 
 Every mutating action returns a receipt that names the actual route and lane:

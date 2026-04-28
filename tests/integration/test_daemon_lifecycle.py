@@ -99,8 +99,8 @@ def test_parallel_daemon_cursors_remain_isolated(tmp_path):
         first_status = wait_for_status(first, env)
         processes.append(start_daemon(second, env))
         second_status = wait_for_status(second, env)
-        assert first_status["cursor_palette"] == "soft_purple"
-        assert second_status["cursor_palette"] == "rose_gold"
+        assert first_status["cursor_palette"] == "default_blue"
+        assert second_status["cursor_palette"] == "soft_purple"
         screen = call_instance(first, "get_screen_size", extra_env=env)["structuredContent"]
         first_x = screen["x"] + min(80, max(0, screen["width"] - 1))
         first_y = screen["y"] + min(90, max(0, screen["height"] - 1))
@@ -112,14 +112,14 @@ def test_parallel_daemon_cursors_remain_isolated(tmp_path):
         first_state = call_instance(first, "get_agent_cursor_state", extra_env=env)
         assert first_state["structuredContent"]["visible"] is True
         assert first_state["structuredContent"]["instance_id"] == first
-        assert first_state["structuredContent"]["palette"]["name"] == "soft_purple"
+        assert first_state["structuredContent"]["palette"]["name"] == "default_blue"
 
         second_move = call_instance(second, "move_cursor", {"x": second_x, "y": second_y}, extra_env=env)
         assert second_move["isError"] is False
         second_state = call_instance(second, "get_agent_cursor_state", extra_env=env)
         assert second_state["structuredContent"]["visible"] is True
         assert second_state["structuredContent"]["instance_id"] == second
-        assert second_state["structuredContent"]["palette"]["name"] == "rose_gold"
+        assert second_state["structuredContent"]["palette"]["name"] == "soft_purple"
 
         first_after_second_move = call_instance(first, "get_agent_cursor_state", extra_env=env)
         assert first_after_second_move["structuredContent"]["visible"] is True
