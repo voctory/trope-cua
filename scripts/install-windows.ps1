@@ -27,3 +27,5 @@ if ($FrameworkDependent) {
 }
 
 & (Join-Path $ScriptDir "install.ps1") @argsForInstall
+
+& (Join-Path $ScriptDir "install-skills-windows.ps1")

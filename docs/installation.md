@@ -45,6 +45,8 @@ The installer publishes the binary and copies it to:
 %LOCALAPPDATA%\Programs\CuaDriverWin\cua-driver-win.exe
 ```
 
+The Windows installer also copies the `trope-cua` skill into detected harness skill directories when they already exist.
+
 Verify the installed binary:
 
 ```powershell
