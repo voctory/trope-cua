@@ -23,6 +23,15 @@ internal static class UiTreeMarkdown
           .AppendLine();
     }
 
+    public static bool ShouldRender(UiElementInfo info, bool actionable, int depth)
+    {
+        if (depth == 0 || actionable)
+            return true;
+
+        return !string.IsNullOrWhiteSpace(info.Name)
+               || !string.IsNullOrWhiteSpace(info.AutomationId);
+    }
+
     public static string Filter(string markdown, string query)
     {
         var lines = markdown.Split('\n');

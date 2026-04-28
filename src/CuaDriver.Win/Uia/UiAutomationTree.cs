@@ -29,7 +29,7 @@ internal sealed class UiAutomationTree
         var stopwatch = Stopwatch.StartNew();
 
         var turnId = Interlocked.Increment(ref _nextTurnId);
-        Walk(root, root, windowId, pid, 0, 0, elements, infos, sb, metrics);
+        Walk(root, root, windowId, pid, 0, 0, 0, elements, infos, sb, metrics);
         if (elements.Count < RawHarvestElementThreshold)
             HarvestRawElements(root, pid, elements, infos, sb, metrics);
 
@@ -207,6 +207,7 @@ internal sealed class UiAutomationTree
         long windowId,
         int pid,
         int depth,
+        int renderedDepth,
         int siblingOrdinal,
         Dictionary<int, AutomationElement> cache,
         List<UiElementInfo> infos,
@@ -233,7 +234,11 @@ internal sealed class UiAutomationTree
                 infos.Add(info);
             }
 
-            UiTreeMarkdown.AppendElement(sb, info, depth, actionable);
+            if (UiTreeMarkdown.ShouldRender(info, actionable, depth))
+            {
+                UiTreeMarkdown.AppendElement(sb, info, renderedDepth, actionable);
+                renderedDepth++;
+            }
         }
         catch
         {
@@ -247,7 +252,7 @@ internal sealed class UiAutomationTree
         var ordinal = 0;
         while (child is not null && ordinal < 500)
         {
-            Walk(child, root, windowId, pid, depth + 1, ordinal, cache, infos, sb, metrics);
+            Walk(child, root, windowId, pid, depth + 1, renderedDepth, ordinal, cache, infos, sb, metrics);
             try { child = walker.GetNextSibling(child); }
             catch { break; }
             ordinal++;
