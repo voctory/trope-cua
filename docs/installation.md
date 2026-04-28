@@ -56,7 +56,14 @@ Verify the installed binary:
 
 ## Register with an MCP client
 
-Trope CUA speaks MCP over stdio. Register the installed executable with any MCP-capable client:
+Trope CUA speaks MCP over stdio. The CLI can print client-specific snippets:
+
+```powershell
+trope-cua mcp-config
+trope-cua mcp-config --client cursor
+```
+
+Register the installed executable with any MCP-capable client. Windows example:
 
 ```json
 {
@@ -69,7 +76,28 @@ Trope CUA speaks MCP over stdio. Register the installed executable with any MCP-
 }
 ```
 
+macOS example:
+
+```json
+{
+  "mcpServers": {
+    "trope-cua": {
+      "command": "/Users/YOU/.local/bin/trope-cua",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
 Plain MCP sessions without `--instance` automatically claim a runtime cursor identity and palette. The first live cursor uses `default_blue`; later live sessions rotate through 9 alternate palettes. Set `TROPE_CUA_INSTANCE` or pass `--instance` only when you need a stable named cursor identity.
+
+The cursor is only a visual overlay. Parallel agents can show separate cursor colors in the background, but shared apps and browser profiles still need their own isolation if they are not concurrency-safe.
+
+## macOS Requirements
+
+- macOS 14 or newer.
+- Xcode Command Line Tools for local builds.
+- Accessibility and Screen Recording permissions for `TropeCUA.app`.
 
 ## macOS Install
 
@@ -82,6 +110,18 @@ The macOS native driver lives under `native/macos/trope-cua` and keeps its own S
 This builds and installs the local checkout, which is the right path for testing branch changes.
 Use `./scripts/install-macos-release.sh` only when you want the published macOS release installer.
 
+The local installer builds `TropeCUA.app`, installs it to:
+
+```text
+/Applications/TropeCUA.app
+```
+
+and symlinks the CLI to:
+
+```text
+~/.local/bin/trope-cua
+```
+
 You can also run the platform script directly:
 
 ```bash
@@ -90,6 +130,27 @@ cd native/macos/trope-cua
 ```
 
 macOS builds and permission checks must be run on macOS.
+
+## macOS permissions
+
+macOS requires TCC grants before Trope CUA can inspect apps or capture windows. Start the app once through LaunchServices so System Settings attributes the grants to the app bundle:
+
+```bash
+open -n -g -a TropeCUA --args serve
+```
+
+Then check permissions:
+
+```bash
+trope-cua check_permissions
+```
+
+If either permission is missing, open System Settings > Privacy & Security and enable `TropeCUA.app` under both:
+
+- Accessibility
+- Screen Recording
+
+Rerun `trope-cua check_permissions` after granting. Local ad-hoc rebuilds can change the app signature hash, so macOS may ask for the grants again after reinstalling from source.
 
 ## Run the daemon
 
@@ -125,12 +186,26 @@ trope-cua stop --instance agent-a
 trope-cua stop --all
 ```
 
+On macOS the same commands use a Unix domain socket under `~/Library/Caches/trope-cua`.
+
 ## Config directory
 
 By default, config and daemon registry data live under:
 
 ```text
 %LOCALAPPDATA%\trope-cua
+```
+
+On macOS, config lives under:
+
+```text
+~/Library/Application Support/Trope CUA
+```
+
+and daemon/cache state lives under:
+
+```text
+~/Library/Caches/trope-cua
 ```
 
 Set `TROPE_CUA_CONFIG_DIR` to isolate test runs, sandboxes, or multiple harnesses:
@@ -153,6 +228,8 @@ Use the result as a diagnostic, not as a blanket guarantee that every target app
 
 ## Uninstall
 
+Windows:
+
 ```powershell
 .\scripts\uninstall.ps1
 ```
@@ -161,4 +238,10 @@ You can also remove the installed directory manually:
 
 ```powershell
 Remove-Item "$env:LOCALAPPDATA\Programs\TropeCUA" -Recurse -Force
+```
+
+macOS:
+
+```bash
+native/macos/trope-cua/scripts/uninstall.sh
 ```

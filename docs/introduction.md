@@ -13,7 +13,7 @@ trope-cua click '{"pid":1234,"window_id":456789,"element_index":14}'
 You can run it three ways:
 
 - `trope-cua mcp` as an MCP stdio server.
-- `trope-cua serve` as a long-running named-pipe daemon with persistent element caches.
+- `trope-cua serve` as a long-running daemon with persistent element caches.
 - `trope-cua <tool> '{...}'` as a direct CLI tool call.
 
 ## Background-safety contract
@@ -32,7 +32,7 @@ Trope CUA is designed around an explicit receipt contract. A mutating action is 
 
 The default same-session lane follows these rules:
 
-- Do not move the real Windows cursor.
+- Do not move the user's real cursor.
 - Do not steal foreground focus.
 - Do not use parent-session `SendInput`.
 - Do not report blind browser or hardware-style input as delivered.
@@ -57,16 +57,16 @@ trope-cua set_config '{"key":"capture_mode","value":"som"}'
 
 Trope CUA chooses the safest route available for the target:
 
-- UIA and MSAA actions for accessible controls. `get_window_state` walks the tree, tags actionable nodes with `element_index`, and stores that cache in the current MCP or daemon process.
+- UIA/MSAA on Windows and AX on macOS for accessible controls. `get_window_state` walks the tree, tags actionable nodes with `element_index`, and stores that cache in the current MCP or daemon process.
 - Targeted `HWND` messages for classic controls, text entry, keys, and scrolling when a background-safe child window target exists.
 - Chromium DevTools Protocol for Chromium and Electron windows when a matching `cdp_port` or configured `chromium_debugging_port` is available.
 - Child-session or AppBroadcast lanes for hard cases that require hardware-style input.
 
-The visual agent cursor is a click-through overlay. It shows agent intent and can use distinct colors for parallel agent sessions, but it is not the Windows hardware cursor.
+The visual agent cursor is a click-through overlay. It shows agent intent and can use distinct colors for parallel agent sessions, but it is not the user's hardware cursor.
 
 ## Who it is for
 
-- Agent harnesses that need to control Windows apps through MCP or CLI tools.
+- Agent harnesses that need to control native desktop apps through MCP or CLI tools.
 - Local development loops where the user keeps working while an agent inspects, clicks, types, and verifies a target app.
 - Trajectory collection and replay where the visible cursor should be an overlay, not the user's actual pointer.
 - Experiments with isolated hard-case lanes such as child sessions and AppBroadcast.

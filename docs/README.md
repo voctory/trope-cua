@@ -1,6 +1,6 @@
 # Trope CUA documentation
 
-Trope CUA is a Windows background computer-use driver for agent harnesses. It exposes a target-window screenshot, a UI Automation tree, and cursor-safe action tools over MCP, a long-running daemon, or direct CLI calls.
+Trope CUA is a native background computer-use driver for agent harnesses. It exposes target-window screenshots, accessibility trees, and cursor-safe action tools over MCP, a long-running daemon, or direct CLI calls.
 
 This documentation is organized for two readers:
 

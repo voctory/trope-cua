@@ -1,6 +1,15 @@
 # Quickstart
 
-This quickstart drives an existing Windows app without treating the user's real cursor or foreground app as the automation lane.
+This quickstart drives an existing desktop app without treating the user's real cursor or foreground app as the automation lane.
+
+On macOS, grant permissions before the first real automation loop:
+
+```bash
+open -n -g -a TropeCUA --args serve
+trope-cua check_permissions
+```
+
+Allow `TropeCUA.app` in System Settings > Privacy & Security > Accessibility and Screen Recording, then rerun `trope-cua check_permissions` until both are granted.
 
 ## 1. List windows
 
@@ -68,7 +77,7 @@ The daemon keeps the UIA element cache alive between calls.
 
 ## 5. Use MCP for agent harnesses
 
-Register `trope-cua.exe mcp` with your MCP client. The harness will start the stdio process and call tools directly.
+Register `trope-cua.exe mcp` on Windows or `trope-cua mcp` on macOS with your MCP client. The harness will start the stdio process and call tools directly.
 
 Normal agent loop:
 

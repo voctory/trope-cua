@@ -2,6 +2,8 @@
 
 Trope CUA is a native computer-use driver for agent harnesses. It exposes app/window state, screenshots, and cursor-safe actions over MCP, a daemon, or direct CLI calls.
 
+Agents can drive background windows without using the user's hardware cursor as the automation lane. The visible cursor is a click-through overlay, so parallel agent sessions can run with separate cursor colors while the user keeps working.
+
 ## Platforms
 
 - Windows: current production implementation at the repository root.
