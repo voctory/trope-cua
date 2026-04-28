@@ -2,7 +2,6 @@ name: Cursor, Capture, or Recording Bug
 description: Report an issue with the visual cursor, screenshots, zoom, or trajectory recording
 labels:
   - bug
-  - needs triage
 body:
   - type: markdown
     attributes:

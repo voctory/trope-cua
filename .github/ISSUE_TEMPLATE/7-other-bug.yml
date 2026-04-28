@@ -2,7 +2,6 @@ name: Other Bug
 description: Report a bug that does not fit the other templates
 labels:
   - bug
-  - needs triage
 body:
   - type: markdown
     attributes:

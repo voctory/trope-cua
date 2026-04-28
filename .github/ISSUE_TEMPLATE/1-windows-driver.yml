@@ -2,8 +2,6 @@ name: Windows Driver Bug
 description: Report a Windows UIA, HWND, AppBroadcast, or daemon issue
 labels:
   - bug
-  - needs triage
-  - windows
 body:
   - type: markdown
     attributes:

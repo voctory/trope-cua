@@ -2,8 +2,6 @@ name: macOS Driver Bug
 description: Report a macOS AX, ScreenCaptureKit, TCC, browser, or daemon issue
 labels:
   - bug
-  - needs triage
-  - macos
 body:
   - type: markdown
     attributes:

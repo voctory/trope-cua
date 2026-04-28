@@ -2,8 +2,6 @@ name: Browser Automation Bug
 description: Report a browser, WebView, Electron, CDP, or JavaScript automation issue
 labels:
   - bug
-  - needs triage
-  - browser
 body:
   - type: markdown
     attributes:

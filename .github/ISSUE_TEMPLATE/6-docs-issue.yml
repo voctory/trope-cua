@@ -1,8 +1,7 @@
 name: Documentation Issue
 description: Report missing, incorrect, confusing, or stale documentation
 labels:
-  - docs
-  - needs triage
+  - documentation
 body:
   - type: markdown
     attributes:

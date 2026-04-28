@@ -2,7 +2,6 @@ name: Feature Request
 description: Propose a new Trope CUA feature or behavior change
 labels:
   - enhancement
-  - needs triage
 body:
   - type: markdown
     attributes:
