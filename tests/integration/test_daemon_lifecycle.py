@@ -148,18 +148,18 @@ def test_agent_cursor_idle_hide_lifecycle(tmp_path):
         x = screen["x"] + min(120, max(0, screen["width"] - 1))
         y = screen["y"] + min(140, max(0, screen["height"] - 1))
 
-        motion = call_instance(instance, "set_agent_cursor_motion", {"idle_hide_ms": 100}, extra_env=env)
+        motion = call_instance(instance, "set_agent_cursor_motion", {"idle_hide_ms": 1000}, extra_env=env)
         assert motion["isError"] is False
 
         moved = call_instance(instance, "move_cursor", {"x": x, "y": y}, extra_env=env)
         assert moved["isError"] is False
 
-        visible = call_instance(instance, "get_agent_cursor_state", extra_env=env)
-        assert visible["structuredContent"]["visible"] is True
+        visible = wait_for_cursor_state(instance, env, visible=True)
+        assert_near(visible["screen_x"], x)
+        assert_near(visible["screen_y"], y)
 
-        time.sleep(0.8)
-        hidden = call_instance(instance, "get_agent_cursor_state", extra_env=env)
-        assert hidden["structuredContent"]["visible"] is False
+        time.sleep(1.4)
+        wait_for_cursor_state(instance, env, visible=False)
     finally:
         stop_daemon(instance, env)
         if process is not None:
