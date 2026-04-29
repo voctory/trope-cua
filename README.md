@@ -10,9 +10,15 @@ The Windows implementation lives at the repository root. The macOS Swift impleme
 
 ## Demo
 
-[![Trope CUA demo: an agent operates a desktop app in the background](assets/trope-cua-demo.gif)](https://x.com/mattchowx/status/2049134343801450559)
+<p align="center">
+  <a href="https://x.com/mattchowx/status/2049134343801450559">
+    <img src="assets/trope-cua-demo.gif" alt="Trope CUA demo: an agent operates a desktop app in the background">
+  </a>
+</p>
 
-Click the demo to watch the full video (redirects to X).
+<p align="center">
+  Click the demo to watch the full video (redirects to X).
+</p>
 
 ## Install From Source
 
