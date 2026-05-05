@@ -92,6 +92,7 @@ internal sealed class ToolRegistry
             new Tools.LaunchAppTool(),
             new Tools.GetWindowStateTool(),
             new Tools.GetAccessibilityTreeTool(),
+            new Tools.FindElementTool(),
             new Tools.ScreenshotTool(),
             new Tools.ZoomTool(),
             new Tools.ClickTool(),
