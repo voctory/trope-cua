@@ -8,7 +8,7 @@ namespace CuaDriver.Win.Uia;
 
 internal sealed class UiAutomationTree
 {
-    private const int RawHarvestElementThreshold = 20;
+    private const int RawHarvestElementThreshold = 256;
 
     private readonly object _gate = new();
     private readonly Dictionary<(int Pid, long WindowId), SessionState> _sessions = new();

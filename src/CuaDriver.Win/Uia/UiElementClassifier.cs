@@ -27,6 +27,7 @@ internal static class UiElementClassifier
     private static bool IsLikelyActionableControlTypeCore(string type)
     {
         return type.Contains("button")
+               || type == "link"
                || type.Contains("edit")
                || type.Contains("hyperlink")
                || type.Contains("menu item")
