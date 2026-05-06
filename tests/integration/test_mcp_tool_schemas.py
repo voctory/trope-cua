@@ -39,12 +39,27 @@ def test_mcp_tool_schemas_are_openai_compatible_plain_objects():
     click = tools["click"]["inputSchema"]
     assert click["required"] == ["pid"]
     assert {"element_index", "x", "y"}.issubset(click["properties"])
+    assert click["properties"]["modifier"]["items"] == {"type": "string"}
 
     launch = tools["launch_app"]["inputSchema"]
     assert {"path", "exe", "name", "app_id"}.issubset(launch["properties"])
 
     zoom = tools["zoom"]["inputSchema"]
     assert "window_id" in zoom["properties"]
+
+    for tool_name, tool in tools.items():
+        assert_array_schemas_declare_items(tool["inputSchema"], f"{tool_name}.inputSchema")
+
+
+def assert_array_schemas_declare_items(schema, path):
+    if isinstance(schema, dict):
+        if schema.get("type") == "array":
+            assert "items" in schema, f"{path} array schema missing items"
+        for key, value in schema.items():
+            assert_array_schemas_declare_items(value, f"{path}.{key}")
+    elif isinstance(schema, list):
+        for index, value in enumerate(schema):
+            assert_array_schemas_declare_items(value, f"{path}[{index}]")
 
 
 def test_mcp_initialize_includes_background_agent_instructions():
