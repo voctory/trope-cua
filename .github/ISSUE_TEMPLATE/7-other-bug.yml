@@ -1,0 +1,50 @@
+name: Other Bug
+description: Report a bug that does not fit the other templates
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before submitting a new issue, please search existing issues first. If one already covers the same problem, add a thumbs-up reaction instead of opening a duplicate.
+
+        Do not include secrets, private window contents, tokens, or sensitive vulnerability details. For security issues, follow SECURITY.md instead of filing a public issue.
+  - type: input
+    id: version
+    attributes:
+      label: Trope CUA version or commit
+      description: Use the released version, installer version, or `git rev-parse --short HEAD`.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: Include the operating system, version, and architecture.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What issue are you seeing?
+      description: Include full error messages and structured output with private data redacted. Prefer text over screenshots.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What steps can reproduce the bug?
+      description: Include the exact MCP tool call, CLI command, target app setup, and any relevant test fixture.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What is the expected behavior?
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional information
+      description: Add logs, screenshots, receipts, or hypotheses that help diagnose the issue.

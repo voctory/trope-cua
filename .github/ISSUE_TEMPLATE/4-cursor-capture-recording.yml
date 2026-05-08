@@ -1,0 +1,81 @@
+name: Cursor, Capture, or Recording Bug
+description: Report an issue with the visual cursor, screenshots, zoom, or trajectory recording
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before submitting a new issue, please search existing issues first. If one already covers the same problem, add a thumbs-up reaction instead of opening a duplicate.
+
+        Do not include secrets, private window contents, tokens, or sensitive vulnerability details. For security issues, follow SECURITY.md instead of filing a public issue.
+  - type: input
+    id: version
+    attributes:
+      label: Trope CUA version or commit
+      description: Use the released version, installer version, or `git rev-parse --short HEAD`.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: On macOS, run `uname -mprs`. On Windows, include the Windows version and architecture.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Visual agent cursor
+        - Target-window capture
+        - Screenshot or zoom
+        - Trajectory recording
+        - Trajectory replay
+        - Configuration
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: target
+    attributes:
+      label: Target application or window
+      description: Include app name, process name, bundle id, window title, or display setup if relevant.
+  - type: input
+    id: tool
+    attributes:
+      label: Tool or command involved
+      description: For example `move_cursor`, `screenshot`, `zoom`, `set_recording`, `replay_trajectory`, or `set_config`.
+  - type: textarea
+    id: actual
+    attributes:
+      label: What issue are you seeing?
+      description: Include full error messages and structured output with private data redacted. Prefer text over screenshots.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Structured output or recording metadata
+      description: Include relevant receipts, config, recording state, dimensions, DPI, or paths with private data redacted.
+      render: json
+  - type: textarea
+    id: steps
+    attributes:
+      label: What steps can reproduce the bug?
+      description: Include the exact MCP tool call, CLI command, target app setup, and any relevant test fixture.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What is the expected behavior?
+      description: Describe the expected cursor, capture, zoom, recording, replay, or configuration behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional information
+      description: Add screenshots, recordings, display scale, multi-monitor notes, or hypotheses that help diagnose the issue.

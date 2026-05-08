@@ -1,0 +1,46 @@
+name: Documentation Issue
+description: Report missing, incorrect, confusing, or stale documentation
+labels:
+  - documentation
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before submitting a new docs issue, please search existing issues first. If one already covers the same problem, add a thumbs-up reaction instead of opening a duplicate.
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: What type of documentation issue is this?
+      multiple: true
+      options:
+        - Documentation is missing
+        - Documentation is incorrect
+        - Documentation is confusing
+        - Documentation is stale
+        - Example code or command does not work
+        - Link is broken
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: Where did you find it?
+      description: Provide the file path, heading, URL, or command output if possible.
+  - type: textarea
+    id: issue
+    attributes:
+      label: What is the issue?
+      description: Describe what is missing, wrong, confusing, or stale.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should the documentation say instead?
+      description: Suggest wording or behavior if you know it.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional information
+      description: Add related links, affected platforms, or examples.

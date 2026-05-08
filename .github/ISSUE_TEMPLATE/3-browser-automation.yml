@@ -1,0 +1,98 @@
+name: Browser Automation Bug
+description: Report a browser, WebView, Electron, CDP, or JavaScript automation issue
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before submitting a new issue, please search existing issues first. If one already covers the same problem, add a thumbs-up reaction instead of opening a duplicate.
+
+        Do not include secrets, private window contents, cookies, tokens, or sensitive vulnerability details. For security issues, follow SECURITY.md instead of filing a public issue.
+  - type: input
+    id: version
+    attributes:
+      label: Trope CUA version or commit
+      description: Use the released version, installer version, or `git rev-parse --short HEAD`.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: On macOS, run `uname -mprs`. On Windows, include the Windows version and architecture.
+    validations:
+      required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser or runtime
+      options:
+        - Chrome
+        - Edge
+        - Brave
+        - Safari
+        - Electron
+        - WKWebView or Tauri
+        - Other Chromium
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: debugging
+    attributes:
+      label: Debugging or automation port
+      description: Include CDP or WebKit inspector port configuration if used.
+  - type: input
+    id: target
+    attributes:
+      label: Target page or app
+      description: Include the app name, URL type, process name, or window title. Redact sensitive URLs.
+    validations:
+      required: true
+  - type: input
+    id: tool
+    attributes:
+      label: Tool, route, or lane involved
+      description: For example `click`, `type_text_chars`, `page`, `query_dom`, `cdp`, `browser_safe`, or `requires_cdp_or_child_session`.
+  - type: textarea
+    id: actual
+    attributes:
+      label: What issue are you seeing?
+      description: Include full error messages and structured receipts with private data redacted. Prefer text over screenshots.
+    validations:
+      required: true
+  - type: textarea
+    id: receipt
+    attributes:
+      label: Action receipt or structured output
+      description: Include fields such as `route`, `lane`, `background_safe`, `cursor_moved`, `foreground_changed`, and `session` when available.
+      render: json
+  - type: textarea
+    id: steps
+    attributes:
+      label: What steps can reproduce the bug?
+      description: Include the exact MCP tool call, browser launch arguments, target app setup, and any relevant test fixture.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What is the expected behavior?
+      description: Describe the expected browser route, refusal, receipt, focus behavior, or output.
+    validations:
+      required: true
+  - type: checkboxes
+    id: regressions
+    attributes:
+      label: Browser safety checks
+      options:
+        - label: The browser became foreground unexpectedly.
+        - label: Input went to the browser chrome instead of the target page.
+        - label: A browser route succeeded after an unsafe fallback.
+        - label: CDP or inspector configuration was ignored.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional information
+      description: Add logs, screenshots, browser versions, or hypotheses that help diagnose the issue.

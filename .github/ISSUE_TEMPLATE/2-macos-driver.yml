@@ -1,0 +1,95 @@
+name: macOS Driver Bug
+description: Report a macOS AX, ScreenCaptureKit, TCC, browser, or daemon issue
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before submitting a new issue, please search existing issues first. If one already covers the same problem, add a thumbs-up reaction instead of opening a duplicate.
+
+        Do not include secrets, private window contents, tokens, or sensitive vulnerability details. For security issues, follow SECURITY.md instead of filing a public issue.
+  - type: input
+    id: version
+    attributes:
+      label: Trope CUA version or commit
+      description: Use the released version, installer version, or `git rev-parse --short HEAD`.
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version and architecture
+      description: Run `uname -mprs` and include your macOS version.
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Install or run mode
+      options:
+        - Installed package
+        - Built from source
+        - Swift package
+        - Test harness
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: permissions
+    attributes:
+      label: Permission status
+      description: Include Accessibility and Screen Recording status from `check_permissions` if available.
+  - type: input
+    id: target
+    attributes:
+      label: Target application
+      description: Include app name, bundle id, process id, or window title if known.
+    validations:
+      required: true
+  - type: input
+    id: tool
+    attributes:
+      label: Tool, route, or lane involved
+      description: For example `get_window_state`, `click`, `type_text_chars`, `screenshot`, `ax`, `vision`, or `som`.
+  - type: textarea
+    id: actual
+    attributes:
+      label: What issue are you seeing?
+      description: Include full error messages and structured receipts with private data redacted. Prefer text over screenshots.
+    validations:
+      required: true
+  - type: textarea
+    id: receipt
+    attributes:
+      label: Action receipt or structured output
+      description: Include fields such as `route`, `lane`, `background_safe`, `cursor_moved`, `foreground_changed`, and `session` when available.
+      render: json
+  - type: textarea
+    id: steps
+    attributes:
+      label: What steps can reproduce the bug?
+      description: Include the exact MCP tool call, CLI command, target app setup, and any relevant test fixture.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What is the expected behavior?
+      description: Describe the expected route, receipt, focus behavior, cursor behavior, capture, or output.
+    validations:
+      required: true
+  - type: checkboxes
+    id: regressions
+    attributes:
+      label: No-regression contract
+      options:
+        - label: The user's real cursor moved unexpectedly.
+        - label: Foreground focus changed unexpectedly.
+        - label: Input appeared in the wrong window or session.
+        - label: The action reported success without a background-safe receipt.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional information
+      description: Add logs, screenshots, permission prompts, or hypotheses that help diagnose the issue.
