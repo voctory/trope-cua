@@ -6,6 +6,7 @@ internal sealed record UiElementInfo(
     int ElementIndex,
     string ControlType,
     string Name,
+    string Value,
     string AutomationId,
     string ClassName,
     RectDto Bounds,

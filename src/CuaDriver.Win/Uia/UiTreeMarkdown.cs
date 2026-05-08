@@ -9,6 +9,7 @@ internal static class UiTreeMarkdown
         var indent = new string(' ', depth * 2);
         var indexText = actionable ? $"[e{info.ElementIndex}] " : "";
         var name = string.IsNullOrWhiteSpace(info.Name) ? "" : $" \"{Escape(info.Name)}\"";
+        var value = ShouldRenderValue(info) ? $" value=\"{Escape(info.Value)}\"" : "";
         var id = HasUsefulAutomationId(info.AutomationId) ? $" id={Escape(info.AutomationId)}" : "";
         var disabled = actionable && !info.IsEnabled ? " disabled" : "";
         var offscreen = info.IsOffscreen ? " offscreen" : "";
@@ -17,6 +18,7 @@ internal static class UiTreeMarkdown
           .Append(indexText)
           .Append(info.ControlType)
           .Append(name)
+          .Append(value)
           .Append(id)
           .Append(disabled)
           .Append(offscreen)
@@ -29,6 +31,7 @@ internal static class UiTreeMarkdown
             return true;
 
         return !string.IsNullOrWhiteSpace(info.Name)
+               || !string.IsNullOrWhiteSpace(info.Value)
                || HasUsefulAutomationId(info.AutomationId);
     }
 
@@ -64,6 +67,10 @@ internal static class UiTreeMarkdown
     }
 
     private static string Escape(string s) => s.Replace("\r", " ").Replace("\n", " ").Trim();
+
+    private static bool ShouldRenderValue(UiElementInfo info)
+        => !string.IsNullOrWhiteSpace(info.Value)
+           && !string.Equals(info.Value.Trim(), info.Name.Trim(), StringComparison.Ordinal);
 
     private static bool HasUsefulAutomationId(string automationId)
     {

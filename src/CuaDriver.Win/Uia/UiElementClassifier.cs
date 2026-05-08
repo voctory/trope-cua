@@ -24,6 +24,16 @@ internal static class UiElementClassifier
                || type.Contains("custom");
     }
 
+    public static bool ShouldReadValue(string controlType)
+    {
+        var type = controlType.ToLowerInvariant();
+        return type.Contains("edit")
+               || type.Contains("combo box")
+               || type.Contains("spin button")
+               || type.Contains("slider")
+               || type.Contains("scroll bar");
+    }
+
     private static bool IsLikelyActionableControlTypeCore(string type)
     {
         return type.Contains("button")

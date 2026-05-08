@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -654,11 +655,16 @@ internal sealed class UiAutomationTree
         var patterns = readPatterns && UiElementClassifier.ShouldReadPatterns(controlType)
             ? (Safe(() => element.GetSupportedPatterns().Select(PatternName).Distinct().OrderBy(x => x).ToArray()) ?? [])
             : [];
+        var isPassword = Safe(() => current.IsPassword);
+        var value = readPatterns && !isPassword && UiElementClassifier.ShouldReadValue(controlType)
+            ? ReadElementValue(element)
+            : "";
 
         return new UiElementInfo(
             proposedIndex,
             controlType,
             Safe(() => current.Name) ?? "",
+            value,
             Safe(() => current.AutomationId) ?? "",
             Safe(() => current.ClassName) ?? "",
             RectDto.From(new RECT
@@ -675,6 +681,60 @@ internal sealed class UiAutomationTree
             patterns);
     }
 
+    private static string ReadElementValue(AutomationElement element)
+    {
+        try
+        {
+            if (element.TryGetCurrentPattern(ValuePattern.Pattern, out var raw) &&
+                raw is ValuePattern valuePattern)
+            {
+                return NormalizeRenderedValue(valuePattern.Current.Value);
+            }
+        }
+        catch
+        {
+            // Some providers expose ValuePattern but reject reads while the tree is moving.
+        }
+
+        try
+        {
+            var rawValue = element.GetCurrentPropertyValue(ValuePattern.ValueProperty, ignoreDefaultValue: true);
+            if (rawValue is string text)
+                return NormalizeRenderedValue(text);
+        }
+        catch
+        {
+            // Fall through to RangeValue for numeric controls.
+        }
+
+        try
+        {
+            if (element.TryGetCurrentPattern(RangeValuePattern.Pattern, out var raw) &&
+                raw is RangeValuePattern range)
+            {
+                return range.Current.Value.ToString(CultureInfo.InvariantCulture);
+            }
+        }
+        catch
+        {
+            // Treat unreadable provider values as absent.
+        }
+
+        return "";
+    }
+
+    private static string NormalizeRenderedValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "";
+
+        var normalized = Regex.Replace(value.Trim(), @"\s+", " ");
+        const int maxRenderedValueLength = 512;
+        return normalized.Length <= maxRenderedValueLength
+            ? normalized
+            : normalized[..maxRenderedValueLength];
+    }
+
     private static bool MatchesSearch(
         UiElementInfo info,
         string query,
@@ -686,9 +746,10 @@ internal sealed class UiAutomationTree
         var controlTypeMatches = controlType.Length == 0 || ControlTypeMatches(normalizedType, controlType);
 
         var normalizedName = NormalizeSearch(info.Name);
+        var normalizedValue = NormalizeSearch(info.Value);
         var normalizedId = NormalizeSearch(info.AutomationId);
         var normalizedClass = NormalizeSearch(info.ClassName);
-        var haystack = string.Join(' ', normalizedName, normalizedId, normalizedClass, normalizedType).Trim();
+        var haystack = string.Join(' ', normalizedName, normalizedValue, normalizedId, normalizedClass, normalizedType).Trim();
 
         var hasPrimaryHint = query.Length > 0 || automationId.Length > 0 || identifier.Length > 0;
         if (!hasPrimaryHint)
@@ -701,6 +762,7 @@ internal sealed class UiAutomationTree
 
         if (identifier.Length > 0 &&
             (normalizedId.Contains(identifier, StringComparison.Ordinal) ||
+             normalizedValue.Contains(identifier, StringComparison.Ordinal) ||
              normalizedName.Contains(identifier, StringComparison.Ordinal) ||
              normalizedClass.Contains(identifier, StringComparison.Ordinal)))
             return true;
@@ -714,10 +776,11 @@ internal sealed class UiAutomationTree
             return true;
 
         var normalizedName = NormalizeSearch(info.Name);
+        var normalizedValue = NormalizeSearch(info.Value);
         var normalizedId = NormalizeSearch(info.AutomationId);
         var normalizedClass = NormalizeSearch(info.ClassName);
         var normalizedType = NormalizeControlType(info.ControlType);
-        var haystack = string.Join(' ', normalizedName, normalizedId, normalizedClass, normalizedType).Trim();
+        var haystack = string.Join(' ', normalizedName, normalizedValue, normalizedId, normalizedClass, normalizedType).Trim();
         return TextMatches(haystack, requiredQuery);
     }
 

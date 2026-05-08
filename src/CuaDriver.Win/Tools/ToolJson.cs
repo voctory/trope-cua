@@ -44,20 +44,26 @@ internal static class ToolJson
         ["mime_type"] = capture.MimeType
     };
 
-    public static JsonObject Element(UiElementInfo element) => new()
+    public static JsonObject Element(UiElementInfo element)
     {
-        ["element_index"] = element.ElementIndex,
-        ["control_type"] = element.ControlType,
-        ["name"] = element.Name,
-        ["automation_id"] = element.AutomationId,
-        ["class_name"] = element.ClassName,
-        ["bounds"] = Rect(element.Bounds),
-        ["enabled"] = element.IsEnabled,
-        ["offscreen"] = element.IsOffscreen,
-        ["process_id"] = element.ProcessId,
-        ["native_window_handle"] = element.NativeWindowHandle,
-        ["patterns"] = Array(element.Patterns)
-    };
+        var record = new JsonObject
+        {
+            ["element_index"] = element.ElementIndex,
+            ["control_type"] = element.ControlType,
+            ["name"] = element.Name,
+            ["automation_id"] = element.AutomationId,
+            ["class_name"] = element.ClassName,
+            ["bounds"] = Rect(element.Bounds),
+            ["enabled"] = element.IsEnabled,
+            ["offscreen"] = element.IsOffscreen,
+            ["process_id"] = element.ProcessId,
+            ["native_window_handle"] = element.NativeWindowHandle,
+            ["patterns"] = Array(element.Patterns)
+        };
+        if (!string.IsNullOrWhiteSpace(element.Value))
+            record["value"] = element.Value;
+        return record;
+    }
 
     public static JsonObject UiSnapshotMetrics(UiSnapshotMetrics metrics) => new()
     {
