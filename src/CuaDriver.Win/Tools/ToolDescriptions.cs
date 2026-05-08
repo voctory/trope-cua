@@ -24,6 +24,12 @@ internal static class ToolDescriptions
         capture_mode override: som=screenshot+tree (default), ax=tree only, vision=screenshot only. Use ax for cheap UIA refreshes and som when pixels are needed. Use query to trim Markdown to matches plus ancestors; indices still resolve against the full cached tree. tree_markdown is text-only by default; pass include_structured_tree=true only if JSON duplication is needed.
         """;
 
+    public const string FindElement = """
+        Find matching UIA elements in one explicit (pid, window_id) without building a full window snapshot. This is the fast path for known selectors such as visible labels, automation ids, and control types. Pass target_zone=browser_chrome for address/toolbars and target_zone=page_content for web document links/results when known. Pass required_query when a target is only valid inside a specific page or state, such as a Google Search results page.
+
+        The returned element_index values are cached for the same pid/window_id and can be passed directly to click, type_text, press_key, hotkey, scroll, or set_value. Use get_window_state when you need broad inspection; use find_element when you already know the target string or automation id.
+        """;
+
     public const string Click = """
         Left-click a target pid. Prefer element_index + window_id from get_window_state; this performs semantic UIA/MSAA action and is background-safe when the receipt says so. action may be press, show_menu, pick, confirm, cancel, or open.
 

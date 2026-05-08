@@ -153,5 +153,13 @@ internal static class JsonArgs
     }
 
     public static JsonObject Prop(string type, string description)
-        => new() { ["type"] = type, ["description"] = description };
+    {
+        var prop = new JsonObject { ["type"] = type, ["description"] = description };
+        if (string.Equals(type, "array", StringComparison.Ordinal))
+        {
+            prop["items"] = new JsonObject { ["type"] = "string" };
+        }
+
+        return prop;
+    }
 }

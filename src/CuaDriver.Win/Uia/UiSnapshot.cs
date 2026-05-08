@@ -7,7 +7,8 @@ internal sealed record UiSnapshot(
     string TreeMarkdown,
     int ElementCount,
     IReadOnlyList<UiElementInfo> Elements,
-    UiSnapshotMetrics Metrics);
+    UiSnapshotMetrics Metrics,
+    bool RequiredMatched);
 
 internal sealed record UiSnapshotMetrics(
     long ElapsedMs,

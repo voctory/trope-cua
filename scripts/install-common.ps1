@@ -31,7 +31,7 @@ function Get-TropeCuaRequiredSdkVersion {
 function Test-TropeCuaDotnetHasSdk {
   param(
     [string]$DotnetPath,
-    [string]$SdkVersion
+    [string]$Root
   )
 
   if ([string]::IsNullOrWhiteSpace($DotnetPath) -or -not (Test-Path $DotnetPath)) {
@@ -40,12 +40,22 @@ function Test-TropeCuaDotnetHasSdk {
     }
   }
 
-  $installedSdks = @(& $DotnetPath --list-sdks 2>$null)
-  if ($LASTEXITCODE -ne 0) {
-    return $false
+  $selectedSdk = $null
+  $exitCode = 1
+  Push-Location -LiteralPath $Root
+  try {
+    try {
+      $selectedSdk = & $DotnetPath --version 2>$null
+      $exitCode = $LASTEXITCODE
+    } catch {
+      $selectedSdk = $null
+      $exitCode = 1
+    }
+  } finally {
+    Pop-Location
   }
 
-  return [bool]($installedSdks | Where-Object { $_ -match "^$([regex]::Escape($SdkVersion))\s+\[" } | Select-Object -First 1)
+  return $exitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($selectedSdk)
 }
 
 function Resolve-TropeCuaDotnet {
@@ -68,7 +78,7 @@ function Resolve-TropeCuaDotnet {
   $candidates += "dotnet"
 
   foreach ($candidate in ($candidates | Select-Object -Unique)) {
-    if (Test-TropeCuaDotnetHasSdk -DotnetPath $candidate -SdkVersion $requestedSdk) {
+    if (Test-TropeCuaDotnetHasSdk -DotnetPath $candidate -Root $Root) {
       return $candidate
     }
   }

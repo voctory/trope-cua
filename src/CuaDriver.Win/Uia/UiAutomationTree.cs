@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Automation;
 using CuaDriver.Win.Win32;
@@ -8,7 +9,8 @@ namespace CuaDriver.Win.Uia;
 
 internal sealed class UiAutomationTree
 {
-    private const int RawHarvestElementThreshold = 20;
+    private const int RawHarvestElementThreshold = 256;
+    private static readonly string[] BrowserChromeRootAutomationIds = ["nav-bar", "urlbar"];
 
     private readonly object _gate = new();
     private readonly Dictionary<(int Pid, long WindowId), SessionState> _sessions = new();
@@ -45,13 +47,179 @@ internal sealed class UiAutomationTree
             markdown,
             elements.Count,
             infos,
-            metrics.Build(stopwatch.ElapsedMilliseconds, markdown.Length));
+            metrics.Build(stopwatch.ElapsedMilliseconds, markdown.Length),
+            RequiredMatched: true);
         lock (_gate)
         {
             _sessions[(pid, windowId)] = new SessionState(turnId, elements, snapshot);
         }
 
         return snapshot;
+    }
+
+    public UiSnapshot FindElements(
+        int pid,
+        long windowId,
+        string? query,
+        string? requiredQuery,
+        string? automationId,
+        string? identifier,
+        string? controlType,
+        string? targetZone,
+        int limit,
+        int maxVisited,
+        bool includeOffscreen,
+        CancellationToken cancellationToken)
+    {
+        var hwnd = new IntPtr(windowId);
+        var root = AutomationElement.FromHandle(hwnd)
+                   ?? throw new InvalidOperationException($"No UI Automation element for HWND {windowId}.");
+
+        limit = Math.Clamp(limit, 1, 50);
+        maxVisited = Math.Clamp(maxVisited, 50, 5000);
+
+        var elements = new Dictionary<int, AutomationElement>();
+        var infos = new List<UiElementInfo>();
+        var sb = new StringBuilder();
+        var metrics = new SnapshotMetricsBuilder();
+        var stopwatch = Stopwatch.StartNew();
+        var rootRect = Safe(() => root.Current.BoundingRectangle);
+        var turnId = Interlocked.Increment(ref _nextTurnId);
+        var normalizedQuery = NormalizeSearch(query);
+        var normalizedRequiredQuery = NormalizeSearch(requiredQuery);
+        var normalizedAutomationId = NormalizeSearch(automationId);
+        var normalizedIdentifier = NormalizeSearch(identifier);
+        var normalizedControlType = NormalizeControlType(controlType);
+        var normalizedTargetZone = NormalizeSearch(targetZone);
+
+        TryAddExactAutomationIdMatch(automationId);
+        if (elements.Count < limit && !string.Equals(automationId, identifier, StringComparison.OrdinalIgnoreCase))
+            TryAddExactAutomationIdMatch(identifier);
+
+        var requiredMatched = normalizedRequiredQuery.Length == 0;
+
+        foreach (var subtreeRoot in SelectSearchRoots(root, normalizedTargetZone, rootRect))
+        {
+            if (HasSatisfiedLimit())
+                break;
+
+            Visit(subtreeRoot, depth: 0);
+        }
+
+        stopwatch.Stop();
+        if (!requiredMatched && elements.Count > 0)
+        {
+            elements.Clear();
+            infos.Clear();
+            sb.Clear();
+        }
+
+        var markdown = sb.ToString().TrimEnd();
+        var snapshot = new UiSnapshot(
+            pid,
+            windowId,
+            turnId,
+            markdown,
+            elements.Count,
+            infos,
+            metrics.Build(stopwatch.ElapsedMilliseconds, markdown.Length),
+            requiredMatched);
+        lock (_gate)
+        {
+            _sessions[(pid, windowId)] = new SessionState(turnId, elements, snapshot);
+        }
+
+        return snapshot;
+
+        void Visit(AutomationElement element, int depth)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (depth > 35 || metrics.ControlViewVisited >= maxVisited || HasSatisfiedLimit())
+                return;
+
+            metrics.ControlViewVisited++;
+            UiElementInfo? lightInfo = null;
+            try
+            {
+                lightInfo = MakeInfo(element, elements.Count, pid, readPatterns: false);
+                if (lightInfo.ProcessId != 0 && lightInfo.ProcessId != pid && !IsSameWindowTree(element, root, windowId))
+                    return;
+
+                requiredMatched |= MatchesRequiredContext(lightInfo, normalizedRequiredQuery);
+
+                if ((!includeOffscreen && lightInfo.IsOffscreen)
+                    || !IsInsideRoot(lightInfo.Bounds, rootRect)
+                    || !MatchesSearch(lightInfo, normalizedQuery, normalizedAutomationId, normalizedIdentifier, normalizedControlType))
+                {
+                    // Keep walking children even when this node does not match.
+                }
+                else
+                {
+                    TryAddMatch(element);
+                    if (HasSatisfiedLimit())
+                        return;
+                }
+            }
+            catch
+            {
+                // Element vanished or denied a property. Continue below if possible.
+            }
+
+            var walker = TreeWalker.ControlViewWalker;
+            AutomationElement? child = null;
+            try { child = walker.GetFirstChild(element); } catch { }
+
+            var ordinal = 0;
+            while (child is not null && ordinal < 1000 && metrics.ControlViewVisited < maxVisited && !HasSatisfiedLimit())
+            {
+                Visit(child, depth + 1);
+                try { child = walker.GetNextSibling(child); }
+                catch { break; }
+                ordinal++;
+            }
+        }
+
+        void TryAddExactAutomationIdMatch(string? id)
+        {
+            if (string.IsNullOrWhiteSpace(id) || elements.Count >= limit)
+                return;
+
+            try
+            {
+                var exact = root.FindFirst(
+                    TreeScope.Descendants,
+                    new PropertyCondition(
+                        AutomationElement.AutomationIdProperty,
+                        id.Trim(),
+                        PropertyConditionFlags.IgnoreCase));
+                if (exact is not null)
+                    TryAddMatch(exact);
+            }
+            catch
+            {
+                // Browser providers sometimes reject optimized property queries.
+            }
+        }
+
+        bool TryAddMatch(AutomationElement element)
+        {
+            if (IsAlreadyKnown(element, cache: elements))
+                return false;
+
+            var fullInfo = MakeInfo(element, elements.Count, pid);
+            if (!UiElementClassifier.IsActionable(fullInfo))
+                return false;
+
+            if ((!includeOffscreen && fullInfo.IsOffscreen) || !IsInsideRoot(fullInfo.Bounds, rootRect))
+                return false;
+
+            elements[fullInfo.ElementIndex] = element;
+            infos.Add(fullInfo);
+            UiTreeMarkdown.AppendElement(sb, fullInfo, depth: 0, actionable: true);
+            return true;
+        }
+
+        bool HasSatisfiedLimit() => elements.Count >= limit && requiredMatched;
     }
 
     public AutomationElement GetCachedElement(int pid, long windowId, int elementIndex)
@@ -373,7 +541,107 @@ internal sealed class UiAutomationTree
         return false;
     }
 
-    private static UiElementInfo MakeInfo(AutomationElement element, int proposedIndex, int fallbackPid)
+    private static bool IsAlreadyKnown(
+        AutomationElement element,
+        Dictionary<int, AutomationElement> cache)
+    {
+        foreach (var existing in cache.Values)
+        {
+            if (AutomationEquals(existing, element))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static AutomationElement[] SelectSearchRoots(
+        AutomationElement root,
+        string targetZone,
+        Rect rootRect)
+    {
+        if (targetZone is "page content" or "page" or "content" or "document" or "web page")
+        {
+            var documents = FindAllByControlType(root, ControlType.Document)
+                .Where(element => IsUsableSearchRoot(element, rootRect))
+                .ToArray();
+            if (documents.Length > 0)
+                return documents;
+        }
+
+        if (targetZone is "browser chrome" or "chrome" or "toolbar" or "address bar")
+        {
+            var chromeRoots = BrowserChromeRootAutomationIds
+                .Select(id => FindFirstByAutomationId(root, id))
+                .Where(static element => element is not null)
+                .Cast<AutomationElement>()
+                .Where(element => IsUsableSearchRoot(element, rootRect))
+                .ToArray();
+            if (chromeRoots.Length > 0)
+                return chromeRoots;
+        }
+
+        return [root];
+    }
+
+    private static IEnumerable<AutomationElement> FindAllByControlType(AutomationElement root, ControlType controlType)
+    {
+        AutomationElementCollection? elements = null;
+        try
+        {
+            elements = root.FindAll(
+                TreeScope.Descendants,
+                new PropertyCondition(AutomationElement.ControlTypeProperty, controlType));
+        }
+        catch
+        {
+            yield break;
+        }
+
+        foreach (AutomationElement element in elements)
+            yield return element;
+    }
+
+    private static AutomationElement? FindFirstByAutomationId(AutomationElement root, string automationId)
+    {
+        try
+        {
+            return root.FindFirst(
+                TreeScope.Descendants,
+                new PropertyCondition(
+                    AutomationElement.AutomationIdProperty,
+                    automationId,
+                    PropertyConditionFlags.IgnoreCase));
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static bool IsUsableSearchRoot(AutomationElement element, Rect rootRect)
+    {
+        try
+        {
+            if (element.Current.IsOffscreen)
+                return false;
+
+            var rect = element.Current.BoundingRectangle;
+            return !rect.IsEmpty &&
+                   (rootRect.IsEmpty || rootRect.Contains(new System.Windows.Point(
+                       rect.X + Math.Min(2, rect.Width / 2),
+                       rect.Y + Math.Min(2, rect.Height / 2))));
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static UiElementInfo MakeInfo(
+        AutomationElement element,
+        int proposedIndex,
+        int fallbackPid,
+        bool readPatterns = true)
     {
         var current = element.Current;
         var rect = Safe(() => current.BoundingRectangle);
@@ -383,7 +651,7 @@ internal sealed class UiAutomationTree
         var localizedType = Safe(() => current.LocalizedControlType);
         var programmaticType = Safe(() => current.ControlType.ProgrammaticName);
         var controlType = string.IsNullOrWhiteSpace(localizedType) ? (programmaticType ?? "element") : localizedType!;
-        var patterns = UiElementClassifier.ShouldReadPatterns(controlType)
+        var patterns = readPatterns && UiElementClassifier.ShouldReadPatterns(controlType)
             ? (Safe(() => element.GetSupportedPatterns().Select(PatternName).Distinct().OrderBy(x => x).ToArray()) ?? [])
             : [];
 
@@ -405,6 +673,85 @@ internal sealed class UiAutomationTree
             processId == 0 ? fallbackPid : processId,
             nativeWindowHandle,
             patterns);
+    }
+
+    private static bool MatchesSearch(
+        UiElementInfo info,
+        string query,
+        string automationId,
+        string identifier,
+        string controlType)
+    {
+        var normalizedType = NormalizeControlType(info.ControlType);
+        var controlTypeMatches = controlType.Length == 0 || ControlTypeMatches(normalizedType, controlType);
+
+        var normalizedName = NormalizeSearch(info.Name);
+        var normalizedId = NormalizeSearch(info.AutomationId);
+        var normalizedClass = NormalizeSearch(info.ClassName);
+        var haystack = string.Join(' ', normalizedName, normalizedId, normalizedClass, normalizedType).Trim();
+
+        var hasPrimaryHint = query.Length > 0 || automationId.Length > 0 || identifier.Length > 0;
+        if (!hasPrimaryHint)
+            return controlType.Length > 0 && controlTypeMatches;
+
+        if (automationId.Length > 0 &&
+            (normalizedId.Equals(automationId, StringComparison.Ordinal) ||
+             normalizedId.Contains(automationId, StringComparison.Ordinal)))
+            return true;
+
+        if (identifier.Length > 0 &&
+            (normalizedId.Contains(identifier, StringComparison.Ordinal) ||
+             normalizedName.Contains(identifier, StringComparison.Ordinal) ||
+             normalizedClass.Contains(identifier, StringComparison.Ordinal)))
+            return true;
+
+        return query.Length > 0 && TextMatches(haystack, query);
+    }
+
+    private static bool MatchesRequiredContext(UiElementInfo info, string requiredQuery)
+    {
+        if (requiredQuery.Length == 0)
+            return true;
+
+        var normalizedName = NormalizeSearch(info.Name);
+        var normalizedId = NormalizeSearch(info.AutomationId);
+        var normalizedClass = NormalizeSearch(info.ClassName);
+        var normalizedType = NormalizeControlType(info.ControlType);
+        var haystack = string.Join(' ', normalizedName, normalizedId, normalizedClass, normalizedType).Trim();
+        return TextMatches(haystack, requiredQuery);
+    }
+
+    private static bool ControlTypeMatches(string candidate, string requested) =>
+        candidate.Equals(requested, StringComparison.Ordinal)
+        || candidate.Contains(requested, StringComparison.Ordinal)
+        || requested.Contains(candidate, StringComparison.Ordinal);
+
+    private static bool TextMatches(string haystack, string needle)
+    {
+        if (haystack.Contains(needle, StringComparison.Ordinal))
+            return true;
+
+        var tokens = needle.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return tokens.Length > 0 && tokens.All(token => haystack.Contains(token, StringComparison.Ordinal));
+    }
+
+    private static string NormalizeControlType(string? value)
+    {
+        var normalized = NormalizeSearch(value);
+        return normalized.StartsWith("controltype ", StringComparison.Ordinal)
+            ? normalized["controltype ".Length..]
+            : normalized;
+    }
+
+    private static string NormalizeSearch(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var normalized = value.Trim().ToLowerInvariant();
+        normalized = Regex.Replace(normalized, @"\([^)]*\)", " ");
+        normalized = Regex.Replace(normalized, @"[^a-z0-9]+", " ");
+        return Regex.Replace(normalized, @"\s+", " ").Trim();
     }
 
     private static bool IsSameWindowTree(AutomationElement element, AutomationElement root, long windowId)

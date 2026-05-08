@@ -371,6 +371,17 @@ internal sealed class ClickTool : IDriverTool
             return await UiAutomationActions.InvokeElementAsync(element, action, cancellationToken, allowTransientForeground: true).ConfigureAwait(false);
         }
 
+        if (PrefersUiaAction(element, action))
+        {
+            var uiaReceipt = await UiAutomationActions.InvokeElementAsync(
+                element,
+                action,
+                cancellationToken,
+                allowTransientForeground: allowTransientForeground).ConfigureAwait(false);
+            if (uiaReceipt.ShouldStopFallback)
+                return uiaReceipt;
+        }
+
         var msaaReceipt = screenPoint is null
             ? MsaaActions.DoDefaultActionAtElement(window.Hwnd, element)
             : MsaaActions.DoDefaultActionAtPoint(window.Hwnd, screenPoint.Value);
@@ -388,6 +399,27 @@ internal sealed class ClickTool : IDriverTool
         }
 
         return await UiAutomationActions.InvokeElementAsync(element, action, cancellationToken, allowTransientForeground: allowTransientForeground).ConfigureAwait(false);
+    }
+
+    private static bool PrefersUiaAction(AutomationElement element, string action)
+    {
+        if (!string.Equals(action, "press", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(action, "open", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        try
+        {
+            return element.TryGetCurrentPattern(InvokePattern.Pattern, out _)
+                   || element.TryGetCurrentPattern(TogglePattern.Pattern, out _)
+                   || element.TryGetCurrentPattern(SelectionItemPattern.Pattern, out _)
+                   || element.TryGetCurrentPattern(ExpandCollapsePattern.Pattern, out _);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static bool RequiresIsolatedInputLane(AutomationElement element, string action)

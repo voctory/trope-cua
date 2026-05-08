@@ -47,20 +47,20 @@ internal sealed class NamedPipeDaemon
         {
             while (!shutdown.IsCancellationRequested)
             {
-                await using var pipe = new NamedPipeServerStream(InstancePipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
-                await pipe.WaitForConnectionAsync(shutdown.Token).ConfigureAwait(false);
-                using var reader = new StreamReader(pipe);
-                await using var writer = new StreamWriter(pipe) { AutoFlush = true };
-
                 try
                 {
+                    await using var pipe = new NamedPipeServerStream(InstancePipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                    await pipe.WaitForConnectionAsync(shutdown.Token).ConfigureAwait(false);
+                    using var reader = new StreamReader(pipe);
+                    await using var writer = new StreamWriter(pipe) { AutoFlush = true };
+
                     var line = await reader.ReadLineAsync(shutdown.Token).ConfigureAwait(false);
                     if (line is null)
                         continue;
                     var request = JsonSerializer.Deserialize<DaemonRequest>(line, JsonUtil.SerializerOptions);
                     if (request is null)
                     {
-                        await WriteResponseAsync(writer, new DaemonResponse(false, null, "Invalid daemon request")).ConfigureAwait(false);
+                        await TryWriteResponseAsync(writer, new DaemonResponse(false, null, "Invalid daemon request")).ConfigureAwait(false);
                         continue;
                     }
 
@@ -72,7 +72,7 @@ internal sealed class NamedPipeDaemon
                         _ => new DaemonResponse(false, null, "Invalid daemon request")
                     };
 
-                    await WriteResponseAsync(writer, response).ConfigureAwait(false);
+                    await TryWriteResponseAsync(writer, response).ConfigureAwait(false);
                     if (request.Method == "shutdown")
                         shutdown.Cancel();
                 }
@@ -80,9 +80,18 @@ internal sealed class NamedPipeDaemon
                 {
                     // Expected during daemon shutdown.
                 }
+                catch (IOException)
+                {
+                    // The client may time out and close the pipe while a slow tool call is
+                    // still producing a response. Keep the daemon alive for the next request.
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Treat disconnected clients the same as a broken pipe.
+                }
                 catch (Exception ex)
                 {
-                    await WriteResponseAsync(writer, new DaemonResponse(false, null, $"{ex.GetType().Name}: {ex.Message}")).ConfigureAwait(false);
+                    Console.Error.WriteLine($"trope-cua daemon request failed: {ex.GetType().Name}: {ex.Message}");
                 }
             }
         }
@@ -101,6 +110,27 @@ internal sealed class NamedPipeDaemon
     private static async Task WriteResponseAsync(StreamWriter writer, DaemonResponse response)
     {
         await writer.WriteLineAsync(JsonSerializer.Serialize(response, JsonUtil.LineSerializerOptions)).ConfigureAwait(false);
+    }
+
+    private static async Task<bool> TryWriteResponseAsync(StreamWriter writer, DaemonResponse response)
+    {
+        try
+        {
+            await WriteResponseAsync(writer, response).ConfigureAwait(false);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     private ToolResult StatusResult()
