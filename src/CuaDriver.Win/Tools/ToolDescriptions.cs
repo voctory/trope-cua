@@ -31,7 +31,7 @@ internal static class ToolDescriptions
         """;
 
     public const string Click = """
-        Left-click a target pid. Prefer element_index + window_id from get_window_state; this performs semantic UIA/MSAA action and is background-safe when the receipt says so. action may be press, show_menu, pick, confirm, cancel, or open.
+        Left-click a target pid. Prefer element_index + window_id from get_window_state; this performs semantic UIA/MSAA action and is background-safe when the receipt says so. action may be press, show_menu, pick, confirm, cancel, or open. Use action=pick for selection items such as browser tabs so SelectionItem is preferred over generic Invoke.
 
         Pixel fallback: x/y are window-local screenshot pixels for canvas, WebGL, custom surfaces, or when no useful element_index exists. count=2 double-clicks; modifier/modifiers holds ctrl, shift, alt/option, or win/cmd.
 

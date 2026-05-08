@@ -7,6 +7,39 @@ namespace CuaDriver.Win.Uia;
 
 internal static class UiAutomationActions
 {
+    public static bool PrefersSelectionItem(string? actionName)
+    {
+        var normalized = (actionName ?? string.Empty).Trim().ToLowerInvariant();
+        return normalized is "pick" or "select";
+    }
+
+    public static ActionReceipt? TrySelectItem(
+        AutomationElement element,
+        bool allowTransientForeground = false)
+    {
+        using var guard = NoRegressionGuard.Capture();
+
+        try
+        {
+            if (!TryPattern<SelectionItemPattern>(element, SelectionItemPattern.Pattern, out var selection))
+            {
+                return null;
+            }
+
+            selection.Select();
+            return guard.Finish(
+                ActionReceipt.Success("uia.selection_item.select"),
+                allowCursorMove: allowTransientForeground,
+                allowForegroundChange: allowTransientForeground,
+                restoreAllowedCursorMove: allowTransientForeground,
+                restoreAllowedForegroundChange: allowTransientForeground);
+        }
+        catch (Exception ex)
+        {
+            return guard.Finish(ActionReceipt.Failure("uia.selection_item.select", ex.Message));
+        }
+    }
+
     public static async Task<ActionReceipt> InvokeElementAsync(
         AutomationElement element,
         string actionName,
@@ -36,6 +69,12 @@ internal static class UiAutomationActions
                         return dispatch.Receipt;
                     }
                 }
+            }
+
+            if (PrefersSelectionItem(actionName) &&
+                TrySelectItem(element, allowTransientForeground) is { } selectionReceipt)
+            {
+                return selectionReceipt;
             }
 
             if (TryPattern<InvokePattern>(element, InvokePattern.Pattern, out var invoke))

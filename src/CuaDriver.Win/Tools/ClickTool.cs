@@ -61,6 +61,14 @@ internal sealed class ClickTool : IDriverTool
             await AgentCursorTooling.MoveToElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
             if (BrowserWindowClassifier.IsLikelyBrowser(window))
             {
+                if (UiAutomationActions.PrefersSelectionItem(action) &&
+                    UiAutomationActions.TrySelectItem(element, allowTransientForeground) is { } selectionReceipt)
+                {
+                    if (selectionReceipt.Ok)
+                        await AgentCursorTooling.PulseAtElementAsync(context, element, window.Hwnd, cancellationToken).ConfigureAwait(false);
+                    return ActionToolResult.FromReceipt(selectionReceipt);
+                }
+
                 var browserCdpPort = BrowserToolArgs.CdpPort(args, context);
                 using var browserLease = BrowserAutomationLease.TryAcquireChromiumFallback(window, browserCdpPort, out var contention);
                 if (contention is not null)
