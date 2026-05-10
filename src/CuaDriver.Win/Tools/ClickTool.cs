@@ -379,6 +379,13 @@ internal sealed class ClickTool : IDriverTool
             return await UiAutomationActions.InvokeElementAsync(element, action, cancellationToken, allowTransientForeground: true).ConfigureAwait(false);
         }
 
+        if (UiAutomationActions.PrefersSelectionItem(action) &&
+            UiAutomationActions.TrySelectItem(element, allowTransientForeground) is { } selectionReceipt)
+        {
+            if (selectionReceipt.ShouldStopFallback)
+                return selectionReceipt;
+        }
+
         if (PrefersUiaAction(element, action))
         {
             var uiaReceipt = await UiAutomationActions.InvokeElementAsync(
